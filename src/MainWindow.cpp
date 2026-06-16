@@ -136,9 +136,9 @@ void MainWindow::applyTheme()
     const bool dark = oled || preference == QStringLiteral("Dark") || (preference == QStringLiteral("System") && systemDark);
 
     const QString window = oled ? QStringLiteral("#000000") : (dark ? QStringLiteral("#161a20") : QStringLiteral("#f6f7f9"));
-    const QString sidebar = oled ? QStringLiteral("#040404") : (dark ? QStringLiteral("#11161d") : QStringLiteral("#eef1f4"));
-    const QString surface = oled ? QStringLiteral("#090909") : (dark ? QStringLiteral("#20262e") : QStringLiteral("#ffffff"));
-    const QString surfaceAlt = oled ? QStringLiteral("#121212") : (dark ? QStringLiteral("#29313a") : QStringLiteral("#f1f4f7"));
+    const QString sidebar = oled ? QStringLiteral("#000000") : (dark ? QStringLiteral("#11161d") : QStringLiteral("#eef1f4"));
+    const QString surface = oled ? QStringLiteral("#000000") : (dark ? QStringLiteral("#20262e") : QStringLiteral("#ffffff"));
+    const QString surfaceAlt = oled ? QStringLiteral("#080808") : (dark ? QStringLiteral("#29313a") : QStringLiteral("#f1f4f7"));
     const QString border = oled ? QStringLiteral("#2a2a2a") : (dark ? QStringLiteral("#38424d") : QStringLiteral("#d9dee5"));
     const QString text = oled ? QStringLiteral("#f3f5f7") : (dark ? QStringLiteral("#eef2f5") : QStringLiteral("#202832"));
     const QString muted = oled ? QStringLiteral("#a7adb4") : (dark ? QStringLiteral("#aeb8c2") : QStringLiteral("#5f6b78"));
