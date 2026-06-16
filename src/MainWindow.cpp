@@ -140,9 +140,6 @@ void MainWindow::applyTheme()
     const QString muted = oled ? QStringLiteral("#a5adb5") : (dark ? QStringLiteral("#b6c0cb") : QStringLiteral("#53606e"));
     const QString accent = oled ? QStringLiteral("#00f5a0") : (dark ? QStringLiteral("#44c2a8") : QStringLiteral("#166e7a"));
     const QString accentSoft = oled ? QStringLiteral("#003d2b") : (dark ? QStringLiteral("#214b4a") : QStringLiteral("#d8f0ec"));
-    const QString danger = oled ? QStringLiteral("#ff5f7a") : QStringLiteral("#d95667");
-    const QString warning = oled ? QStringLiteral("#ffd166") : QStringLiteral("#b98516");
-
     qApp->setStyleSheet(QStringLiteral(R"(
         QWidget {
             font-size: 10.5pt;
@@ -264,7 +261,15 @@ void MainWindow::applyTheme()
             border: 1px solid %5;
         }
     )")
-        .arg(window, sidebar, surface, surfaceAlt, border, text, muted, accent, accentSoft, danger, warning));
+        .arg(window)
+        .arg(sidebar)
+        .arg(surface)
+        .arg(surfaceAlt)
+        .arg(border)
+        .arg(text)
+        .arg(muted)
+        .arg(accent)
+        .arg(accentSoft));
 }
 
 QIcon MainWindow::appIcon() const
