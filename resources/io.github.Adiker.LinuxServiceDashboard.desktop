@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Linux Service Dashboard
+Comment=Local dashboard for Linux services, containers, mounts, sensors, and disks
+Exec=linux-service-dashboard
+Icon=io.github.Adiker.LinuxServiceDashboard
+Terminal=false
+Categories=System;Monitor;Qt;
+StartupNotify=true
+StartupWMClass=linux-service-dashboard

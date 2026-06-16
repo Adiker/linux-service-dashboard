@@ -1,0 +1,87 @@
+cmake_minimum_required(VERSION 3.21)
+
+project(linux-service-dashboard VERSION 0.1.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+find_package(Qt6 REQUIRED COMPONENTS Widgets)
+
+qt_standard_project_setup()
+
+qt_add_executable(linux-service-dashboard
+    resources/resources.qrc
+    src/main.cpp
+    src/MainWindow.cpp
+    src/MainWindow.h
+    src/core/CommandResult.h
+    src/core/CommandRunner.cpp
+    src/core/CommandRunner.h
+    src/core/RefreshScheduler.cpp
+    src/core/RefreshScheduler.h
+    src/models/ServiceModel.cpp
+    src/models/ServiceModel.h
+    src/models/DockerContainerModel.cpp
+    src/models/DockerContainerModel.h
+    src/models/MountModel.cpp
+    src/models/MountModel.h
+    src/models/SensorModel.cpp
+    src/models/SensorModel.h
+    src/models/DiskModel.cpp
+    src/models/DiskModel.h
+    src/services/SystemdServiceProvider.cpp
+    src/services/SystemdServiceProvider.h
+    src/services/DockerProvider.cpp
+    src/services/DockerProvider.h
+    src/services/NetworkProvider.cpp
+    src/services/NetworkProvider.h
+    src/services/MountProvider.cpp
+    src/services/MountProvider.h
+    src/services/SensorProvider.cpp
+    src/services/SensorProvider.h
+    src/services/SmartProvider.cpp
+    src/services/SmartProvider.h
+    src/widgets/OverviewPage.cpp
+    src/widgets/OverviewPage.h
+    src/widgets/SystemdPage.cpp
+    src/widgets/SystemdPage.h
+    src/widgets/DockerPage.cpp
+    src/widgets/DockerPage.h
+    src/widgets/VpnPage.cpp
+    src/widgets/VpnPage.h
+    src/widgets/MountsPage.cpp
+    src/widgets/MountsPage.h
+    src/widgets/SensorsPage.cpp
+    src/widgets/SensorsPage.h
+    src/widgets/DisksPage.cpp
+    src/widgets/DisksPage.h
+    src/widgets/SettingsPage.cpp
+    src/widgets/SettingsPage.h
+    src/widgets/LogViewerDialog.cpp
+    src/widgets/LogViewerDialog.h
+    src/widgets/ConfirmActionDialog.cpp
+    src/widgets/ConfirmActionDialog.h
+    src/utils/JsonUtils.cpp
+    src/utils/JsonUtils.h
+    src/utils/TimeUtils.cpp
+    src/utils/TimeUtils.h
+    src/utils/StatusUtils.cpp
+    src/utils/StatusUtils.h
+)
+
+target_link_libraries(linux-service-dashboard PRIVATE Qt6::Widgets)
+
+install(TARGETS linux-service-dashboard
+    BUNDLE DESTINATION .
+    RUNTIME DESTINATION bin
+)
+
+install(FILES resources/io.github.Adiker.LinuxServiceDashboard.desktop
+    DESTINATION share/applications
+)
+
+install(FILES resources/linux-service-dashboard.svg
+    DESTINATION share/icons/hicolor/scalable/apps
+    RENAME io.github.Adiker.LinuxServiceDashboard.svg
+)

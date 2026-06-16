@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/">
+        <file alias="icons/linux-service-dashboard.svg">linux-service-dashboard.svg</file>
+    </qresource>
+</RCC>
