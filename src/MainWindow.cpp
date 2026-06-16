@@ -183,22 +183,16 @@ void MainWindow::applyTheme()
             font-weight: 700;
             padding: 14px 4px 12px 4px;
         }
-        QWidget#card, QGroupBox {
+        QLabel#sectionTitle {
+            color: %7;
+            font-weight: 700;
+            padding: 2px 4px 0 4px;
+        }
+        QWidget#card, QFrame#settingsSection {
             background: %3;
             border: 1px solid %5;
             border-radius: 8px;
             padding: 14px;
-        }
-        QGroupBox {
-            margin-top: 14px;
-            font-weight: 700;
-        }
-        QGroupBox::title {
-            subcontrol-origin: margin;
-            left: 12px;
-            padding: 0 7px;
-            color: %7;
-            background: %1;
         }
         QLabel#cardValue {
             font-size: 18pt;
@@ -221,6 +215,12 @@ void MainWindow::applyTheme()
             border-bottom: 1px solid %5;
             padding: 8px;
             font-weight: 700;
+        }
+        QTableCornerButton::section {
+            background: %4;
+            border: 0;
+            border-bottom: 1px solid %5;
+            border-right: 1px solid %5;
         }
         QTableView::item {
             padding: 5px;
@@ -301,13 +301,25 @@ void MainWindow::applyTheme()
             width: 12px;
             margin: 0;
         }
+        QScrollBar:horizontal {
+            background: %1;
+            height: 12px;
+            margin: 0;
+        }
         QScrollBar::handle:vertical {
             background: %5;
             border-radius: 6px;
             min-height: 28px;
         }
-        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+        QScrollBar::handle:horizontal {
+            background: %5;
+            border-radius: 6px;
+            min-width: 28px;
+        }
+        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical,
+        QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
             height: 0;
+            width: 0;
         }
         QMenu::item {
             padding: 7px 22px;

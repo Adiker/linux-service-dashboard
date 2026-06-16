@@ -25,6 +25,7 @@ DisksPage::DisksPage(QWidget *parent)
     m_table->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_table->setSelectionMode(QAbstractItemView::SingleSelection);
     m_table->horizontalHeader()->setStretchLastSection(true);
+    m_table->verticalHeader()->hide();
     m_table->setSortingEnabled(true);
     layout->addWidget(m_table, 1);
 
