@@ -148,7 +148,7 @@ void MainWindow::applyTheme()
         QWidget {
             font-size: 10.5pt;
         }
-        QMainWindow, QWidget#appRoot, QStackedWidget#contentStack {
+        QMainWindow, QDialog, QMessageBox, QWidget#appRoot, QStackedWidget#contentStack {
             background: %1;
             color: %6;
         }
