@@ -1,5 +1,7 @@
 #include "MainWindow.h"
 
+#include "AppIcon.h"
+
 #include <QAction>
 #include <QApplication>
 #include <QCloseEvent>
@@ -19,7 +21,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
     setWindowTitle(QStringLiteral("Linux Service Dashboard"));
-    setWindowIcon(appIcon());
+    setWindowIcon(serviceDashboardIcon());
     resize(1200, 800);
     buildUi();
     buildTray();
@@ -89,7 +91,7 @@ void MainWindow::buildUi()
 
 void MainWindow::buildTray()
 {
-    m_tray = new QSystemTrayIcon(appIcon(), this);
+    m_tray = new QSystemTrayIcon(serviceDashboardIcon(), this);
     auto *menu = new QMenu(this);
     auto *showAction = menu->addAction(QStringLiteral("Show Dashboard"));
     auto *refreshAction = menu->addAction(QStringLiteral("Refresh Now"));
@@ -270,12 +272,6 @@ void MainWindow::applyTheme()
         .arg(muted)
         .arg(accent)
         .arg(accentSoft));
-}
-
-QIcon MainWindow::appIcon() const
-{
-    return QIcon::fromTheme(QStringLiteral("io.github.Adiker.LinuxServiceDashboard"),
-                            QIcon(QStringLiteral(":/icons/linux-service-dashboard.svg")));
 }
 
 void MainWindow::refreshAll()

@@ -41,7 +41,7 @@ The application is a regular Qt Widgets desktop app and should stay compositor-n
 - Do not force `QT_QPA_PLATFORM` in code.
 - Do not set `QT_WAYLAND_SHELL_INTEGRATION=layer-shell`; this app does not need layer-shell surfaces.
 - Keep `QGuiApplication::setDesktopFileName("io.github.Adiker.LinuxServiceDashboard")` before showing windows. KDE Plasma Wayland uses this app id to match the `.desktop` file and taskbar icon.
-- Keep the tray and window icon sourced from the same Qt resource: `:/icons/linux-service-dashboard.svg`.
+- Keep the tray and window icon sourced from `serviceDashboardIcon()` so taskbar, window, and tray stay aligned.
 - The installable desktop file is `resources/io.github.Adiker.LinuxServiceDashboard.desktop`, and the installed icon name must remain `io.github.Adiker.LinuxServiceDashboard`.
 - When checking platform behavior locally, run at least one normal desktop-session smoke test on Wayland and one with `QT_QPA_PLATFORM=xcb` on X11/XWayland if the display server is available.
 
@@ -64,10 +64,10 @@ The application is a regular Qt Widgets desktop app and should stay compositor-n
 
 ## Icon / QRC
 
-The icon is embedded as a Qt resource through `resources/resources.qrc`.
+The icon is available both as an installed hicolor theme icon and as embedded PNG fallbacks through `resources/resources.qrc`.
 
-- Runtime fallback: `QIcon::fromTheme("io.github.Adiker.LinuxServiceDashboard", QIcon(":/icons/linux-service-dashboard.svg"))`.
-- Packaging installs the same SVG to `share/icons/hicolor/scalable/apps/io.github.Adiker.LinuxServiceDashboard.svg`.
+- Runtime path: `QIcon::fromTheme("io.github.Adiker.LinuxServiceDashboard")` first, then embedded PNG fallbacks.
+- Packaging installs PNG sizes under `share/icons/hicolor/*/apps/io.github.Adiker.LinuxServiceDashboard.png` and the source SVG under `share/icons/hicolor/scalable/apps/`.
 - Do not add post-build icon copy commands; the runtime icon is already embedded in the binary.
 
 ## Tests

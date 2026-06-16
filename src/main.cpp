@@ -1,8 +1,8 @@
 #include "MainWindow.h"
+#include "AppIcon.h"
 
 #include <QApplication>
 #include <QCoreApplication>
-#include <QIcon>
 
 int main(int argc, char *argv[])
 {
@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
     QCoreApplication::setApplicationVersion("0.1.0");
     QGuiApplication::setDesktopFileName(QStringLiteral("io.github.Adiker.LinuxServiceDashboard"));
     QApplication::setStyle(QStringLiteral("Fusion"));
-    QApplication::setWindowIcon(QIcon(QStringLiteral(":/icons/linux-service-dashboard.svg")));
+    QApplication::setWindowIcon(serviceDashboardIcon());
 
     MainWindow window;
     window.show();

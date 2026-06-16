@@ -24,6 +24,8 @@ linux-service-dashboard/
 ├── CMakeLists.txt
 ├── resources/
 │   ├── io.github.Adiker.LinuxServiceDashboard.desktop
+│   ├── icons/
+│   │   └── linux-service-dashboard-*.png
 │   ├── linux-service-dashboard.svg
 │   └── resources.qrc
 ├── src/
@@ -73,7 +75,7 @@ linux-service-dashboard/
 
 ## Runtime Flow
 
-1. `main.cpp` creates `QApplication`, sets organization/application metadata, sets the KDE/Wayland desktop file name, applies Fusion style, and sets the embedded application icon.
+1. `main.cpp` creates `QApplication`, sets organization/application metadata, sets the KDE/Wayland desktop file name, applies Fusion style, and sets the application icon.
 2. `MainWindow` builds the sidebar/stack UI and the system tray icon/menu.
 3. `SettingsPage::settingsChanged` triggers `MainWindow::reloadSettings()`.
 4. `RefreshScheduler` emits periodic refresh requests based on `refresh/intervalSeconds`.
@@ -111,10 +113,12 @@ The app uses a single icon identity for taskbar, tray, and packaging:
 
 - Desktop file id: `io.github.Adiker.LinuxServiceDashboard`
 - Desktop file: `resources/io.github.Adiker.LinuxServiceDashboard.desktop`
-- Runtime Qt resource: `:/icons/linux-service-dashboard.svg`
-- Installed hicolor icon: `share/icons/hicolor/scalable/apps/io.github.Adiker.LinuxServiceDashboard.svg`
+- Runtime icon helper: `serviceDashboardIcon()`
+- Runtime fallback resources: `:/icons/linux-service-dashboard-*.png`
+- Installed hicolor icons: `share/icons/hicolor/*/apps/io.github.Adiker.LinuxServiceDashboard.png`
+- Installed scalable source icon: `share/icons/hicolor/scalable/apps/io.github.Adiker.LinuxServiceDashboard.svg`
 
-`QGuiApplication::setDesktopFileName("io.github.Adiker.LinuxServiceDashboard")` is required before showing windows so KDE Plasma Wayland can match the app window to the desktop file instead of showing a generic Wayland icon. `MainWindow::appIcon()` supplies the same icon to both the top-level window and `QSystemTrayIcon`.
+`QGuiApplication::setDesktopFileName("io.github.Adiker.LinuxServiceDashboard")` is required before showing windows so KDE Plasma Wayland can match the app window to the desktop file instead of showing a generic Wayland icon. `serviceDashboardIcon()` returns the named theme icon when installed, otherwise embedded PNG fallbacks; both the top-level window and `QSystemTrayIcon` use it.
 
 The app does not force Wayland or X11. Qt chooses the platform plugin from the user's session or `QT_QPA_PLATFORM`.
 
@@ -179,6 +183,7 @@ This installs:
 
 - `bin/linux-service-dashboard`
 - `share/applications/io.github.Adiker.LinuxServiceDashboard.desktop`
+- `share/icons/hicolor/*/apps/io.github.Adiker.LinuxServiceDashboard.png`
 - `share/icons/hicolor/scalable/apps/io.github.Adiker.LinuxServiceDashboard.svg`
 
 ---

@@ -17,7 +17,7 @@ This is the concise working guide for Gemini / Antigravity agents in this reposi
 - Destructive operations must keep confirmation dialogs.
 - Do not force a Qt platform plugin. Wayland/X11 selection belongs to Qt and the desktop session.
 - Keep `QGuiApplication::setDesktopFileName("io.github.Adiker.LinuxServiceDashboard")`; it is required for KDE Plasma Wayland taskbar icon matching.
-- Keep tray and taskbar icons backed by the same icon identity and Qt resource.
+- Keep tray and taskbar icons backed by `serviceDashboardIcon()`, the desktop id, and the installed hicolor icon name.
 - Do not split Light/Dark/OLED styling across many widgets. Prefer `MainWindow::applyTheme()`.
 
 ## Architecture Map

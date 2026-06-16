@@ -1,5 +1,13 @@
 <RCC>
     <qresource prefix="/">
         <file alias="icons/linux-service-dashboard.svg">linux-service-dashboard.svg</file>
+        <file alias="icons/linux-service-dashboard-16.png">icons/linux-service-dashboard-16.png</file>
+        <file alias="icons/linux-service-dashboard-22.png">icons/linux-service-dashboard-22.png</file>
+        <file alias="icons/linux-service-dashboard-24.png">icons/linux-service-dashboard-24.png</file>
+        <file alias="icons/linux-service-dashboard-32.png">icons/linux-service-dashboard-32.png</file>
+        <file alias="icons/linux-service-dashboard-48.png">icons/linux-service-dashboard-48.png</file>
+        <file alias="icons/linux-service-dashboard-64.png">icons/linux-service-dashboard-64.png</file>
+        <file alias="icons/linux-service-dashboard-128.png">icons/linux-service-dashboard-128.png</file>
+        <file alias="icons/linux-service-dashboard-256.png">icons/linux-service-dashboard-256.png</file>
     </qresource>
 </RCC>

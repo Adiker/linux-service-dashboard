@@ -32,7 +32,6 @@ private:
     void buildUi();
     void buildTray();
     void applyTheme();
-    QIcon appIcon() const;
     void reloadSettings();
 
     QListWidget *m_sidebar = nullptr;

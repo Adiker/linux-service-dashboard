@@ -43,5 +43,5 @@ QT_QPA_PLATFORM=minimal timeout 3s build/linux-service-dashboard
 - Do not duplicate architectural detail here. Add durable technical reference material to `ARCHITECTURE.md`.
 - Put end-user behavior, install steps, and troubleshooting in `README.md`.
 - Put agent-only workflow mistakes or non-obvious guardrails in `AGENTS.md`.
-- Keep desktop icon changes aligned across `src/main.cpp`, `src/MainWindow.cpp`, `resources/resources.qrc`, and `resources/io.github.Adiker.LinuxServiceDashboard.desktop`.
+- Keep desktop icon changes aligned across `src/AppIcon.cpp`, `src/main.cpp`, `src/MainWindow.cpp`, `resources/resources.qrc`, and `resources/io.github.Adiker.LinuxServiceDashboard.desktop`.
 - For UI theme changes, update all four preferences: `System`, `Light`, `Dark`, `OLED`.

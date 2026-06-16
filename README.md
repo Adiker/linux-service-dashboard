@@ -52,7 +52,7 @@ cmake --build build -j$(nproc)
 cmake --install build --prefix /usr/local
 ```
 
-The install step places the binary, `.desktop` entry, and hicolor SVG icon under the chosen prefix. The desktop id is `io.github.Adiker.LinuxServiceDashboard`; KDE Plasma Wayland uses it to match the taskbar icon to the same icon used by the tray.
+The install step places the binary, `.desktop` entry, and hicolor PNG/SVG icons under the chosen prefix. The desktop id is `io.github.Adiker.LinuxServiceDashboard`; KDE Plasma Wayland uses it to match the taskbar icon to the same icon used by the tray.
 
 ## Themes
 

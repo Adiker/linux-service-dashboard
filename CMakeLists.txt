@@ -14,6 +14,8 @@ qt_standard_project_setup()
 qt_add_executable(linux-service-dashboard
     resources/resources.qrc
     src/main.cpp
+    src/AppIcon.cpp
+    src/AppIcon.h
     src/MainWindow.cpp
     src/MainWindow.h
     src/core/CommandResult.h
@@ -86,3 +88,10 @@ install(FILES resources/linux-service-dashboard.svg
     DESTINATION share/icons/hicolor/scalable/apps
     RENAME io.github.Adiker.LinuxServiceDashboard.svg
 )
+
+foreach(icon_size 16 22 24 32 48 64 128 256)
+    install(FILES resources/icons/linux-service-dashboard-${icon_size}.png
+        DESTINATION share/icons/hicolor/${icon_size}x${icon_size}/apps
+        RENAME io.github.Adiker.LinuxServiceDashboard.png
+    )
+endforeach()
