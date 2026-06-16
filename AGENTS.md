@@ -64,9 +64,9 @@ The application is a regular Qt Widgets desktop app and should stay compositor-n
 
 ## Icon / QRC
 
-The icon is available both as an installed hicolor theme icon and as embedded PNG fallbacks through `resources/resources.qrc`.
+The runtime icon is embedded as PNG files through `resources/resources.qrc`; installed hicolor icons are only for packaged/desktop installs.
 
-- Runtime path: `QIcon::fromTheme("io.github.Adiker.LinuxServiceDashboard")` first, then embedded PNG fallbacks.
+- Runtime path: `serviceDashboardIcon()` loads embedded PNG resources directly.
 - Packaging installs PNG sizes under `share/icons/hicolor/*/apps/io.github.Adiker.LinuxServiceDashboard.png` and the source SVG under `share/icons/hicolor/scalable/apps/`.
 - Do not add post-build icon copy commands; the runtime icon is already embedded in the binary.
 
