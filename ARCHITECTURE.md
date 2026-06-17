@@ -24,6 +24,7 @@ linux-service-dashboard/
 ├── CMakeLists.txt
 ├── resources/
 │   ├── io.github.Adiker.LinuxServiceDashboard.desktop
+│   ├── io.github.Adiker.LinuxServiceDashboard.smart-helper.policy.in
 │   ├── icons/
 │   │   └── linux-service-dashboard-*.png
 │   ├── linux-service-dashboard.svg
@@ -31,6 +32,8 @@ linux-service-dashboard/
 ├── src/
 │   ├── main.cpp
 │   ├── MainWindow.h/cpp
+│   ├── helpers/
+│   │   └── SmartHelper.cpp
 │   ├── core/
 │   │   ├── CommandResult.h
 │   │   ├── CommandRunner.h/cpp
@@ -152,9 +155,20 @@ Providers own command execution and parsing:
 - `NetworkProvider`: `nmcli` active connection parsing for VPN-like types (`vpn`, `tun`, `wireguard`, `ppp`)
 - `MountProvider`: mount listing and unmount commands
 - `SensorProvider`: `sensors -j` with text fallback
-- `SmartProvider`: `lsblk -J`, `smartctl -j`
+- `SmartProvider`: `lsblk -J`, `smartctl -j`, and `pkexec` fallback to the installed SMART helper
 
 UI pages should stay thin: trigger provider methods, update models/status labels, and show confirmations/dialogs.
+
+### SMART / polkit helper
+
+SMART inventory is split into two privilege levels:
+
+- `SmartProvider` runs `lsblk -J` and first attempts `smartctl -j -H -A` from the user's session.
+- If `smartctl` reports a permission error, `SmartProvider` invokes `pkexec linux-service-dashboard-smart-helper` one disk at a time.
+- `linux-service-dashboard-smart-helper` validates a narrow `/dev/...` disk path and optional transport, then runs only the corresponding `smartctl` read command.
+- The helper does not expose mount, write, shell, or arbitrary command execution.
+
+The helper policy source is `resources/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy.in`. CMake configures the installed helper path into the policy so polkit can authorize the exact executable. Keep SMART checks manual unless a future change adds explicit rate limiting and user opt-in.
 
 ---
 
@@ -182,9 +196,11 @@ cmake --install build --prefix /usr/local
 This installs:
 
 - `bin/linux-service-dashboard`
+- `${CMAKE_INSTALL_LIBEXECDIR}/linux-service-dashboard-smart-helper`
 - `share/applications/io.github.Adiker.LinuxServiceDashboard.desktop`
 - `share/icons/hicolor/*/apps/io.github.Adiker.LinuxServiceDashboard.png`
 - `share/icons/hicolor/scalable/apps/io.github.Adiker.LinuxServiceDashboard.svg`
+- `share/polkit-1/actions/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy`
 
 ---
 
@@ -217,6 +233,6 @@ QT_QPA_PLATFORM=xcb build/linux-service-dashboard
 
 - systemd parsing uses command output instead of DBus.
 - VPN status uses `nmcli` instead of NetworkManager DBus. Active VPN-like tunnel types (`vpn`, `tun`, `wireguard`, `ppp`) are treated as connected so externally created tunnels such as OpenConnect are visible.
-- SMART checks are manual and permission-dependent.
+- SMART checks are manual and permission-dependent; installed builds use the polkit helper for authorized read-only SMART access.
 - Module toggles are saved but do not yet hide pages.
 - There is no automated parser test suite yet.

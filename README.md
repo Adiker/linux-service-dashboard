@@ -10,7 +10,7 @@ Linux Service Dashboard is a local Qt 6 Widgets desktop application for monitori
 - NetworkManager VPN/tunnel status via `nmcli`, including external `tun` links such as OpenConnect.
 - CIFS/NFS/sshfs mount listing with file manager open and confirmed unmount.
 - Temperature/sensor display using `sensors -j` with a text fallback.
-- Disk inventory via `lsblk -J` and manual SMART checks via `smartctl -j`.
+- Disk inventory via `lsblk -J` and manual SMART checks via `smartctl -j`, with an installed polkit helper for permission-gated SMART reads.
 - QSettings-backed refresh interval, watched services, module toggles, and theme preference.
 - Light, Dark, and OLED themes with system-theme auto mode.
 - System tray menu with Show Dashboard, Refresh Now, and Quit.
@@ -23,16 +23,16 @@ Podman, remote monitoring, web servers, authentication, and cloud sync are inten
 Arch Linux:
 
 ```bash
-sudo pacman -S qt6-base cmake gcc docker networkmanager util-linux lm_sensors smartmontools
+sudo pacman -S qt6-base cmake gcc docker networkmanager util-linux lm_sensors smartmontools polkit
 ```
 
 Debian/Ubuntu-like systems:
 
 ```bash
-sudo apt install qt6-base-dev cmake g++ docker-cli network-manager util-linux lm-sensors smartmontools
+sudo apt install qt6-base-dev cmake g++ docker-cli network-manager util-linux lm-sensors smartmontools policykit-1
 ```
 
-Some commands may require the current user to have permissions, for example access to the Docker socket or SMART data. The app does not ask for sudo passwords and reports permission errors in the UI.
+Some commands may require the current user to have permissions, for example access to the Docker socket. SMART checks first try the user's session and, when installed, fall back to a small `pkexec`/polkit helper that runs only the SMART read command after administrator authentication.
 
 ## Build
 
@@ -52,7 +52,17 @@ cmake --build build -j$(nproc)
 cmake --install build --prefix /usr/local
 ```
 
-The install step places the binary, `.desktop` entry, and hicolor PNG/SVG icons under the chosen prefix. The desktop id is `io.github.Adiker.LinuxServiceDashboard`; KDE Plasma Wayland uses it to match the taskbar icon to the same icon used by the tray.
+The install step places the main binary, SMART helper, polkit policy, `.desktop` entry, and hicolor PNG/SVG icons under the chosen prefix. The desktop id is `io.github.Adiker.LinuxServiceDashboard`; KDE Plasma Wayland uses it to match the taskbar icon to the same icon used by the tray.
+
+For SMART checks that require elevated disk access, install the project into a system prefix so polkit can find the helper policy:
+
+```bash
+sudo cmake --install build --prefix /usr/local
+```
+
+If you use a different install prefix, configure CMake with that prefix before building so the generated polkit policy points at the final helper path.
+
+The helper is installed as `libexec/linux-service-dashboard-smart-helper` and is only invoked through `pkexec` for SMART reads.
 
 ## Themes
 
@@ -68,7 +78,7 @@ OLED uses a black-first palette with brighter contrast for OLED displays and dar
 ## Known Limitations
 
 - systemd service parsing uses `systemctl list-units --plain`; it is robust enough for the MVP but should eventually move to DBus.
-- SMART checks are manual from the disks page and cached by the UI; frequent automatic SMART polling is intentionally avoided.
+- SMART checks are manual from the disks page and cached by the UI; frequent automatic SMART polling is intentionally avoided. The polkit helper covers normal installed use, but unusual USB bridges may still require bridge-specific `smartctl -d` options.
 - VPN detection uses `nmcli` active connections and treats VPN-like tunnel types such as `vpn`, `tun`, `wireguard`, and `ppp` as connected; the provider is shaped so it can later be replaced with NetworkManager DBus calls.
 - Mount profiles and fstab parsing are not implemented yet.
 - Module toggles are persisted but do not yet hide pages.

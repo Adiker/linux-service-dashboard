@@ -7,9 +7,20 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_AUTORCC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets)
+include(GNUInstallDirs)
+
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 
 qt_standard_project_setup()
+
+set(SMART_HELPER_TARGET linux-service-dashboard-smart-helper)
+set(SMART_HELPER_INSTALL_PATH "${CMAKE_INSTALL_FULL_LIBEXECDIR}/${SMART_HELPER_TARGET}")
+
+configure_file(
+    resources/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy.in
+    ${CMAKE_CURRENT_BINARY_DIR}/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy
+    @ONLY
+)
 
 qt_add_executable(linux-service-dashboard
     resources/resources.qrc
@@ -74,10 +85,25 @@ qt_add_executable(linux-service-dashboard
 )
 
 target_link_libraries(linux-service-dashboard PRIVATE Qt6::Widgets)
+target_compile_definitions(linux-service-dashboard PRIVATE SMART_HELPER_PATH="${SMART_HELPER_INSTALL_PATH}")
+
+qt_add_executable(${SMART_HELPER_TARGET}
+    src/helpers/SmartHelper.cpp
+)
+
+target_link_libraries(${SMART_HELPER_TARGET} PRIVATE Qt6::Core)
 
 install(TARGETS linux-service-dashboard
     BUNDLE DESTINATION .
     RUNTIME DESTINATION bin
+)
+
+install(TARGETS ${SMART_HELPER_TARGET}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}
+)
+
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/polkit-1/actions
 )
 
 install(FILES resources/io.github.Adiker.LinuxServiceDashboard.desktop
