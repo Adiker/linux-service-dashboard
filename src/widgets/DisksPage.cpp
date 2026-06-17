@@ -24,7 +24,15 @@ DisksPage::DisksPage(QWidget *parent)
     m_table->setModel(m_model);
     m_table->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_table->setSelectionMode(QAbstractItemView::SingleSelection);
-    m_table->horizontalHeader()->setStretchLastSection(true);
+    m_table->setTextElideMode(Qt::ElideRight);
+    m_table->setWordWrap(false);
+    m_table->setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
+    auto *diskHeader = m_table->horizontalHeader();
+    diskHeader->setStretchLastSection(false);
+    diskHeader->setMinimumSectionSize(72);
+    diskHeader->setSectionResizeMode(QHeaderView::ResizeToContents);
+    diskHeader->setSectionResizeMode(1, QHeaderView::Stretch);
+    diskHeader->setSectionResizeMode(2, QHeaderView::Stretch);
     m_table->verticalHeader()->hide();
     m_table->setSortingEnabled(true);
     layout->addWidget(m_table, 1);

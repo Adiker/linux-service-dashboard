@@ -23,7 +23,7 @@ QVariant DiskModel::data(const QModelIndex &index, int role) const
         return {};
     }
     const auto &row = m_rows.at(index.row());
-    if (role == Qt::DisplayRole) {
+    if (role == Qt::DisplayRole || role == Qt::ToolTipRole) {
         switch (index.column()) {
         case 0: return row.path;
         case 1: return row.model;
@@ -49,7 +49,7 @@ QVariant DiskModel::data(const QModelIndex &index, int role) const
 
 QVariant DiskModel::headerData(int section, Qt::Orientation orientation, int role) const
 {
-    if (orientation != Qt::Horizontal || role != Qt::DisplayRole) {
+    if (orientation != Qt::Horizontal || (role != Qt::DisplayRole && role != Qt::ToolTipRole)) {
         return {};
     }
     static const QStringList headers{
