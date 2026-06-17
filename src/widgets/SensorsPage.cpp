@@ -24,6 +24,7 @@ SensorsPage::SensorsPage(QWidget *parent)
     m_table->setModel(m_model);
     m_table->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_table->horizontalHeader()->setStretchLastSection(true);
+    m_table->verticalHeader()->hide();
     m_table->setSortingEnabled(true);
     layout->addWidget(m_table, 1);
 

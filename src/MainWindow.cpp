@@ -33,6 +33,7 @@ MainWindow::MainWindow(QWidget *parent)
 void MainWindow::buildUi()
 {
     auto *central = new QWidget(this);
+    central->setObjectName(QStringLiteral("appRoot"));
     auto *layout = new QHBoxLayout(central);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
@@ -67,6 +68,7 @@ void MainWindow::buildUi()
     layout->addWidget(m_sidebar);
 
     m_stack = new QStackedWidget(central);
+    m_stack->setObjectName(QStringLiteral("contentStack"));
     m_overview = new OverviewPage(m_stack);
     m_systemd = new SystemdPage(m_stack);
     m_docker = new DockerPage(m_stack);
@@ -133,33 +135,38 @@ void MainWindow::applyTheme()
     const bool oled = preference == QStringLiteral("OLED");
     const bool dark = oled || preference == QStringLiteral("Dark") || (preference == QStringLiteral("System") && systemDark);
 
-    const QString window = oled ? QStringLiteral("#000000") : (dark ? QStringLiteral("#171b21") : QStringLiteral("#f5f7fa"));
-    const QString sidebar = oled ? QStringLiteral("#050505") : (dark ? QStringLiteral("#10141a") : QStringLiteral("#e9edf2"));
-    const QString surface = oled ? QStringLiteral("#080808") : (dark ? QStringLiteral("#222831") : QStringLiteral("#ffffff"));
-    const QString surfaceAlt = oled ? QStringLiteral("#101010") : (dark ? QStringLiteral("#29313b") : QStringLiteral("#f0f4f8"));
-    const QString border = oled ? QStringLiteral("#242424") : (dark ? QStringLiteral("#3a4552") : QStringLiteral("#d2d9e2"));
-    const QString text = oled ? QStringLiteral("#f4f7f8") : (dark ? QStringLiteral("#edf2f7") : QStringLiteral("#18212b"));
-    const QString muted = oled ? QStringLiteral("#a5adb5") : (dark ? QStringLiteral("#b6c0cb") : QStringLiteral("#53606e"));
-    const QString accent = oled ? QStringLiteral("#00f5a0") : (dark ? QStringLiteral("#44c2a8") : QStringLiteral("#166e7a"));
-    const QString accentSoft = oled ? QStringLiteral("#003d2b") : (dark ? QStringLiteral("#214b4a") : QStringLiteral("#d8f0ec"));
+    const QString window = oled ? QStringLiteral("#000000") : (dark ? QStringLiteral("#161a20") : QStringLiteral("#f6f7f9"));
+    const QString sidebar = oled ? QStringLiteral("#000000") : (dark ? QStringLiteral("#11161d") : QStringLiteral("#eef1f4"));
+    const QString surface = oled ? QStringLiteral("#000000") : (dark ? QStringLiteral("#20262e") : QStringLiteral("#ffffff"));
+    const QString surfaceAlt = oled ? QStringLiteral("#080808") : (dark ? QStringLiteral("#29313a") : QStringLiteral("#f1f4f7"));
+    const QString border = oled ? QStringLiteral("#2a2a2a") : (dark ? QStringLiteral("#38424d") : QStringLiteral("#d9dee5"));
+    const QString text = oled ? QStringLiteral("#f3f5f7") : (dark ? QStringLiteral("#eef2f5") : QStringLiteral("#202832"));
+    const QString muted = oled ? QStringLiteral("#a7adb4") : (dark ? QStringLiteral("#aeb8c2") : QStringLiteral("#5f6b78"));
+    const QString accent = oled ? QStringLiteral("#32d296") : (dark ? QStringLiteral("#5db6a3") : QStringLiteral("#2d7f86"));
+    const QString accentSoft = oled ? QStringLiteral("#113428") : (dark ? QStringLiteral("#243f3f") : QStringLiteral("#dcefeb"));
     qApp->setStyleSheet(QStringLiteral(R"(
         QWidget {
             font-size: 10.5pt;
         }
-        QMainWindow, QWidget {
+        QMainWindow, QDialog, QMessageBox, QWidget#appRoot, QStackedWidget#contentStack {
             background: %1;
+            color: %6;
+        }
+        QLabel, QCheckBox, QRadioButton {
+            background: transparent;
             color: %6;
         }
         QListWidget#sidebar {
             background: %2;
             border: 0;
-            padding: 14px 10px;
+            padding: 16px 10px;
         }
         QListWidget#sidebar::item {
             border-radius: 6px;
             padding: 10px 12px;
             margin: 3px 0;
             color: %7;
+            border: 1px solid transparent;
         }
         QListWidget#sidebar::item:hover {
             background: %4;
@@ -168,6 +175,7 @@ void MainWindow::applyTheme()
         QListWidget#sidebar::item:selected {
             background: %9;
             color: %6;
+            border-color: %8;
             font-weight: 700;
         }
         QLabel#pageTitle {
@@ -175,21 +183,16 @@ void MainWindow::applyTheme()
             font-weight: 700;
             padding: 14px 4px 12px 4px;
         }
-        QWidget#card, QGroupBox {
+        QLabel#sectionTitle {
+            color: %7;
+            font-weight: 700;
+            padding: 2px 4px 0 4px;
+        }
+        QWidget#card, QFrame#settingsSection {
             background: %3;
             border: 1px solid %5;
             border-radius: 8px;
-            padding: 12px;
-        }
-        QGroupBox {
-            margin-top: 14px;
-            font-weight: 700;
-        }
-        QGroupBox::title {
-            subcontrol-origin: margin;
-            left: 10px;
-            padding: 0 6px;
-            color: %7;
+            padding: 14px;
         }
         QLabel#cardValue {
             font-size: 18pt;
@@ -213,12 +216,29 @@ void MainWindow::applyTheme()
             padding: 8px;
             font-weight: 700;
         }
+        QTableCornerButton::section {
+            background: %4;
+            border: 0;
+            border-bottom: 1px solid %5;
+            border-right: 1px solid %5;
+        }
+        QTableView::item {
+            padding: 5px;
+        }
+        QTableView::item:selected {
+            background: %9;
+            color: %6;
+        }
         QPushButton, QLineEdit, QSpinBox, QComboBox, QPlainTextEdit, QMenu {
             background: %3;
             color: %6;
             border: 1px solid %5;
             border-radius: 6px;
             padding: 7px 9px;
+        }
+        QLineEdit, QSpinBox, QComboBox, QPlainTextEdit {
+            selection-background-color: %8;
+            selection-color: %1;
         }
         QPushButton:hover {
             background: %4;
@@ -233,13 +253,57 @@ void MainWindow::applyTheme()
         QLineEdit:focus, QSpinBox:focus, QComboBox:focus, QPlainTextEdit:focus {
             border-color: %8;
         }
+        QCheckBox {
+            spacing: 8px;
+            padding: 4px 2px;
+            font-weight: 400;
+        }
+        QCheckBox:hover {
+            color: %6;
+        }
+        QCheckBox::indicator {
+            width: 16px;
+            height: 16px;
+            border: 1px solid %5;
+            border-radius: 4px;
+            background: %3;
+        }
+        QCheckBox::indicator:hover {
+            border-color: %8;
+        }
+        QCheckBox::indicator:checked {
+            background: %9;
+            border-color: %8;
+            image: url(:/qt-project.org/styles/commonstyle/images/standardbutton-apply-16.png);
+        }
         QComboBox::drop-down {
             border: 0;
             width: 24px;
         }
+        QComboBox QAbstractItemView {
+            background: %3;
+            color: %6;
+            selection-background-color: %9;
+            selection-color: %6;
+            border: 1px solid %5;
+            outline: 0;
+        }
+        QAbstractSpinBox::up-button, QAbstractSpinBox::down-button {
+            background: %4;
+            border: 0;
+            width: 18px;
+        }
+        QAbstractSpinBox::up-button:hover, QAbstractSpinBox::down-button:hover {
+            background: %9;
+        }
         QScrollBar:vertical {
             background: %1;
             width: 12px;
+            margin: 0;
+        }
+        QScrollBar:horizontal {
+            background: %1;
+            height: 12px;
             margin: 0;
         }
         QScrollBar::handle:vertical {
@@ -247,8 +311,15 @@ void MainWindow::applyTheme()
             border-radius: 6px;
             min-height: 28px;
         }
-        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+        QScrollBar::handle:horizontal {
+            background: %5;
+            border-radius: 6px;
+            min-width: 28px;
+        }
+        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical,
+        QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
             height: 0;
+            width: 0;
         }
         QMenu::item {
             padding: 7px 22px;
@@ -256,6 +327,10 @@ void MainWindow::applyTheme()
         }
         QMenu::item:selected {
             background: %9;
+        }
+        QStatusBar, QStatusBar QLabel {
+            background: %1;
+            color: %7;
         }
         QToolTip {
             background: %3;
