@@ -32,7 +32,7 @@ Debian/Ubuntu-like systems:
 sudo apt install qt6-base-dev cmake g++ docker-cli network-manager util-linux lm-sensors smartmontools policykit-1
 ```
 
-Some commands may require the current user to have permissions, for example access to the Docker socket. SMART checks first try the user's session and, when installed, fall back to a small `pkexec`/polkit helper that runs only the SMART read command after administrator authentication.
+Some commands may require the current user to have permissions, for example access to the Docker socket. SMART checks first try the user's session and, when installed, fall back to a small `pkexec`/polkit helper that runs the SMART read batch after one administrator authentication.
 
 ## Build
 
@@ -62,7 +62,7 @@ sudo cmake --install build --prefix /usr/local
 
 If you use a different install prefix, configure CMake with that prefix before building so the generated polkit policy points at the final helper path.
 
-The helper is installed as `libexec/linux-service-dashboard-smart-helper` and is only invoked through `pkexec` for SMART reads.
+The helper is installed as `libexec/linux-service-dashboard-smart-helper` and is only invoked through `pkexec` for SMART reads. When several disks need elevated access, the app batches them into one helper invocation so polkit should ask once for that manual check.
 
 ## Themes
 

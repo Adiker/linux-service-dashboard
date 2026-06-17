@@ -24,10 +24,12 @@ signals:
 private:
     void startNextSmartCheck();
     void runDirectSmartCheck(const DiskRow &row);
-    bool runPrivilegedSmartCheck(const DiskRow &row);
+    bool runPrivilegedSmartChecks(const DiskRow &firstRow);
+    void finishPrivilegedSmartChecks(const CommandResult &result);
 
     CommandRunner m_runner;
     QQueue<DiskRow> m_pendingSmartChecks;
     QHash<QString, DiskRow> m_activeSmartChecks;
+    QVector<DiskRow> m_privilegedSmartChecks;
     bool m_smartCheckRunning = false;
 };

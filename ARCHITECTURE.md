@@ -164,8 +164,8 @@ UI pages should stay thin: trigger provider methods, update models/status labels
 SMART inventory is split into two privilege levels:
 
 - `SmartProvider` runs `lsblk -J` and first attempts `smartctl -j -H -A` from the user's session.
-- If `smartctl` reports a permission error, `SmartProvider` invokes `pkexec linux-service-dashboard-smart-helper` one disk at a time.
-- `linux-service-dashboard-smart-helper` validates a narrow `/dev/...` disk path and optional transport, then runs only the corresponding `smartctl` read command.
+- If `smartctl` reports a permission error, `SmartProvider` batches the active disk plus the remaining manual SMART queue into one `pkexec linux-service-dashboard-smart-helper` invocation.
+- `linux-service-dashboard-smart-helper` validates narrow `/dev/...` disk paths and optional transports, then runs only the corresponding `smartctl` read commands.
 - The helper does not expose mount, write, shell, or arbitrary command execution.
 
 The helper policy source is `resources/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy.in`. CMake configures the installed helper path into the policy so polkit can authorize the exact executable. Keep SMART checks manual unless a future change adds explicit rate limiting and user opt-in.
