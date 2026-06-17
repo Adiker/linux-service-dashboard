@@ -7,7 +7,7 @@ Linux Service Dashboard is a local Qt 6 Widgets desktop application for monitori
 - Overview cards for Docker, systemd, VPN, mounts, sensors, and disk health.
 - systemd service table with filtering, refresh, start, stop, restart, and journal viewing.
 - Docker container table using the Docker CLI, with start, stop, restart, logs, and inspect JSON actions.
-- NetworkManager VPN status via `nmcli`.
+- NetworkManager VPN/tunnel status via `nmcli`, including external `tun` links such as OpenConnect.
 - CIFS/NFS/sshfs mount listing with file manager open and confirmed unmount.
 - Temperature/sensor display using `sensors -j` with a text fallback.
 - Disk inventory via `lsblk -J` and manual SMART checks via `smartctl -j`.
@@ -69,7 +69,7 @@ OLED uses a black-first palette with brighter contrast for OLED displays and dar
 
 - systemd service parsing uses `systemctl list-units --plain`; it is robust enough for the MVP but should eventually move to DBus.
 - SMART checks are manual from the disks page and cached by the UI; frequent automatic SMART polling is intentionally avoided.
-- VPN detection uses `nmcli`; the provider is shaped so it can later be replaced with NetworkManager DBus calls.
+- VPN detection uses `nmcli` active connections and treats VPN-like tunnel types such as `vpn`, `tun`, `wireguard`, and `ppp` as connected; the provider is shaped so it can later be replaced with NetworkManager DBus calls.
 - Mount profiles and fstab parsing are not implemented yet.
 - Module toggles are persisted but do not yet hide pages.
 - Parser/provider behavior is currently validated by manual build and smoke tests; dedicated unit tests are planned.

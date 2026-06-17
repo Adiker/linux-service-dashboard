@@ -2,6 +2,18 @@
 
 #include "../utils/TimeUtils.h"
 
+namespace {
+
+bool isVpnLikeConnectionType(const QString &type)
+{
+    return type == QStringLiteral("vpn")
+        || type == QStringLiteral("tun")
+        || type == QStringLiteral("wireguard")
+        || type == QStringLiteral("ppp");
+}
+
+} // namespace
+
 NetworkProvider::NetworkProvider(QObject *parent)
     : QObject(parent)
 {
@@ -16,7 +28,7 @@ NetworkProvider::NetworkProvider(QObject *parent)
             const QStringList lines = result.standardOutput.split('\n', Qt::SkipEmptyParts);
             for (const QString &line : lines) {
                 const QStringList fields = line.split(':');
-                if (fields.size() >= 4 && fields.at(1) == QStringLiteral("vpn")) {
+                if (fields.size() >= 4 && isVpnLikeConnectionType(fields.at(1))) {
                     status.connected = true;
                     status.connectionName = fields.at(0);
                     status.device = fields.at(2);

@@ -149,7 +149,7 @@ Providers own command execution and parsing:
 
 - `SystemdServiceProvider`: `systemctl`, `journalctl`
 - `DockerProvider`: `docker ps`, `docker start/stop/restart/logs/inspect`
-- `NetworkProvider`: `nmcli`
+- `NetworkProvider`: `nmcli` active connection parsing for VPN-like types (`vpn`, `tun`, `wireguard`, `ppp`)
 - `MountProvider`: mount listing and unmount commands
 - `SensorProvider`: `sensors -j` with text fallback
 - `SmartProvider`: `lsblk -J`, `smartctl -j`
@@ -216,7 +216,7 @@ QT_QPA_PLATFORM=xcb build/linux-service-dashboard
 ## Known Limitations
 
 - systemd parsing uses command output instead of DBus.
-- VPN status uses `nmcli` instead of NetworkManager DBus.
+- VPN status uses `nmcli` instead of NetworkManager DBus. Active VPN-like tunnel types (`vpn`, `tun`, `wireguard`, `ppp`) are treated as connected so externally created tunnels such as OpenConnect are visible.
 - SMART checks are manual and permission-dependent.
 - Module toggles are saved but do not yet hide pages.
 - There is no automated parser test suite yet.
