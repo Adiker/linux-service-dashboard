@@ -5,6 +5,66 @@
 
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QRegularExpression>
+
+namespace {
+
+QString smartctlMessage(const QJsonObject &root)
+{
+    const QJsonArray messages = root.value(QStringLiteral("smartctl")).toObject().value(QStringLiteral("messages")).toArray();
+    QStringList parts;
+    for (const QJsonValue &messageValue : messages) {
+        const QString text = messageValue.toObject().value(QStringLiteral("string")).toString().trimmed();
+        if (!text.isEmpty()) {
+            parts.append(text);
+        }
+    }
+    return parts.join(QStringLiteral("; "));
+}
+
+QString permissionAwareError(const QString &message)
+{
+    if (message.contains(QStringLiteral("permission"), Qt::CaseInsensitive)) {
+        return QStringLiteral("smartctl needs permission for this device. Run the app as a user with disk access or check manually with sudo.");
+    }
+    return message;
+}
+
+QString smartHealthFromError(const QString &message)
+{
+    if (message.contains(QStringLiteral("permission"), Qt::CaseInsensitive)) {
+        return QStringLiteral("Permission denied");
+    }
+    if (message.contains(QStringLiteral("not found"), Qt::CaseInsensitive)) {
+        return QStringLiteral("smartctl missing");
+    }
+    return QStringLiteral("Check failed");
+}
+
+QString nvmeControllerPath(const QString &devicePath)
+{
+    static const QRegularExpression namespacePath(QStringLiteral(R"(^(/dev/nvme\d+)n\d+$)"));
+    const QRegularExpressionMatch match = namespacePath.match(devicePath);
+    return match.hasMatch() ? match.captured(1) : devicePath;
+}
+
+QStringList smartctlArgumentsForRow(const DiskRow &row)
+{
+    QString devicePath = row.path;
+    QStringList arguments{QStringLiteral("-j"), QStringLiteral("-H"), QStringLiteral("-A")};
+
+    if (row.transport == QStringLiteral("nvme")) {
+        devicePath = nvmeControllerPath(devicePath);
+        arguments.append({QStringLiteral("-d"), QStringLiteral("nvme")});
+    } else if (row.transport == QStringLiteral("usb")) {
+        arguments.append({QStringLiteral("-d"), QStringLiteral("sat")});
+    }
+
+    arguments.append(devicePath);
+    return arguments;
+}
+
+} // namespace
 
 SmartProvider::SmartProvider(QObject *parent)
     : QObject(parent)
@@ -42,13 +102,19 @@ SmartProvider::SmartProvider(QObject *parent)
             DiskRow smart;
             smart.lastCheck = currentTimestamp();
             QString error;
-            if (result.ok() || result.exitCode == 4) {
-                QString parseError;
-                const QJsonDocument document = parseJsonDocument(result.standardOutput, &parseError);
-                const QJsonObject root = document.object();
-                smart.smartHealth = root.value(QStringLiteral("smart_status")).toObject().value(QStringLiteral("passed")).toBool()
-                    ? QStringLiteral("PASSED")
-                    : QStringLiteral("FAILED/Warning");
+            QString parseError;
+            const QJsonDocument document = parseJsonDocument(result.standardOutput, &parseError);
+            const QJsonObject root = document.object();
+            const QString jsonMessage = smartctlMessage(root);
+            if (result.ok() || result.exitCode == 4 || !root.isEmpty()) {
+                if (!jsonMessage.isEmpty() && !result.ok() && result.exitCode != 4) {
+                    error = permissionAwareError(jsonMessage);
+                    smart.smartHealth = smartHealthFromError(jsonMessage);
+                }
+                const QJsonValue passed = root.value(QStringLiteral("smart_status")).toObject().value(QStringLiteral("passed"));
+                if (!passed.isUndefined()) {
+                    smart.smartHealth = passed.toBool() ? QStringLiteral("PASSED") : QStringLiteral("FAILED/Warning");
+                }
                 const QJsonValue temp = root.value(QStringLiteral("temperature")).toObject().value(QStringLiteral("current"));
                 if (!temp.isUndefined()) {
                     smart.temperature = QStringLiteral("%1 C").arg(temp.toInt());
@@ -69,9 +135,11 @@ SmartProvider::SmartProvider(QObject *parent)
                 }
             } else {
                 error = result.startFailed ? QStringLiteral("smartctl not found. Install smartmontools.") : result.standardError.trimmed();
-                if (error.contains(QStringLiteral("permission"), Qt::CaseInsensitive)) {
-                    error = QStringLiteral("smartctl needs permission for this device. Run the app as a user with disk access or check manually with sudo.");
+                if (error.isEmpty()) {
+                    error = result.errorString.trimmed();
                 }
+                error = permissionAwareError(error);
+                smart.smartHealth = smartHealthFromError(error);
             }
             emit smartReady(path, smart, error);
         }
@@ -88,5 +156,22 @@ void SmartProvider::refreshDisks()
 
 void SmartProvider::checkSmart(const QString &devicePath)
 {
-    m_runner.run(QStringLiteral("smartctl"), {QStringLiteral("-j"), QStringLiteral("-H"), QStringLiteral("-A"), devicePath}, 30000, QStringLiteral("smart-check:%1").arg(devicePath));
+    DiskRow row;
+    row.path = devicePath;
+    checkSmart(row);
+}
+
+void SmartProvider::checkSmart(const DiskRow &row)
+{
+    if (row.path.isEmpty()) {
+        return;
+    }
+    m_runner.run(QStringLiteral("smartctl"), smartctlArgumentsForRow(row), 30000, QStringLiteral("smart-check:%1").arg(row.path));
+}
+
+void SmartProvider::checkSmart(const QVector<DiskRow> &rows)
+{
+    for (const DiskRow &row : rows) {
+        checkSmart(row);
+    }
 }

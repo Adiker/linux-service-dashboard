@@ -12,6 +12,8 @@ public:
     explicit SmartProvider(QObject *parent = nullptr);
     void refreshDisks();
     void checkSmart(const QString &devicePath);
+    void checkSmart(const DiskRow &row);
+    void checkSmart(const QVector<DiskRow> &rows);
 
 signals:
     void disksReady(const QVector<DiskRow> &rows, const QString &error);
