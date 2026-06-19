@@ -14,7 +14,6 @@ find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 qt_standard_project_setup()
 
 set(SMART_HELPER_TARGET linux-service-dashboard-smart-helper)
-set(SMART_HELPER_INSTALL_PATH "${CMAKE_INSTALL_FULL_LIBEXECDIR}/${SMART_HELPER_TARGET}")
 
 option(LSD_INSTALL_POLKIT_POLICY_SYSTEM
     "Install the polkit policy into /usr/share/polkit-1/actions instead of under CMAKE_INSTALL_PREFIX"
@@ -27,12 +26,6 @@ else()
     set(LSD_POLKIT_POLICY_DIR "${CMAKE_INSTALL_DATADIR}/polkit-1/actions" CACHE PATH
         "Directory where polkit loads action policy files (relative paths are rooted at the install prefix)" FORCE)
 endif()
-
-configure_file(
-    resources/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy.in
-    ${CMAKE_CURRENT_BINARY_DIR}/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy
-    @ONLY
-)
 
 qt_add_executable(linux-service-dashboard
     resources/resources.qrc
@@ -97,7 +90,6 @@ qt_add_executable(linux-service-dashboard
 )
 
 target_link_libraries(linux-service-dashboard PRIVATE Qt6::Widgets)
-target_compile_definitions(linux-service-dashboard PRIVATE SMART_HELPER_PATH="${SMART_HELPER_INSTALL_PATH}")
 
 qt_add_executable(${SMART_HELPER_TARGET}
     src/helpers/SmartHelper.cpp
@@ -114,9 +106,23 @@ install(TARGETS ${SMART_HELPER_TARGET}
     RUNTIME DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}
 )
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy
-    DESTINATION ${LSD_POLKIT_POLICY_DIR}
-)
+install(CODE "
+  set(SMART_HELPER_INSTALL_PATH \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBEXECDIR}/${SMART_HELPER_TARGET}\")
+  configure_file(
+    \"${CMAKE_CURRENT_SOURCE_DIR}/resources/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy.in\"
+    \"${CMAKE_CURRENT_BINARY_DIR}/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy\"
+    @ONLY
+  )
+  if(IS_ABSOLUTE \"${LSD_POLKIT_POLICY_DIR}\")
+    set(_lsd_polkit_policy_dest \"${LSD_POLKIT_POLICY_DIR}\")
+  else()
+    set(_lsd_polkit_policy_dest \"\${CMAKE_INSTALL_PREFIX}/${LSD_POLKIT_POLICY_DIR}\")
+  endif()
+  file(INSTALL
+    \"${CMAKE_CURRENT_BINARY_DIR}/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy\"
+    DESTINATION \"\${_lsd_polkit_policy_dest}\"
+  )
+")
 
 install(FILES resources/io.github.Adiker.LinuxServiceDashboard.desktop
     DESTINATION share/applications

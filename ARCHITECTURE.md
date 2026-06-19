@@ -168,7 +168,7 @@ SMART inventory is split into two privilege levels:
 - `linux-service-dashboard-smart-helper` validates narrow `/dev/...` disk paths and optional transports, then runs only the corresponding `smartctl` read commands.
 - The helper does not expose mount, write, shell, or arbitrary command execution.
 
-The helper policy source is `resources/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy.in`. CMake configures the installed helper path into the policy so polkit can authorize the exact executable. Keep SMART checks manual unless a future change adds explicit rate limiting and user opt-in.
+The helper policy source is `resources/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy.in`. CMake generates the installed policy at `cmake --install` time from the install prefix, and the app resolves the helper path relative to its own binary at runtime. Keep SMART checks manual unless a future change adds explicit rate limiting and user opt-in.
 
 ---
 

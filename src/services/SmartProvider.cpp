@@ -4,6 +4,7 @@
 #include "../utils/TimeUtils.h"
 
 #include <QCoreApplication>
+#include <QDir>
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonObject>
@@ -140,17 +141,30 @@ constexpr int smartHelperBatchOverheadMs = 15000;
 
 QString smartHelperPath()
 {
-#ifdef SMART_HELPER_PATH
-    const QString installedPath = QStringLiteral(SMART_HELPER_PATH);
-#else
-    const QString installedPath = QStringLiteral("/usr/libexec/linux-service-dashboard-smart-helper");
-#endif
-    if (QFileInfo::exists(installedPath)) {
-        return installedPath;
+    const QString helperName = QStringLiteral("linux-service-dashboard-smart-helper");
+
+    const QString siblingPath = QCoreApplication::applicationDirPath() + QLatin1Char('/') + helperName;
+    if (QFileInfo::exists(siblingPath)) {
+        return siblingPath;
     }
 
-    const QString buildTreePath = QCoreApplication::applicationDirPath() + QStringLiteral("/linux-service-dashboard-smart-helper");
-    return QFileInfo::exists(buildTreePath) ? buildTreePath : installedPath;
+    const QString libexecPath =
+        QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("../libexec/") + helperName);
+    if (QFileInfo::exists(libexecPath)) {
+        return QFileInfo(libexecPath).canonicalFilePath();
+    }
+
+    static const QStringList fallbackPaths{
+        QStringLiteral("/usr/libexec/") + helperName,
+        QStringLiteral("/usr/local/libexec/") + helperName,
+    };
+    for (const QString &path : fallbackPaths) {
+        if (QFileInfo::exists(path)) {
+            return path;
+        }
+    }
+
+    return libexecPath;
 }
 
 struct SmartParseResult {
