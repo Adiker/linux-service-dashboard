@@ -21,12 +21,12 @@ option(LSD_INSTALL_POLKIT_POLICY_SYSTEM
     OFF)
 
 if(LSD_INSTALL_POLKIT_POLICY_SYSTEM)
-    set(_lsd_default_polkit_policy_dir "/usr/share/polkit-1/actions")
+    set(LSD_POLKIT_POLICY_DIR "/usr/share/polkit-1/actions" CACHE PATH
+        "Directory where polkit loads action policy files (relative paths are rooted at the install prefix)" FORCE)
 else()
-    set(_lsd_default_polkit_policy_dir "${CMAKE_INSTALL_DATADIR}/polkit-1/actions")
+    set(LSD_POLKIT_POLICY_DIR "${CMAKE_INSTALL_DATADIR}/polkit-1/actions" CACHE PATH
+        "Directory where polkit loads action policy files (relative paths are rooted at the install prefix)" FORCE)
 endif()
-set(LSD_POLKIT_POLICY_DIR "${_lsd_default_polkit_policy_dir}" CACHE PATH
-    "Directory where polkit loads action policy files (relative paths are rooted at the install prefix)")
 
 configure_file(
     resources/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy.in
