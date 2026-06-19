@@ -14,6 +14,9 @@ find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 qt_standard_project_setup()
 
 set(SMART_HELPER_TARGET linux-service-dashboard-smart-helper)
+file(RELATIVE_PATH SMART_HELPER_RELATIVE_PATH
+    "${CMAKE_INSTALL_FULL_BINDIR}"
+    "${CMAKE_INSTALL_FULL_LIBEXECDIR}/${SMART_HELPER_TARGET}")
 
 option(LSD_INSTALL_POLKIT_POLICY_SYSTEM
     "Install the polkit policy into /usr/share/polkit-1/actions instead of under CMAKE_INSTALL_PREFIX"
@@ -90,6 +93,7 @@ qt_add_executable(linux-service-dashboard
 )
 
 target_link_libraries(linux-service-dashboard PRIVATE Qt6::Widgets)
+target_compile_definitions(linux-service-dashboard PRIVATE SMART_HELPER_RELATIVE_PATH="${SMART_HELPER_RELATIVE_PATH}")
 
 qt_add_executable(${SMART_HELPER_TARGET}
     src/helpers/SmartHelper.cpp

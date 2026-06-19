@@ -142,17 +142,24 @@ constexpr int smartHelperBatchOverheadMs = 15000;
 QString smartHelperPath()
 {
     const QString helperName = QStringLiteral("linux-service-dashboard-smart-helper");
+    const QDir appDir(QCoreApplication::applicationDirPath());
 
-    const QString siblingPath = QCoreApplication::applicationDirPath() + QLatin1Char('/') + helperName;
+    const QString siblingPath = appDir.filePath(helperName);
     if (QFileInfo::exists(siblingPath)) {
         return siblingPath;
     }
 
-    const QString libexecPath =
-        QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("../libexec/") + helperName);
-    if (QFileInfo::exists(libexecPath)) {
-        return QFileInfo(libexecPath).canonicalFilePath();
+#ifdef SMART_HELPER_RELATIVE_PATH
+    const QString installedPath = appDir.filePath(QStringLiteral(SMART_HELPER_RELATIVE_PATH));
+    if (QFileInfo::exists(installedPath)) {
+        return QFileInfo(installedPath).canonicalFilePath();
     }
+#else
+    const QString installedPath = appDir.filePath(QStringLiteral("../libexec/") + helperName);
+    if (QFileInfo::exists(installedPath)) {
+        return QFileInfo(installedPath).canonicalFilePath();
+    }
+#endif
 
     static const QStringList fallbackPaths{
         QStringLiteral("/usr/libexec/") + helperName,
@@ -164,7 +171,7 @@ QString smartHelperPath()
         }
     }
 
-    return libexecPath;
+    return installedPath;
 }
 
 struct SmartParseResult {
