@@ -193,6 +193,8 @@ Install to a prefix:
 cmake --install build --prefix /usr/local
 ```
 
+For `/usr/local` installs that need working SMART authorization, configure with `-DLSD_INSTALL_POLKIT_POLICY_SYSTEM=ON` so the policy lands in `/usr/share/polkit-1/actions`.
+
 This installs:
 
 - `bin/linux-service-dashboard`
@@ -200,7 +202,7 @@ This installs:
 - `share/applications/io.github.Adiker.LinuxServiceDashboard.desktop`
 - `share/icons/hicolor/*/apps/io.github.Adiker.LinuxServiceDashboard.png`
 - `share/icons/hicolor/scalable/apps/io.github.Adiker.LinuxServiceDashboard.svg`
-- `${LSD_POLKIT_POLICY_DIR}/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy` (defaults to the system polkit action directory when the install prefix is `/usr/local`)
+- `${LSD_POLKIT_POLICY_DIR}/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy` (defaults to `share/polkit-1/actions` under the install prefix; use `LSD_INSTALL_POLKIT_POLICY_SYSTEM=ON` for the system polkit directory)
 
 ---
 
