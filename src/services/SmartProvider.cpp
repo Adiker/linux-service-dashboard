@@ -109,6 +109,32 @@ QString smartHelperBatchContext()
     return QStringLiteral("smart-helper-batch");
 }
 
+bool isHelperSupportedDevicePath(const QString &devicePath)
+{
+    static const QRegularExpression pattern(
+        QStringLiteral(R"(^/dev/(sd[a-z]+|hd[a-z]+|vd[a-z]+|xvd[a-z]+|nvme\d+(n\d+)?|mmcblk\d+)$)"));
+    return pattern.match(devicePath).hasMatch();
+}
+
+bool isHelperSupportedTransport(const QString &transport)
+{
+    static const QStringList transports{
+        QString(),
+        QStringLiteral("ata"),
+        QStringLiteral("sata"),
+        QStringLiteral("sas"),
+        QStringLiteral("scsi"),
+        QStringLiteral("usb"),
+        QStringLiteral("nvme"),
+    };
+    return transports.contains(transport);
+}
+
+bool isHelperSupportedRow(const DiskRow &row)
+{
+    return isHelperSupportedDevicePath(row.path) && isHelperSupportedTransport(row.transport);
+}
+
 QString smartHelperPath()
 {
 #ifdef SMART_HELPER_PATH
@@ -336,10 +362,24 @@ bool SmartProvider::runPrivilegedSmartChecks(const DiskRow &firstRow)
         return false;
     }
 
+    if (!isHelperSupportedRow(firstRow)) {
+        return false;
+    }
+
     m_privilegedSmartChecks.clear();
     m_privilegedSmartChecks.append(firstRow);
+
+    QQueue<DiskRow> deferredDirectChecks;
     while (!m_pendingSmartChecks.isEmpty()) {
-        m_privilegedSmartChecks.append(m_pendingSmartChecks.dequeue());
+        const DiskRow row = m_pendingSmartChecks.dequeue();
+        if (isHelperSupportedRow(row)) {
+            m_privilegedSmartChecks.append(row);
+        } else {
+            deferredDirectChecks.enqueue(row);
+        }
+    }
+    while (!deferredDirectChecks.isEmpty()) {
+        m_pendingSmartChecks.enqueue(deferredDirectChecks.dequeue());
     }
 
     QStringList arguments{helperPath};

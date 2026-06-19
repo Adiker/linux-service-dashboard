@@ -70,6 +70,15 @@ QStringList smartctlArguments(QString devicePath, const QString &transport)
     return arguments;
 }
 
+QJsonObject validationErrorResult(const QString &devicePath, const QString &message)
+{
+    QJsonObject result;
+    result.insert(QStringLiteral("device"), devicePath);
+    result.insert(QStringLiteral("exit_code"), UsageError);
+    result.insert(QStringLiteral("stderr"), message);
+    return result;
+}
+
 QJsonObject runSmartctl(const SmartRequest &request)
 {
     QJsonObject result;
@@ -139,23 +148,23 @@ int main(int argc, char *argv[])
         return UsageError;
     }
 
-    for (const SmartRequest &request : requests) {
-        if (!isSupportedDevicePath(request.devicePath)) {
-            writeStderr(QStringLiteral("Unsupported SMART device path: %1").arg(request.devicePath));
-            return UsageError;
-        }
-        if (!isSupportedTransport(request.transport)) {
-            writeStderr(QStringLiteral("Unsupported SMART transport: %1").arg(request.transport));
-            return UsageError;
-        }
-        if (!QFileInfo::exists(request.devicePath)) {
-            writeStderr(QStringLiteral("Device does not exist: %1").arg(request.devicePath));
-            return UsageError;
-        }
-    }
-
     QJsonArray results;
     for (const SmartRequest &request : requests) {
+        if (!isSupportedDevicePath(request.devicePath)) {
+            results.append(validationErrorResult(request.devicePath,
+                                                  QStringLiteral("Unsupported SMART device path: %1").arg(request.devicePath)));
+            continue;
+        }
+        if (!isSupportedTransport(request.transport)) {
+            results.append(validationErrorResult(request.devicePath,
+                                                  QStringLiteral("Unsupported SMART transport: %1").arg(request.transport)));
+            continue;
+        }
+        if (!QFileInfo::exists(request.devicePath)) {
+            results.append(validationErrorResult(request.devicePath,
+                                                  QStringLiteral("Device does not exist: %1").arg(request.devicePath)));
+            continue;
+        }
         results.append(runSmartctl(request));
     }
 
