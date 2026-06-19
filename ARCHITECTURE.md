@@ -200,7 +200,7 @@ This installs:
 - `share/applications/io.github.Adiker.LinuxServiceDashboard.desktop`
 - `share/icons/hicolor/*/apps/io.github.Adiker.LinuxServiceDashboard.png`
 - `share/icons/hicolor/scalable/apps/io.github.Adiker.LinuxServiceDashboard.svg`
-- `share/polkit-1/actions/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy`
+- `${LSD_POLKIT_POLICY_DIR}/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy` (defaults to the system polkit action directory when the install prefix is `/usr/local`)
 
 ---
 

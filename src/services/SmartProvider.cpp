@@ -135,6 +135,9 @@ bool isHelperSupportedRow(const DiskRow &row)
     return isHelperSupportedDevicePath(row.path) && isHelperSupportedTransport(row.transport);
 }
 
+constexpr int smartCheckPerDiskTimeoutMs = 30000;
+constexpr int smartHelperBatchOverheadMs = 15000;
+
 QString smartHelperPath()
 {
 #ifdef SMART_HELPER_PATH
@@ -387,7 +390,8 @@ bool SmartProvider::runPrivilegedSmartChecks(const DiskRow &firstRow)
         arguments.append({QStringLiteral("--device"), row.path, QStringLiteral("--transport"), row.transport});
     }
 
-    m_runner.run(QStringLiteral("pkexec"), arguments, 120000, smartHelperBatchContext());
+    const int batchTimeoutMs = smartHelperBatchOverheadMs + smartCheckPerDiskTimeoutMs * m_privilegedSmartChecks.size();
+    m_runner.run(QStringLiteral("pkexec"), arguments, batchTimeoutMs, smartHelperBatchContext());
     return true;
 }
 

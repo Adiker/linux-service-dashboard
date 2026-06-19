@@ -60,7 +60,7 @@ For SMART checks that require elevated disk access, install the project into a s
 sudo cmake --install build --prefix /usr/local
 ```
 
-If you use a different install prefix, configure CMake with that prefix before building so the generated polkit policy points at the final helper path.
+If you use a different install prefix, configure CMake with that prefix before building so the generated polkit policy points at the final helper path. When the prefix is `/usr/local`, the polkit policy is installed into the system polkit action directory (`/usr/share/polkit-1/actions`) so `pkexec` can load it; override with `-DLSD_POLKIT_POLICY_DIR=...` if needed.
 
 The helper is installed as `libexec/linux-service-dashboard-smart-helper` and is only invoked through `pkexec` for SMART reads. When several disks need elevated access, the app batches them into one helper invocation so polkit should ask once for that manual check.
 

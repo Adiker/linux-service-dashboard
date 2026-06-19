@@ -16,6 +16,14 @@ qt_standard_project_setup()
 set(SMART_HELPER_TARGET linux-service-dashboard-smart-helper)
 set(SMART_HELPER_INSTALL_PATH "${CMAKE_INSTALL_FULL_LIBEXECDIR}/${SMART_HELPER_TARGET}")
 
+if(CMAKE_INSTALL_PREFIX MATCHES "^/usr/local(/|$)")
+    set(_lsd_default_polkit_policy_dir "/usr/share/polkit-1/actions")
+else()
+    set(_lsd_default_polkit_policy_dir "${CMAKE_INSTALL_FULL_DATADIR}/polkit-1/actions")
+endif()
+set(LSD_POLKIT_POLICY_DIR "${_lsd_default_polkit_policy_dir}" CACHE PATH
+    "Directory where polkit loads action policy files")
+
 configure_file(
     resources/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy.in
     ${CMAKE_CURRENT_BINARY_DIR}/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy
@@ -103,7 +111,7 @@ install(TARGETS ${SMART_HELPER_TARGET}
 )
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy
-    DESTINATION ${CMAKE_INSTALL_DATADIR}/polkit-1/actions
+    DESTINATION ${LSD_POLKIT_POLICY_DIR}
 )
 
 install(FILES resources/io.github.Adiker.LinuxServiceDashboard.desktop
