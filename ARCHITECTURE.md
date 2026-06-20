@@ -163,6 +163,7 @@ UI pages should stay thin: trigger provider methods, update models/status labels
 
 SMART inventory is split into two privilege levels:
 
+- The Disks page exposes two manual actions: `Check SMART` probes only the selected disk, while `Check All SMART` queues every listed disk so a multi-disk batch shares a single authorization prompt.
 - `SmartProvider` runs `lsblk -J` and first attempts `smartctl -j -H -A` from the user's session.
 - If `smartctl` reports a permission error, `SmartProvider` batches the active disk plus the remaining manual SMART queue into one `pkexec linux-service-dashboard-smart-helper` invocation.
 - `linux-service-dashboard-smart-helper` validates narrow `/dev/...` disk paths and optional transports, then runs only the corresponding `smartctl` read commands.

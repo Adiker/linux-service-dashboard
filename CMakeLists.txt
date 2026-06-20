@@ -22,10 +22,13 @@ else()
         "${CMAKE_INSTALL_FULL_LIBEXECDIR}/${SMART_HELPER_TARGET}")
 endif()
 
+# Raw helper path (no surrounding quotes); the install-time set() below quotes it
+# explicitly so paths with spaces survive, while the generated polkit policy still
+# receives a bare filesystem path for org.freedesktop.policykit.exec.path.
 if(IS_ABSOLUTE "${CMAKE_INSTALL_LIBEXECDIR}")
-    set(_lsd_smart_helper_install_path "\"${CMAKE_INSTALL_LIBEXECDIR}/${SMART_HELPER_TARGET}\"")
+    set(_lsd_smart_helper_install_path "${CMAKE_INSTALL_LIBEXECDIR}/${SMART_HELPER_TARGET}")
 else()
-    set(_lsd_smart_helper_install_path "\"\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBEXECDIR}/${SMART_HELPER_TARGET}\"")
+    set(_lsd_smart_helper_install_path "\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBEXECDIR}/${SMART_HELPER_TARGET}")
 endif()
 
 option(LSD_INSTALL_POLKIT_POLICY_SYSTEM
@@ -121,7 +124,7 @@ install(TARGETS ${SMART_HELPER_TARGET}
 )
 
 install(CODE "
-  set(SMART_HELPER_INSTALL_PATH ${_lsd_smart_helper_install_path})
+  set(SMART_HELPER_INSTALL_PATH \"${_lsd_smart_helper_install_path}\")
   configure_file(
     \"${CMAKE_CURRENT_SOURCE_DIR}/resources/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy.in\"
     \"${CMAKE_CURRENT_BINARY_DIR}/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy\"

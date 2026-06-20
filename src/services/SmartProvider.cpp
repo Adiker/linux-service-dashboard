@@ -137,7 +137,12 @@ bool isHelperSupportedRow(const DiskRow &row)
 }
 
 constexpr int smartCheckPerDiskTimeoutMs = 30000;
-constexpr int smartHelperBatchOverheadMs = 15000;
+// The pkexec timeout starts the moment pkexec launches, so it also covers the time
+// the user spends at the polkit authentication prompt. Give a generous fixed budget
+// for that interactive step on top of the per-disk work; the helper enforces its own
+// 30s timeout per smartctl invocation, so this outer value is only a backstop against
+// a hung pkexec rather than the real per-device guard.
+constexpr int smartHelperAuthOverheadMs = 180000;
 
 QString smartHelperPath()
 {
@@ -411,7 +416,7 @@ bool SmartProvider::runPrivilegedSmartChecks(const DiskRow &firstRow)
         arguments.append({QStringLiteral("--device"), row.path, QStringLiteral("--transport"), row.transport});
     }
 
-    const int batchTimeoutMs = smartHelperBatchOverheadMs + smartCheckPerDiskTimeoutMs * m_privilegedSmartChecks.size();
+    const int batchTimeoutMs = smartHelperAuthOverheadMs + smartCheckPerDiskTimeoutMs * m_privilegedSmartChecks.size();
     m_runner.run(QStringLiteral("pkexec"), arguments, batchTimeoutMs, smartHelperBatchContext());
     return true;
 }
