@@ -31,7 +31,9 @@ DisksPage::DisksPage(QWidget *parent)
 
     auto *actions = new QHBoxLayout;
     auto *smartButton = new QPushButton(QIcon::fromTheme(QStringLiteral("drive-harddisk")), QStringLiteral("Check SMART"), this);
+    auto *smartAllButton = new QPushButton(QIcon::fromTheme(QStringLiteral("drive-harddisk")), QStringLiteral("Check All SMART"), this);
     actions->addWidget(smartButton);
+    actions->addWidget(smartAllButton);
     actions->addStretch();
     m_status = new QLabel(this);
     actions->addWidget(m_status);
@@ -40,9 +42,18 @@ DisksPage::DisksPage(QWidget *parent)
     connect(refreshButton, &QPushButton::clicked, this, &DisksPage::refresh);
     connect(smartButton, &QPushButton::clicked, this, [this]() {
         const DiskRow row = selectedRow();
-        if (!row.path.isEmpty()) {
-            m_status->setText(QStringLiteral("Checking %1...").arg(row.path));
-            m_provider.checkSmart(row.path);
+        if (row.path.isEmpty()) {
+            m_status->setText(QStringLiteral("Select a disk to check SMART."));
+            return;
+        }
+        m_status->setText(QStringLiteral("Checking SMART for %1...").arg(row.path));
+        m_provider.checkSmart(row);
+    });
+    connect(smartAllButton, &QPushButton::clicked, this, [this]() {
+        const QVector<DiskRow> rows = m_model->rows();
+        if (!rows.isEmpty()) {
+            m_status->setText(QStringLiteral("Checking SMART for %1 disks...").arg(rows.size()));
+            m_provider.checkSmart(rows);
         }
     });
     connect(&m_provider, &SmartProvider::disksReady, this, [this](const QVector<DiskRow> &rows, const QString &error) {
@@ -50,8 +61,8 @@ DisksPage::DisksPage(QWidget *parent)
         m_status->setText(error.isEmpty() ? QStringLiteral("%1 disks").arg(rows.size()) : error);
     });
     connect(&m_provider, &SmartProvider::smartReady, this, [this](const QString &path, const DiskRow &smartRow, const QString &error) {
+        m_model->updateSmart(path, smartRow);
         if (error.isEmpty()) {
-            m_model->updateSmart(path, smartRow);
             m_status->setText(QStringLiteral("SMART check complete for %1").arg(path));
         } else {
             m_status->setText(error);
