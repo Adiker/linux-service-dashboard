@@ -75,19 +75,46 @@ void DiskModel::setRows(const QVector<DiskRow> &rows)
     // Refreshing the inventory re-runs lsblk, which carries no SMART data. Carry
     // previously fetched SMART values over to disks that are still present so a
     // refresh does not blank the table and force the user to re-authenticate.
+    //
+    // Match by device path first, since the path uniquely identifies a row in a
+    // single lsblk snapshot. Only fall back to the serial when it is non-empty
+    // and unique in both the old and new inventories; disks that report a shared
+    // or duplicated serial must never inherit another device's SMART data.
+    const auto serialOccurrences = [](const QVector<DiskRow> &list, const QString &serial) {
+        int count = 0;
+        for (const DiskRow &row : list) {
+            if (!row.serial.isEmpty() && row.serial == serial) {
+                ++count;
+            }
+        }
+        return count;
+    };
+
     QVector<DiskRow> merged = rows;
     for (DiskRow &row : merged) {
+        const DiskRow *match = nullptr;
         for (const DiskRow &previous : std::as_const(m_rows)) {
-            const bool sameSerial = !row.serial.isEmpty() && row.serial == previous.serial;
-            const bool samePathWithoutSerial = row.serial.isEmpty() && row.path == previous.path;
-            if (sameSerial || samePathWithoutSerial) {
-                row.smartHealth = previous.smartHealth;
-                row.temperature = previous.temperature;
-                row.reallocated = previous.reallocated;
-                row.pending = previous.pending;
-                row.lastCheck = previous.lastCheck;
+            if (row.path == previous.path) {
+                match = &previous;
                 break;
             }
+        }
+        if (!match && !row.serial.isEmpty()
+            && serialOccurrences(merged, row.serial) == 1
+            && serialOccurrences(m_rows, row.serial) == 1) {
+            for (const DiskRow &previous : std::as_const(m_rows)) {
+                if (row.serial == previous.serial) {
+                    match = &previous;
+                    break;
+                }
+            }
+        }
+        if (match) {
+            row.smartHealth = match->smartHealth;
+            row.temperature = match->temperature;
+            row.reallocated = match->reallocated;
+            row.pending = match->pending;
+            row.lastCheck = match->lastCheck;
         }
     }
     m_rows = merged;
