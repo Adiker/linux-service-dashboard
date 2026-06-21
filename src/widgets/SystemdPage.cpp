@@ -1,8 +1,11 @@
 #include "SystemdPage.h"
 
+#include "../core/ServiceGroupSettings.h"
+
 #include "ConfirmActionDialog.h"
 #include "LogViewerDialog.h"
 
+#include <QComboBox>
 #include <QHeaderView>
 #include <QLabel>
 #include <QLineEdit>
@@ -26,6 +29,13 @@ SystemdPage::SystemdPage(QWidget *parent)
     header->addWidget(title);
     header->addStretch();
     header->addWidget(m_filter, 1);
+    m_groupSelector = new QComboBox(this);
+    m_groupSelector->setMinimumWidth(160);
+    for (const QString &group : ServiceGroupSettings::groupNames()) {
+        m_groupSelector->addItem(group);
+    }
+    m_groupSelector->setCurrentText(ServiceGroupSettings::activeGroup());
+    header->addWidget(m_groupSelector);
     header->addWidget(refreshButton);
     layout->addLayout(header);
 
@@ -58,6 +68,10 @@ SystemdPage::SystemdPage(QWidget *parent)
     layout->addLayout(actions);
 
     connect(m_filter, &QLineEdit::textChanged, m_proxy, &QSortFilterProxyModel::setFilterFixedString);
+    connect(m_groupSelector, &QComboBox::currentTextChanged, this, [this](const QString &group) {
+        ServiceGroupSettings::setActiveGroup(group);
+        refresh();
+    });
     connect(refreshButton, &QPushButton::clicked, this, &SystemdPage::refresh);
     connect(logsButton, &QPushButton::clicked, this, [this]() {
         const ServiceRow row = selectedRow();
@@ -84,10 +98,7 @@ SystemdPage::SystemdPage(QWidget *parent)
 
 QStringList SystemdPage::watchedServices() const
 {
-    QSettings settings;
-    return settings.value(QStringLiteral("systemd/watchedServices"),
-                          QStringList{QStringLiteral("docker.service"), QStringLiteral("NetworkManager.service"), QStringLiteral("sshd.service"), QStringLiteral("postgresql.service"), QStringLiteral("redis.service")})
-        .toStringList();
+    return ServiceGroupSettings::servicesForGroup(ServiceGroupSettings::activeGroup());
 }
 
 ServiceRow SystemdPage::selectedRow() const

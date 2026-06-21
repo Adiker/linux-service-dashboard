@@ -5,6 +5,7 @@
 
 #include <QWidget>
 
+class QComboBox;
 class QLineEdit;
 class QLabel;
 class QSortFilterProxyModel;
@@ -28,6 +29,7 @@ private:
     QSortFilterProxyModel *m_proxy = nullptr;
     QTableView *m_table = nullptr;
     QLineEdit *m_filter = nullptr;
+    QComboBox *m_groupSelector = nullptr;
     QLabel *m_status = nullptr;
     SystemdServiceProvider m_provider;
 };
