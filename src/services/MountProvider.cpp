@@ -62,7 +62,9 @@ MountProvider::MountProvider(QObject *parent)
                 QString parseError;
                 const QJsonDocument document = parseJsonDocument(result.standardOutput, &parseError);
                 collectMounts(document.object().value(QStringLiteral("filesystems")).toArray(), &rows);
-                rows = mergeConfiguredMounts(rows);
+                if (m_includeConfigured) {
+                    rows = mergeConfiguredMounts(rows);
+                }
                 if (!parseError.isEmpty()) {
                     error = QStringLiteral("Could not parse findmnt JSON: %1").arg(parseError);
                 }
@@ -78,8 +80,9 @@ MountProvider::MountProvider(QObject *parent)
     });
 }
 
-void MountProvider::refreshMounts()
+void MountProvider::refreshMounts(bool includeConfigured)
 {
+    m_includeConfigured = includeConfigured;
     m_runner.run(QStringLiteral("findmnt"), {QStringLiteral("--json")}, 15000, QStringLiteral("mount-list"));
 }
 

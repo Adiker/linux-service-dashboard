@@ -99,5 +99,5 @@ MountRow MountsPage::selectedRow() const
 void MountsPage::refresh()
 {
     m_status->setText(QStringLiteral("Refreshing..."));
-    m_provider.refreshMounts();
+    m_provider.refreshMounts(true);
 }

@@ -15,6 +15,33 @@ bool isNetworkFilesystem(const QString &type)
         || type == QStringLiteral("sshfs");
 }
 
+QString decodeFstabField(const QString &field)
+{
+    QString decoded;
+    decoded.reserve(field.size());
+    for (int i = 0; i < field.size(); ++i) {
+        if (field.at(i) == QLatin1Char('\\') && i + 1 < field.size()) {
+            const QChar next = field.at(i + 1);
+            if (next.isDigit()) {
+                int j = i + 1;
+                QString octal;
+                while (j < field.size() && j < i + 4 && field.at(j).isDigit()) {
+                    octal += field.at(j);
+                    ++j;
+                }
+                decoded += QChar(octal.toInt(nullptr, 8));
+                i = j - 1;
+                continue;
+            }
+            decoded += next;
+            ++i;
+            continue;
+        }
+        decoded += field.at(i);
+    }
+    return decoded;
+}
+
 } // namespace
 
 QVector<MountRow> parseFile(const QString &path, QString *error)
@@ -46,8 +73,8 @@ QVector<MountRow> parseFile(const QString &path, QString *error)
             continue;
         }
         MountRow row;
-        row.source = fields.at(0);
-        row.target = fields.at(1);
+        row.source = decodeFstabField(fields.at(0));
+        row.target = decodeFstabField(fields.at(1));
         row.filesystemType = type;
         row.options = fields.at(3);
         row.status = QStringLiteral("Configured (fstab)");
