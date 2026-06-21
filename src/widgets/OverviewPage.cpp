@@ -1,5 +1,7 @@
 #include "OverviewPage.h"
 
+#include "../core/ModuleSettings.h"
+
 #include <QGridLayout>
 #include <QLabel>
 #include <QPushButton>
@@ -29,7 +31,7 @@ OverviewPage::OverviewPage(QWidget *parent)
     layout->addLayout(grid);
     layout->addStretch();
 
-    connect(refreshButton, &QPushButton::clicked, this, &OverviewPage::refresh);
+    connect(refreshButton, &QPushButton::clicked, this, [this]() { refresh(); });
     connect(&m_docker, &DockerProvider::containersReady, this, [this](const QVector<DockerContainerRow> &rows, const QString &error) {
         if (!error.isEmpty()) {
             m_dockerValue->setText(QStringLiteral("Warning\n%1").arg(error));
@@ -90,12 +92,41 @@ QLabel *OverviewPage::addCard(QGridLayout *grid, int row, int column, const QStr
     return valueLabel;
 }
 
-void OverviewPage::refresh()
+void OverviewPage::setCardVisible(QLabel *value, bool visible)
 {
-    m_docker.refreshContainers();
-    m_systemd.refreshFailedCount();
-    m_network.refreshVpnStatus();
-    m_mounts.refreshMounts();
-    m_sensors.refreshSensors();
-    m_smart.refreshDisks();
+    if (!value) {
+        return;
+    }
+    if (QWidget *card = value->parentWidget()) {
+        card->setVisible(visible);
+    }
+}
+
+void OverviewPage::refresh(const ModuleSettings &modules)
+{
+    setCardVisible(m_dockerValue, modules.docker);
+    setCardVisible(m_systemdValue, modules.systemd);
+    setCardVisible(m_vpnValue, modules.vpn);
+    setCardVisible(m_mountsValue, modules.mounts);
+    setCardVisible(m_sensorsValue, modules.sensors);
+    setCardVisible(m_disksValue, modules.smart);
+
+    if (modules.docker) {
+        m_docker.refreshContainers();
+    }
+    if (modules.systemd) {
+        m_systemd.refreshFailedCount();
+    }
+    if (modules.vpn) {
+        m_network.refreshVpnStatus();
+    }
+    if (modules.mounts) {
+        m_mounts.refreshMounts();
+    }
+    if (modules.sensors) {
+        m_sensors.refreshSensors();
+    }
+    if (modules.smart) {
+        m_smart.refreshDisks();
+    }
 }

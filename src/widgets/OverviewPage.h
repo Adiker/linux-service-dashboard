@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../core/ModuleSettings.h"
 #include "../services/DockerProvider.h"
 #include "../services/MountProvider.h"
 #include "../services/NetworkProvider.h"
@@ -19,10 +20,11 @@ public:
     explicit OverviewPage(QWidget *parent = nullptr);
 
 public slots:
-    void refresh();
+    void refresh(const ModuleSettings &modules = loadModuleSettings());
 
 private:
     QLabel *addCard(QGridLayout *grid, int row, int column, const QString &title);
+    void setCardVisible(QLabel *value, bool visible);
     QLabel *m_dockerValue = nullptr;
     QLabel *m_systemdValue = nullptr;
     QLabel *m_vpnValue = nullptr;

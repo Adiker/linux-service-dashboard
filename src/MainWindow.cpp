@@ -1,6 +1,7 @@
 #include "MainWindow.h"
 
 #include "AppIcon.h"
+#include "core/ModuleSettings.h"
 
 #include <QAction>
 #include <QApplication>
@@ -123,8 +124,33 @@ void MainWindow::reloadSettings()
     QSettings settings;
     m_scheduler.setIntervalSeconds(settings.value(QStringLiteral("refresh/intervalSeconds"), 30).toInt());
     m_scheduler.start();
+    m_modules = loadModuleSettings();
+    applyModuleVisibility();
     applyTheme();
     refreshAll();
+}
+
+void MainWindow::applyModuleVisibility()
+{
+    QListWidgetItem *items[] = {
+        m_sidebar->item(PageOverview),
+        m_sidebar->item(PageSystemd),
+        m_sidebar->item(PageDocker),
+        m_sidebar->item(PageVpn),
+        m_sidebar->item(PageMounts),
+        m_sidebar->item(PageSensors),
+        m_sidebar->item(PageDisks),
+        m_sidebar->item(PageSettings),
+    };
+    const bool enabled[] = {true, m_modules.systemd, m_modules.docker, m_modules.vpn, m_modules.mounts, m_modules.sensors, m_modules.smart, true};
+    for (int i = 0; i < 8; ++i) {
+        if (items[i]) {
+            items[i]->setHidden(!enabled[i]);
+        }
+    }
+    if (m_sidebar->currentItem() && m_sidebar->currentItem()->isHidden()) {
+        m_sidebar->setCurrentRow(PageOverview);
+    }
 }
 
 void MainWindow::applyTheme()
@@ -351,13 +377,25 @@ void MainWindow::applyTheme()
 
 void MainWindow::refreshAll()
 {
-    m_overview->refresh();
-    m_systemd->refresh();
-    m_docker->refresh();
-    m_vpn->refresh();
-    m_mounts->refresh();
-    m_sensors->refresh();
-    m_disks->refresh();
+    m_overview->refresh(m_modules);
+    if (m_modules.systemd) {
+        m_systemd->refresh();
+    }
+    if (m_modules.docker) {
+        m_docker->refresh();
+    }
+    if (m_modules.vpn) {
+        m_vpn->refresh();
+    }
+    if (m_modules.mounts) {
+        m_mounts->refresh();
+    }
+    if (m_modules.sensors) {
+        m_sensors->refresh();
+    }
+    if (m_modules.smart) {
+        m_disks->refresh();
+    }
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)
