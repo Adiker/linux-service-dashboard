@@ -1,5 +1,7 @@
 #include "SensorsPage.h"
 
+#include "../utils/TableLayoutPersistence.h"
+
 #include <QHeaderView>
 #include <QLabel>
 #include <QPushButton>
@@ -26,6 +28,7 @@ SensorsPage::SensorsPage(QWidget *parent)
     m_table->horizontalHeader()->setStretchLastSection(true);
     m_table->verticalHeader()->hide();
     m_table->setSortingEnabled(true);
+    TableLayoutPersistence::bind(m_table, QStringLiteral("tables/sensors/headerState"));
     layout->addWidget(m_table, 1);
 
     m_status = new QLabel(this);
