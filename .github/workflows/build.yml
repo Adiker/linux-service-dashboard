@@ -32,7 +32,14 @@ jobs:
         run: cmake --build build -j$(nproc)
 
       - name: Smoke test (offscreen)
-        run: QT_QPA_PLATFORM=offscreen timeout 3s build/linux-service-dashboard || true
+        run: |
+          set +e
+          QT_QPA_PLATFORM=offscreen timeout 3s build/linux-service-dashboard
+          status=$?
+          if [ "$status" -eq 124 ]; then
+            exit 0
+          fi
+          exit "$status"
 
   format:
     runs-on: ubuntu-24.04
