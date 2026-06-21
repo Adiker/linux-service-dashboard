@@ -1,0 +1,31 @@
+# Maintainer: Adiker
+pkgname=linux-service-dashboard
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Local Qt6 dashboard for systemd, Docker, VPN, mounts, sensors, and SMART"
+arch=('x86_64')
+url="https://github.com/Adiker/linux-service-dashboard"
+license=('MIT')
+depends=(
+  'qt6-base'
+  'polkit'
+  'smartmontools'
+  'util-linux'
+  'lm_sensors'
+  'networkmanager'
+)
+optdepends=(
+  'docker: Docker page support'
+)
+makedepends=('cmake' 'gcc')
+source=("$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+  cmake -S "$pkgname-$pkgver" -B build -DCMAKE_BUILD_TYPE=Release -DLSD_INSTALL_POLKIT_POLICY_SYSTEM=ON
+  cmake --build build -j"$(nproc)"
+}
+
+package() {
+  DESTDIR="$pkgdir" cmake --install build --prefix /usr
+}

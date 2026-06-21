@@ -156,3 +156,13 @@ foreach(icon_size 16 22 24 32 48 64 128 256)
         RENAME io.github.Adiker.LinuxServiceDashboard.png
     )
 endforeach()
+
+set(CPACK_PACKAGE_NAME linux-service-dashboard)
+set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
+set(CPACK_PACKAGE_CONTACT "Adiker")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Local Qt6 dashboard for Linux services and system health")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
+set(CPACK_GENERATOR "DEB;RPM")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "qt6-base, smartmontools, policykit-1, util-linux, lm-sensors, network-manager")
+set(CPACK_RPM_PACKAGE_REQUIRES "qt6-qtbase, smartmontools, polkit, util-linux, lm_sensors, NetworkManager")
+include(CPack)

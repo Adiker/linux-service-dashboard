@@ -63,6 +63,11 @@ sudo cmake --install build --prefix /usr/local
 
 When the app lives under `/usr/local`, polkit still loads action files from `/usr/share/polkit-1/actions`, so pass `-DLSD_INSTALL_POLKIT_POLICY_SYSTEM=ON` for that layout. By default the policy installs under the chosen prefix (`share/polkit-1/actions`), which keeps staged or relocatable installs working.
 
+### Distro packages
+
+- Arch Linux: use `packaging/PKGBUILD` from a release tarball.
+- Debian/RPM: configure a Release build, then run `cpack -G DEB` or `cpack -G RPM` from the build directory.
+
 If you use a different install prefix, pass the same `--prefix` to `cmake --install` so the generated polkit policy points at the final helper path. The app resolves the helper relative to its own install location at runtime.
 
 The helper is installed as `libexec/linux-service-dashboard-smart-helper` and is only invoked through `pkexec` for SMART reads. When several disks need elevated access, the app batches them into one helper invocation so polkit should ask once for that manual check.

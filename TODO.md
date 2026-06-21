@@ -6,6 +6,5 @@
 - Add user-defined service groups and persistent table column layouts.
 - Add richer SMART history and 5+ minute scheduled SMART refresh.
 - Add unit tests for parsers and provider error handling.
-- Add distro-specific packaging recipes.
 - Wire module toggles into sidebar visibility and refresh scheduling.
 - Add CI for Release/Debug build and changed-file formatting.
