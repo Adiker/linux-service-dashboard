@@ -262,22 +262,5 @@ void SystemdServiceProvider::serviceLogs(const QString &unit)
 
 void SystemdServiceProvider::controlService(const QString &unit, const QString &action)
 {
-    QDBusConnection bus = QDBusConnection::systemBus();
-    if (bus.isConnected()) {
-        const QString method = action == QStringLiteral("start") ? QStringLiteral("StartUnit")
-            : action == QStringLiteral("stop")                      ? QStringLiteral("StopUnit")
-                                                                    : QStringLiteral("RestartUnit");
-        QDBusMessage message = QDBusMessage::createMethodCall(QStringLiteral("org.freedesktop.systemd1"),
-                                                                QStringLiteral("/org/freedesktop/systemd1"),
-                                                                QStringLiteral("org.freedesktop.systemd1.Manager"),
-                                                                method);
-        message << unit << QStringLiteral("replace");
-        const QDBusMessage reply = bus.call(message);
-        if (reply.type() == QDBusMessage::ReplyMessage) {
-            emit actionFinished(QStringLiteral("%1 %2 succeeded.").arg(action, unit), QString());
-            return;
-        }
-    }
-
     m_runner.run(QStringLiteral("systemctl"), {action, unit}, 30000, QStringLiteral("systemd-action:%1:%2").arg(action, unit));
 }
