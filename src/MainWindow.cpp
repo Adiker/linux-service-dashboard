@@ -24,6 +24,7 @@ MainWindow::MainWindow(QWidget *parent)
     setWindowTitle(QStringLiteral("Linux Service Dashboard"));
     setWindowIcon(serviceDashboardIcon());
     resize(1200, 800);
+    m_modules = loadModuleSettings();
     buildUi();
     buildTray();
     reloadSettings();

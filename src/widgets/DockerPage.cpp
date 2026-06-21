@@ -70,8 +70,6 @@ DockerPage::DockerPage(QWidget *parent)
         QMessageBox::information(this, QStringLiteral("Docker"), details.isEmpty() ? message : message + QStringLiteral("\n\n") + details);
         refresh();
     });
-
-    refresh();
 }
 
 DockerContainerRow DockerPage::selectedRow() const

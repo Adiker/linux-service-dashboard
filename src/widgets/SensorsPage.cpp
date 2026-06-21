@@ -36,8 +36,6 @@ SensorsPage::SensorsPage(QWidget *parent)
         m_model->setRows(rows);
         m_status->setText(error.isEmpty() ? QStringLiteral("%1 readings").arg(rows.size()) : error);
     });
-
-    refresh();
 }
 
 void SensorsPage::refresh()

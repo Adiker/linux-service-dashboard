@@ -78,8 +78,6 @@ SystemdPage::SystemdPage(QWidget *parent)
         QMessageBox::information(this, QStringLiteral("systemd"), details.isEmpty() ? message : message + QStringLiteral("\n\n") + details);
         refresh();
     });
-
-    refresh();
 }
 
 QStringList SystemdPage::watchedServices() const

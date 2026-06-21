@@ -47,8 +47,6 @@ VpnPage::VpnPage(QWidget *parent)
         m_lastRefresh->setText(status.lastRefresh);
         m_error->setText(error.isEmpty() ? QStringLiteral("OK") : error);
     });
-
-    refresh();
 }
 
 void VpnPage::refresh()

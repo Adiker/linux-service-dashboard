@@ -72,8 +72,6 @@ OverviewPage::OverviewPage(QWidget *parent)
     connect(&m_smart, &SmartProvider::disksReady, this, [this](const QVector<DiskRow> &rows, const QString &error) {
         m_disksValue->setText(error.isEmpty() ? QStringLiteral("%1 physical disks\nSMART manual").arg(rows.size()) : QStringLiteral("Unknown\n%1").arg(error));
     });
-
-    refresh();
 }
 
 QLabel *OverviewPage::addCard(QGridLayout *grid, int row, int column, const QString &title)

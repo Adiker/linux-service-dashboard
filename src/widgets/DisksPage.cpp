@@ -68,8 +68,6 @@ DisksPage::DisksPage(QWidget *parent)
             m_status->setText(error);
         }
     });
-
-    refresh();
 }
 
 DiskRow DisksPage::selectedRow() const
