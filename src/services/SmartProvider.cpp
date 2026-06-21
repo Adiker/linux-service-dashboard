@@ -459,3 +459,8 @@ void SmartProvider::finishPrivilegedSmartChecks(const CommandResult &result)
     m_smartCheckRunning = false;
     startNextSmartCheck();
 }
+
+bool SmartProvider::isSmartCheckBusy() const
+{
+    return m_smartCheckRunning || !m_pendingSmartChecks.isEmpty();
+}

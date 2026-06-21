@@ -75,7 +75,7 @@ DisksPage::DisksPage(QWidget *parent)
         table->setColumnCount(5);
         table->setHorizontalHeaderLabels({QStringLiteral("Time"), QStringLiteral("Health"), QStringLiteral("Temp"), QStringLiteral("Reallocated"), QStringLiteral("Pending")});
         table->horizontalHeader()->setStretchLastSection(true);
-        const QVector<SmartHistoryEntry> entries = SmartHistoryStore::entriesForDisk(row.path);
+        const QVector<SmartHistoryEntry> entries = SmartHistoryStore::entriesForDisk(row.serial, row.path);
         table->setRowCount(entries.size());
         for (int i = 0; i < entries.size(); ++i) {
             const SmartHistoryEntry &entry = entries.at(i);
@@ -96,8 +96,8 @@ DisksPage::DisksPage(QWidget *parent)
     connect(&m_provider, &SmartProvider::smartReady, this, [this](const QString &path, const DiskRow &smartRow, const QString &error) {
         m_model->updateSmart(path, smartRow);
         if (error.isEmpty()) {
-            SmartHistoryStore::appendEntry(
-                SmartHistoryEntry{path, currentTimestamp(), smartRow.smartHealth, smartRow.temperature, smartRow.reallocated, smartRow.pending});
+            SmartHistoryStore::appendEntry(SmartHistoryEntry{
+                path, smartRow.serial, currentTimestamp(), smartRow.smartHealth, smartRow.temperature, smartRow.reallocated, smartRow.pending});
             m_status->setText(QStringLiteral("SMART check complete for %1").arg(path));
         } else {
             m_status->setText(error);
@@ -123,6 +123,10 @@ void DisksPage::reloadSmartSchedule()
 
 void DisksPage::runScheduledSmartChecks()
 {
+    if (m_provider.isSmartCheckBusy()) {
+        m_status->setText(QStringLiteral("SMART check already in progress; skipping scheduled refresh."));
+        return;
+    }
     const QVector<DiskRow> rows = m_model->rows();
     if (!rows.isEmpty()) {
         m_status->setText(QStringLiteral("Checking SMART for %1 disks...").arg(rows.size()));

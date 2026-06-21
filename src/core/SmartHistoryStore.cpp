@@ -7,14 +7,18 @@ namespace SmartHistoryStore {
 
 namespace {
 
-QString encodePath(const QString &path)
+QString encodeComponent(const QString &value)
 {
-    return QString::fromUtf8(QUrl::toPercentEncoding(path));
+    return QString::fromUtf8(QUrl::toPercentEncoding(value));
 }
 
-QString historyKey(const QString &path)
+QString diskIdentityKey(const QString &serial, const QString &path)
 {
-    return QStringLiteral("smart/history/%1").arg(encodePath(path));
+    const QString trimmedSerial = serial.trimmed();
+    if (!trimmedSerial.isEmpty() && trimmedSerial != QStringLiteral("-")) {
+        return QStringLiteral("smart/history/serial/%1").arg(encodeComponent(trimmedSerial));
+    }
+    return QStringLiteral("smart/history/path/%1").arg(encodeComponent(path));
 }
 
 SmartHistoryEntry decodeEntry(const QString &path, const QString &encoded)
@@ -35,7 +39,7 @@ SmartHistoryEntry decodeEntry(const QString &path, const QString &encoded)
 void appendEntry(const SmartHistoryEntry &entry)
 {
     QSettings settings;
-    const QString key = historyKey(entry.path);
+    const QString key = diskIdentityKey(entry.serial, entry.path);
     QStringList history = settings.value(key).toStringList();
     history.prepend(QStringLiteral("%1|%2|%3|%4|%5")
                         .arg(entry.timestamp, entry.health, entry.temperature, entry.reallocated, entry.pending));
@@ -45,14 +49,16 @@ void appendEntry(const SmartHistoryEntry &entry)
     settings.setValue(key, history);
 }
 
-QVector<SmartHistoryEntry> entriesForDisk(const QString &path, int maxEntries)
+QVector<SmartHistoryEntry> entriesForDisk(const QString &serial, const QString &path, int maxEntries)
 {
     QSettings settings;
-    const QStringList history = settings.value(historyKey(path)).toStringList();
+    const QStringList history = settings.value(diskIdentityKey(serial, path)).toStringList();
     QVector<SmartHistoryEntry> entries;
     entries.reserve(qMin(maxEntries, history.size()));
     for (const QString &encoded : history) {
-        entries.append(decodeEntry(path, encoded));
+        SmartHistoryEntry entry = decodeEntry(path, encoded);
+        entry.serial = serial;
+        entries.append(entry);
         if (entries.size() >= maxEntries) {
             break;
         }
