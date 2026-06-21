@@ -1,13 +1,20 @@
 #include "DisksPage.h"
 
+#include "../core/SmartHistoryStore.h"
+#include "../core/SmartRefreshScheduler.h"
+#include "../utils/TimeUtils.h"
+
+#include <QDialog>
 #include <QHeaderView>
 #include <QLabel>
 #include <QPushButton>
 #include <QTableView>
+#include <QTableWidget>
 #include <QVBoxLayout>
 
 DisksPage::DisksPage(QWidget *parent)
     : QWidget(parent)
+    , m_smartScheduler(new SmartRefreshScheduler(this))
 {
     auto *layout = new QVBoxLayout(this);
     auto *header = new QHBoxLayout;
@@ -32,8 +39,10 @@ DisksPage::DisksPage(QWidget *parent)
     auto *actions = new QHBoxLayout;
     auto *smartButton = new QPushButton(QIcon::fromTheme(QStringLiteral("drive-harddisk")), QStringLiteral("Check SMART"), this);
     auto *smartAllButton = new QPushButton(QIcon::fromTheme(QStringLiteral("drive-harddisk")), QStringLiteral("Check All SMART"), this);
+    auto *historyButton = new QPushButton(QIcon::fromTheme(QStringLiteral("view-list-details")), QStringLiteral("History"), this);
     actions->addWidget(smartButton);
     actions->addWidget(smartAllButton);
+    actions->addWidget(historyButton);
     actions->addStretch();
     m_status = new QLabel(this);
     actions->addWidget(m_status);
@@ -50,11 +59,35 @@ DisksPage::DisksPage(QWidget *parent)
         m_provider.checkSmart(row);
     });
     connect(smartAllButton, &QPushButton::clicked, this, [this]() {
-        const QVector<DiskRow> rows = m_model->rows();
-        if (!rows.isEmpty()) {
-            m_status->setText(QStringLiteral("Checking SMART for %1 disks...").arg(rows.size()));
-            m_provider.checkSmart(rows);
+        runScheduledSmartChecks();
+    });
+    connect(historyButton, &QPushButton::clicked, this, [this]() {
+        const DiskRow row = selectedRow();
+        if (row.path.isEmpty()) {
+            m_status->setText(QStringLiteral("Select a disk to view SMART history."));
+            return;
         }
+        auto *dialog = new QDialog(this);
+        dialog->setWindowTitle(QStringLiteral("SMART history — %1").arg(row.path));
+        dialog->resize(720, 420);
+        auto *dialogLayout = new QVBoxLayout(dialog);
+        auto *table = new QTableWidget(dialog);
+        table->setColumnCount(5);
+        table->setHorizontalHeaderLabels({QStringLiteral("Time"), QStringLiteral("Health"), QStringLiteral("Temp"), QStringLiteral("Reallocated"), QStringLiteral("Pending")});
+        table->horizontalHeader()->setStretchLastSection(true);
+        const QVector<SmartHistoryEntry> entries = SmartHistoryStore::entriesForDisk(row.path);
+        table->setRowCount(entries.size());
+        for (int i = 0; i < entries.size(); ++i) {
+            const SmartHistoryEntry &entry = entries.at(i);
+            table->setItem(i, 0, new QTableWidgetItem(entry.timestamp));
+            table->setItem(i, 1, new QTableWidgetItem(entry.health));
+            table->setItem(i, 2, new QTableWidgetItem(entry.temperature));
+            table->setItem(i, 3, new QTableWidgetItem(entry.reallocated));
+            table->setItem(i, 4, new QTableWidgetItem(entry.pending));
+        }
+        dialogLayout->addWidget(table);
+        dialog->setAttribute(Qt::WA_DeleteOnClose);
+        dialog->show();
     });
     connect(&m_provider, &SmartProvider::disksReady, this, [this](const QVector<DiskRow> &rows, const QString &error) {
         m_model->setRows(rows);
@@ -63,12 +96,16 @@ DisksPage::DisksPage(QWidget *parent)
     connect(&m_provider, &SmartProvider::smartReady, this, [this](const QString &path, const DiskRow &smartRow, const QString &error) {
         m_model->updateSmart(path, smartRow);
         if (error.isEmpty()) {
+            SmartHistoryStore::appendEntry(
+                SmartHistoryEntry{path, currentTimestamp(), smartRow.smartHealth, smartRow.temperature, smartRow.reallocated, smartRow.pending});
             m_status->setText(QStringLiteral("SMART check complete for %1").arg(path));
         } else {
             m_status->setText(error);
         }
     });
+    connect(m_smartScheduler, &SmartRefreshScheduler::smartRefreshRequested, this, &DisksPage::runScheduledSmartChecks);
 
+    m_smartScheduler->reloadFromSettings();
     refresh();
 }
 
@@ -77,6 +114,20 @@ DiskRow DisksPage::selectedRow() const
     const QModelIndex index = m_table->currentIndex();
     if (!index.isValid()) return {};
     return m_model->rowAt(index.row());
+}
+
+void DisksPage::reloadSmartSchedule()
+{
+    m_smartScheduler->reloadFromSettings();
+}
+
+void DisksPage::runScheduledSmartChecks()
+{
+    const QVector<DiskRow> rows = m_model->rows();
+    if (!rows.isEmpty()) {
+        m_status->setText(QStringLiteral("Checking SMART for %1 disks...").arg(rows.size()));
+        m_provider.checkSmart(rows);
+    }
 }
 
 void DisksPage::refresh()

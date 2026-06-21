@@ -28,5 +28,7 @@ private:
     QCheckBox *m_mounts = nullptr;
     QCheckBox *m_sensors = nullptr;
     QCheckBox *m_smart = nullptr;
+    QCheckBox *m_smartScheduled = nullptr;
+    QSpinBox *m_smartIntervalMinutes = nullptr;
     QComboBox *m_theme = nullptr;
 };

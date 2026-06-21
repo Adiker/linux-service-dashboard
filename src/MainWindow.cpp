@@ -124,6 +124,7 @@ void MainWindow::reloadSettings()
     m_scheduler.setIntervalSeconds(settings.value(QStringLiteral("refresh/intervalSeconds"), 30).toInt());
     m_scheduler.start();
     applyTheme();
+    m_disks->reloadSmartSchedule();
     refreshAll();
 }
 
