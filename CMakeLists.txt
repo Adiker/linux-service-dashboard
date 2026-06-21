@@ -55,6 +55,8 @@ qt_add_executable(linux-service-dashboard
     src/core/CommandRunner.h
     src/core/RefreshScheduler.cpp
     src/core/RefreshScheduler.h
+    src/core/MountProfileStore.cpp
+    src/core/MountProfileStore.h
     src/models/ServiceModel.cpp
     src/models/ServiceModel.h
     src/models/DockerContainerModel.cpp
@@ -103,6 +105,8 @@ qt_add_executable(linux-service-dashboard
     src/utils/TimeUtils.h
     src/utils/StatusUtils.cpp
     src/utils/StatusUtils.h
+    src/utils/FstabParser.cpp
+    src/utils/FstabParser.h
 )
 
 target_link_libraries(linux-service-dashboard PRIVATE Qt6::Widgets)

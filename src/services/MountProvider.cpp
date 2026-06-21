@@ -1,5 +1,7 @@
 #include "MountProvider.h"
 
+#include "../core/MountProfileStore.h"
+#include "../utils/FstabParser.h"
 #include "../utils/JsonUtils.h"
 
 #include <QJsonArray>
@@ -27,6 +29,28 @@ static void collectMounts(const QJsonArray &array, QVector<MountRow> *rows)
     }
 }
 
+static QVector<MountRow> mergeConfiguredMounts(const QVector<MountRow> &liveRows)
+{
+    QSet<QString> mountedTargets;
+    for (const MountRow &row : liveRows) {
+        mountedTargets.insert(row.target);
+    }
+
+    QVector<MountRow> merged = liveRows;
+    QString fstabError;
+    for (const MountRow &row : FstabParser::parseFile(QStringLiteral("/etc/fstab"), &fstabError)) {
+        if (!mountedTargets.contains(row.target)) {
+            merged.append(row);
+        }
+    }
+    for (const MountRow &row : MountProfileStore::loadProfiles()) {
+        if (!mountedTargets.contains(row.target)) {
+            merged.append(row);
+        }
+    }
+    return merged;
+}
+
 MountProvider::MountProvider(QObject *parent)
     : QObject(parent)
 {
@@ -38,6 +62,7 @@ MountProvider::MountProvider(QObject *parent)
                 QString parseError;
                 const QJsonDocument document = parseJsonDocument(result.standardOutput, &parseError);
                 collectMounts(document.object().value(QStringLiteral("filesystems")).toArray(), &rows);
+                rows = mergeConfiguredMounts(rows);
                 if (!parseError.isEmpty()) {
                     error = QStringLiteral("Could not parse findmnt JSON: %1").arg(parseError);
                 }
