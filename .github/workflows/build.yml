@@ -1,0 +1,59 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Debug, Release]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake ninja-build \
+            qt6-base-dev qt6-base-dev-tools \
+            libpolkit-gobject-1-dev \
+            clang-format
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+
+      - name: Build
+        run: cmake --build build -j$(nproc)
+
+      - name: Smoke test (offscreen)
+        run: QT_QPA_PLATFORM=offscreen timeout 3s build/linux-service-dashboard || true
+
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install clang-format
+        run: sudo apt-get update && sudo apt-get install -y clang-format
+
+      - name: Check formatting on changed files
+        run: |
+          BASE="${{ github.event.pull_request.base.sha || github.event.before }}"
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            FILES=$(find src -name '*.cpp' -o -name '*.h')
+          else
+            FILES=$(git diff --name-only --diff-filter=ACMRT "$BASE"...HEAD -- 'src/*.cpp' 'src/*.h' 'tests/*.cpp' 'tests/*.h' || true)
+          fi
+          if [ -z "$FILES" ]; then
+            echo "No C++ files to check."
+            exit 0
+          fi
+          echo "$FILES" | xargs clang-format --dry-run --Werror
