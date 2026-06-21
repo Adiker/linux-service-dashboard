@@ -1,11 +1,16 @@
 # TODO
 
-- Replace text parsing for systemd with direct systemd DBus calls.
-- Replace VPN polling with direct NetworkManager DBus integration.
-- Add fstab parsing and saved mount profiles.
-- Add user-defined service groups and persistent table column layouts.
-- Add richer SMART history and 5+ minute scheduled SMART refresh.
-- Add unit tests for parsers and provider error handling.
-- Add distro-specific packaging recipes.
-- Wire module toggles into sidebar visibility and refresh scheduling.
-- Add CI for Release/Debug build and changed-file formatting.
+All items from this backlog have open pull requests. See [ROADMAP.md](ROADMAP.md) for follow-up hardening work.
+
+| Item | Pull request |
+|------|--------------|
+| CI build + clang-format | [#6](https://github.com/Adiker/linux-service-dashboard/pull/6) |
+| Unit tests for parsers | [#7](https://github.com/Adiker/linux-service-dashboard/pull/7) |
+| Module toggles wired | [#8](https://github.com/Adiker/linux-service-dashboard/pull/8) |
+| Persistent table layouts | [#9](https://github.com/Adiker/linux-service-dashboard/pull/9) |
+| Systemd service groups | [#10](https://github.com/Adiker/linux-service-dashboard/pull/10) |
+| NetworkManager DBus VPN | [#11](https://github.com/Adiker/linux-service-dashboard/pull/11) |
+| systemd DBus provider | [#12](https://github.com/Adiker/linux-service-dashboard/pull/12) |
+| fstab + mount profiles | [#13](https://github.com/Adiker/linux-service-dashboard/pull/13) |
+| SMART history + schedule | [#14](https://github.com/Adiker/linux-service-dashboard/pull/14) |
+| Distro packaging | [#15](https://github.com/Adiker/linux-service-dashboard/pull/15) |
