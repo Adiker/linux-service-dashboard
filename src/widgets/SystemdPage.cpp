@@ -122,3 +122,22 @@ void SystemdPage::refresh()
     m_status->setText(QStringLiteral("Refreshing..."));
     m_provider.refreshServices(watchedServices());
 }
+
+void SystemdPage::reloadGroupSelector()
+{
+    const QString current = m_groupSelector->currentText();
+    m_groupSelector->blockSignals(true);
+    m_groupSelector->clear();
+    for (const QString &group : ServiceGroupSettings::groupNames()) {
+        m_groupSelector->addItem(group);
+    }
+    const int index = m_groupSelector->findText(ServiceGroupSettings::activeGroup());
+    if (index >= 0) {
+        m_groupSelector->setCurrentIndex(index);
+    } else {
+        const int previous = m_groupSelector->findText(current);
+        m_groupSelector->setCurrentIndex(previous >= 0 ? previous : 0);
+    }
+    m_groupSelector->blockSignals(false);
+    refresh();
+}

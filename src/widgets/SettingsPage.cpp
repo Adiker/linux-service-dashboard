@@ -4,7 +4,6 @@
 
 #include <QCheckBox>
 #include <QComboBox>
-#include <QComboBox>
 #include <QFormLayout>
 #include <QFrame>
 #include <QHBoxLayout>
@@ -144,18 +143,7 @@ void SettingsPage::renameGroup()
     if (!ok || name.isEmpty() || name == current) {
         return;
     }
-    ServiceGroupSettings::setServicesForGroup(name, ServiceGroupSettings::servicesForGroup(current));
-    QSettings settings;
-    QStringList groups = settings.value(QStringLiteral("systemd/groups")).toStringList();
-    const int index = groups.indexOf(current);
-    if (index >= 0) {
-        groups[index] = name;
-        settings.setValue(QStringLiteral("systemd/groups"), groups);
-        settings.remove(QStringLiteral("systemd/group/%1").arg(current));
-    }
-    if (ServiceGroupSettings::activeGroup() == current) {
-        ServiceGroupSettings::setActiveGroup(name);
-    }
+    ServiceGroupSettings::renameGroup(current, name);
     reloadGroups();
     m_serviceGroup->setCurrentText(name);
 }

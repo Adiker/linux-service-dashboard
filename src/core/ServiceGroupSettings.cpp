@@ -78,4 +78,27 @@ void setServicesForGroup(const QString &group, const QStringList &services)
     settings.setValue(QStringLiteral("systemd/watchedServices"), services);
 }
 
+void renameGroup(const QString &from, const QString &to)
+{
+    if (from.isEmpty() || to.isEmpty() || from == to) {
+        return;
+    }
+    QSettings settings;
+    const QStringList services = servicesForGroup(from);
+    QStringList groups = settings.value(QStringLiteral("systemd/groups")).toStringList();
+    const int index = groups.indexOf(from);
+    if (index >= 0) {
+        groups[index] = to;
+    } else {
+        groups.append(to);
+    }
+    groups.removeAll(from);
+    settings.setValue(QStringLiteral("systemd/groups"), groups);
+    settings.remove(groupKey(from));
+    settings.setValue(groupKey(to), services);
+    if (activeGroup() == from) {
+        settings.setValue(QStringLiteral("systemd/activeGroup"), to);
+    }
+}
+
 } // namespace ServiceGroupSettings

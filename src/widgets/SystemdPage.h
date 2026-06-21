@@ -6,6 +6,7 @@
 #include <QWidget>
 
 class QComboBox;
+class QComboBox;
 class QLineEdit;
 class QLabel;
 class QSortFilterProxyModel;
@@ -19,6 +20,7 @@ public:
 
 public slots:
     void refresh();
+    void reloadGroupSelector();
 
 private:
     ServiceRow selectedRow() const;
