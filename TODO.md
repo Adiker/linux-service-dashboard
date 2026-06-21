@@ -1,6 +1,5 @@
 # TODO
 
-- Replace text parsing for systemd with direct systemd DBus calls.
 - Replace VPN polling with direct NetworkManager DBus integration.
 - Add fstab parsing and saved mount profiles.
 - Add user-defined service groups and persistent table column layouts.
