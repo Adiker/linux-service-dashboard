@@ -2,6 +2,8 @@
 
 #include <QBrush>
 
+#include <utility>
+
 DiskModel::DiskModel(QObject *parent)
     : QAbstractTableModel(parent)
 {
@@ -70,7 +72,25 @@ QVariant DiskModel::headerData(int section, Qt::Orientation orientation, int rol
 void DiskModel::setRows(const QVector<DiskRow> &rows)
 {
     beginResetModel();
-    m_rows = rows;
+    // Refreshing the inventory re-runs lsblk, which carries no SMART data. Carry
+    // previously fetched SMART values over to disks that are still present so a
+    // refresh does not blank the table and force the user to re-authenticate.
+    QVector<DiskRow> merged = rows;
+    for (DiskRow &row : merged) {
+        for (const DiskRow &previous : std::as_const(m_rows)) {
+            const bool sameSerial = !row.serial.isEmpty() && row.serial == previous.serial;
+            const bool samePathWithoutSerial = row.serial.isEmpty() && row.path == previous.path;
+            if (sameSerial || samePathWithoutSerial) {
+                row.smartHealth = previous.smartHealth;
+                row.temperature = previous.temperature;
+                row.reallocated = previous.reallocated;
+                row.pending = previous.pending;
+                row.lastCheck = previous.lastCheck;
+                break;
+            }
+        }
+    }
+    m_rows = merged;
     endResetModel();
 }
 
