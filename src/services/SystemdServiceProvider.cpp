@@ -9,13 +9,15 @@ SystemdServiceProvider::SystemdServiceProvider(QObject *parent)
     connect(&m_runner, &CommandRunner::commandFinished, this, [this](const QString &, const CommandResult &result, const QString &context) {
         if (context == QStringLiteral("systemd-list")) {
             QString error;
-            if (!result.ok()) {
+            QVector<ServiceRow> rows;
+            if (result.ok()) {
+                rows = ProviderParsers::parseSystemdListUnits(result.standardOutput, m_watched, currentTimestamp(), nullptr);
+            } else {
                 error = result.startFailed
                     ? QStringLiteral("systemctl not found or failed to start.")
                     : result.standardError.trimmed();
+                rows = ProviderParsers::parseSystemdListUnits(QString(), m_watched, currentTimestamp(), nullptr);
             }
-            const QVector<ServiceRow> rows = ProviderParsers::parseSystemdListUnits(
-                result.standardOutput, m_watched, currentTimestamp(), result.ok() ? nullptr : &error);
             emit servicesReady(rows, error);
         } else if (context == QStringLiteral("systemd-failed")) {
             QString error;
