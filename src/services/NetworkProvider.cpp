@@ -102,9 +102,18 @@ VpnStatus vpnStatusFromActiveConnections(const QList<QDBusObjectPath> &paths)
         if (!isVpnLikeConnectionType(type)) {
             continue;
         }
-        status.connected = true;
+        // NM_ACTIVE_CONNECTION_STATE: 1 activating, 2 activated, 3 deactivating,
+        // 4 deactivated. Skip connections that are tearing down or already gone so
+        // a lingering ActiveConnection is not reported as a live VPN.
+        const quint32 state = readActiveConnectionState(path);
+        constexpr quint32 kStateActivating = 1;
+        constexpr quint32 kStateActivated = 2;
+        if (state != kStateActivating && state != kStateActivated) {
+            continue;
+        }
+        status.connected = (state == kStateActivated);
         status.connectionName = readActiveConnectionProperty(path, "Id");
-        status.state = stateLabel(readActiveConnectionState(path));
+        status.state = stateLabel(state);
         status.device = readActiveConnectionDevice(path);
         return status;
     }
