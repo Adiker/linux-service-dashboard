@@ -96,8 +96,21 @@ DisksPage::DisksPage(QWidget *parent)
     connect(&m_provider, &SmartProvider::smartReady, this, [this](const QString &path, const DiskRow &smartRow, const QString &error) {
         m_model->updateSmart(path, smartRow);
         if (error.isEmpty()) {
+            // smartctl JSON does not echo the lsblk serial, so recover the stable
+            // disk identity from the inventory row that matches this device path.
+            // Otherwise history is saved under the path key but read back under the
+            // serial key, leaving the History dialog empty for disks with serials.
+            QString serial = smartRow.serial;
+            if (serial.trimmed().isEmpty()) {
+                for (const DiskRow &inventoryRow : m_model->rows()) {
+                    if (inventoryRow.path == path) {
+                        serial = inventoryRow.serial;
+                        break;
+                    }
+                }
+            }
             SmartHistoryStore::appendEntry(SmartHistoryEntry{
-                path, smartRow.serial, currentTimestamp(), smartRow.smartHealth, smartRow.temperature, smartRow.reallocated, smartRow.pending});
+                path, serial, currentTimestamp(), smartRow.smartHealth, smartRow.temperature, smartRow.reallocated, smartRow.pending});
             m_status->setText(QStringLiteral("SMART check complete for %1").arg(path));
         } else {
             m_status->setText(error);
