@@ -10,7 +10,7 @@
 
 static void collectMounts(const QJsonArray &array, QVector<MountRow> *rows)
 {
-    static const QSet<QString> interestingTypes{QStringLiteral("cifs"), QStringLiteral("nfs"), QStringLiteral("nfs4"), QStringLiteral("sshfs")};
+    static const QSet<QString> interestingTypes{QStringLiteral("cifs"), QStringLiteral("nfs"), QStringLiteral("nfs4"), QStringLiteral("sshfs"), QStringLiteral("fuse.sshfs")};
     for (const QJsonValue &value : array) {
         const QJsonObject object = value.toObject();
         const QString type = object.value(QStringLiteral("fstype")).toString();
