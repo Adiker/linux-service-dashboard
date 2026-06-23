@@ -2,6 +2,7 @@
 
 #include "../utils/TimeUtils.h"
 
+#include <QDBusArgument>
 #include <QDBusConnection>
 #include <QDBusInterface>
 #include <QDBusMessage>
@@ -21,28 +22,42 @@ bool isVpnLikeConnectionType(const QString &type)
         || type == QStringLiteral("ppp");
 }
 
-QString readActiveConnectionProperty(const QDBusObjectPath &path, const char *property)
+QVariant readDBusProperty(const QString &objectPath, const QString &interface, const QString &property)
 {
     QDBusInterface properties(QStringLiteral("org.freedesktop.NetworkManager"),
-                            path.path(),
+                            objectPath,
                             QStringLiteral("org.freedesktop.DBus.Properties"),
                             QDBusConnection::systemBus());
-    const QDBusReply<QVariant> reply = properties.call(QStringLiteral("Get"),
-                                                         QStringLiteral("org.freedesktop.NetworkManager.Connection.Active"),
-                                                         QString(property));
-    return reply.isValid() ? reply.value().toString() : QString();
+    // Bound the synchronous property read so a stuck NetworkManager cannot freeze
+    // the GUI thread for the default ~25s DBus timeout.
+    properties.setTimeout(kDBusTimeoutMs);
+    const QDBusReply<QVariant> reply = properties.call(QStringLiteral("Get"), interface, property);
+    return reply.isValid() ? reply.value() : QVariant();
+}
+
+QString readActiveConnectionProperty(const QDBusObjectPath &path, const char *property)
+{
+    return readDBusProperty(path.path(), QStringLiteral("org.freedesktop.NetworkManager.Connection.Active"), QString(property)).toString();
 }
 
 quint32 readActiveConnectionState(const QDBusObjectPath &path)
 {
-    QDBusInterface properties(QStringLiteral("org.freedesktop.NetworkManager"),
-                            path.path(),
-                            QStringLiteral("org.freedesktop.DBus.Properties"),
-                            QDBusConnection::systemBus());
-    const QDBusReply<QVariant> reply = properties.call(QStringLiteral("Get"),
-                                                         QStringLiteral("org.freedesktop.NetworkManager.Connection.Active"),
-                                                         QStringLiteral("State"));
-    return reply.isValid() ? reply.value().toUInt() : 0U;
+    return readDBusProperty(path.path(), QStringLiteral("org.freedesktop.NetworkManager.Connection.Active"), QStringLiteral("State")).toUInt();
+}
+
+QString readActiveConnectionDevice(const QDBusObjectPath &path)
+{
+    const QVariant devicesValue = readDBusProperty(path.path(),
+                                                   QStringLiteral("org.freedesktop.NetworkManager.Connection.Active"),
+                                                   QStringLiteral("Devices"));
+    const QList<QDBusObjectPath> devices = qdbus_cast<QList<QDBusObjectPath>>(devicesValue);
+    if (devices.isEmpty()) {
+        return QStringLiteral("-");
+    }
+    const QString interface = readDBusProperty(devices.first().path(),
+                                               QStringLiteral("org.freedesktop.NetworkManager.Device"),
+                                               QStringLiteral("Interface")).toString();
+    return interface.isEmpty() ? QStringLiteral("-") : interface;
 }
 
 QString stateLabel(quint32 state)
@@ -90,7 +105,7 @@ VpnStatus vpnStatusFromActiveConnections(const QList<QDBusObjectPath> &paths)
         status.connected = true;
         status.connectionName = readActiveConnectionProperty(path, "Id");
         status.state = stateLabel(readActiveConnectionState(path));
-        status.device = QStringLiteral("-");
+        status.device = readActiveConnectionDevice(path);
         return status;
     }
     status.connected = false;
