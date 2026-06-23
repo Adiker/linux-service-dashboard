@@ -178,6 +178,9 @@ void SettingsPage::renameGroup()
         return;
     }
     ServiceGroupSettings::renameGroup(current, name);
+    // The loaded group was just renamed; point the tracker at the new name so the
+    // next selector change does not persist (and thus resurrect) the old group.
+    m_loadedGroup = name;
     reloadGroups();
     m_serviceGroup->setCurrentText(name);
 }
