@@ -34,7 +34,11 @@ static void collectAllTargets(const QJsonArray &array, QSet<QString> *targets)
     for (const QJsonValue &value : array) {
         const QJsonObject object = value.toObject();
         const QString target = object.value(QStringLiteral("target")).toString();
-        if (!target.isEmpty()) {
+        // Ignore autofs placeholders: with x-systemd.automount the target carries an
+        // autofs mount until first access, and treating that as "occupied" would hide
+        // the configured fstab/profile row for a share that is not actually mounted.
+        const bool isAutofs = object.value(QStringLiteral("fstype")).toString() == QStringLiteral("autofs");
+        if (!target.isEmpty() && !isAutofs) {
             targets->insert(target);
         }
         if (object.contains(QStringLiteral("children"))) {

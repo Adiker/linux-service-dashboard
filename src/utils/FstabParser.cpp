@@ -12,7 +12,8 @@ bool isNetworkFilesystem(const QString &type)
     return type == QStringLiteral("cifs")
         || type == QStringLiteral("nfs")
         || type == QStringLiteral("nfs4")
-        || type == QStringLiteral("sshfs");
+        || type == QStringLiteral("sshfs")
+        || type == QStringLiteral("fuse.sshfs");
 }
 
 QString decodeFstabField(const QString &field)
