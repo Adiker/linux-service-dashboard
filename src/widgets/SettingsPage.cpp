@@ -10,6 +10,7 @@
 #include <QInputDialog>
 #include <QLineEdit>
 #include <QLabel>
+#include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QSettings>
@@ -126,6 +127,16 @@ void SettingsPage::addGroup()
     if (!ok || name.isEmpty()) {
         return;
     }
+    if (ServiceGroupSettings::groupNames().contains(name)) {
+        // Writing an empty group here would clobber the existing one's unit list
+        // (an empty watched list means "show all"). Just select the existing group.
+        QMessageBox::warning(this, QStringLiteral("Add service group"),
+                             QStringLiteral("A group named \"%1\" already exists.").arg(name));
+        reloadGroups();
+        m_serviceGroup->setCurrentText(name);
+        loadGroupServices();
+        return;
+    }
     ServiceGroupSettings::setServicesForGroup(name, {});
     reloadGroups();
     m_serviceGroup->setCurrentText(name);
@@ -141,6 +152,13 @@ void SettingsPage::renameGroup()
     bool ok = false;
     const QString name = QInputDialog::getText(this, QStringLiteral("Rename service group"), QStringLiteral("New name"), QLineEdit::Normal, current, &ok).trimmed();
     if (!ok || name.isEmpty() || name == current) {
+        return;
+    }
+    if (ServiceGroupSettings::groupNames().contains(name)) {
+        // Renaming onto an existing group would overwrite its unit list and leave
+        // a duplicate entry in the selector. Require a free name instead.
+        QMessageBox::warning(this, QStringLiteral("Rename service group"),
+                             QStringLiteral("A group named \"%1\" already exists. Choose a different name.").arg(name));
         return;
     }
     ServiceGroupSettings::renameGroup(current, name);

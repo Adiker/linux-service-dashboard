@@ -6,7 +6,6 @@
 #include <QWidget>
 
 class QComboBox;
-class QComboBox;
 class QLineEdit;
 class QLabel;
 class QSortFilterProxyModel;
