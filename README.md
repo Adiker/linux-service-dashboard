@@ -9,6 +9,7 @@ Linux Service Dashboard is a local Qt 6 Widgets desktop application for monitori
 - Docker container table using the Docker CLI, with start, stop, restart, logs, and inspect JSON actions.
 - NetworkManager VPN/tunnel status via `nmcli`, including external `tun` links such as OpenConnect.
 - CIFS/NFS/sshfs mount listing with file manager open and confirmed unmount.
+- Network shares from `/etc/fstab` and saved mount profiles are shown alongside live mounts; unmount is limited to currently mounted entries.
 - Temperature/sensor display using `sensors -j` with a text fallback.
 - Disk inventory via `lsblk -J` and manual SMART checks via `smartctl -j`, with an installed polkit helper for permission-gated SMART reads.
 - QSettings-backed refresh interval, watched services, module toggles, and theme preference.
@@ -83,7 +84,7 @@ OLED uses a black-first palette with brighter contrast for OLED displays and dar
 - systemd service parsing uses `systemctl list-units --plain`; it is robust enough for the MVP but should eventually move to DBus.
 - SMART checks are manual from the disks page and cached by the UI; frequent automatic SMART polling is intentionally avoided. The polkit helper covers normal installed use, but unusual USB bridges may still require bridge-specific `smartctl -d` options.
 - VPN detection uses `nmcli` active connections and treats VPN-like tunnel types such as `vpn`, `tun`, `wireguard`, and `ppp` as connected; the provider is shaped so it can later be replaced with NetworkManager DBus calls.
-- Mount profiles and fstab parsing are not implemented yet.
+- Mount profiles and fstab entries are read-only here: the app lists them and can save profiles, but does not mount them or edit `/etc/fstab`.
 - Module toggles are persisted but do not yet hide pages.
 - Parser/provider behavior is currently validated by manual build and smoke tests; dedicated unit tests are planned.
 

@@ -29,13 +29,22 @@ static void collectMounts(const QJsonArray &array, QVector<MountRow> *rows)
     }
 }
 
-static QVector<MountRow> mergeConfiguredMounts(const QVector<MountRow> &liveRows)
+static void collectAllTargets(const QJsonArray &array, QSet<QString> *targets)
 {
-    QSet<QString> mountedTargets;
-    for (const MountRow &row : liveRows) {
-        mountedTargets.insert(row.target);
+    for (const QJsonValue &value : array) {
+        const QJsonObject object = value.toObject();
+        const QString target = object.value(QStringLiteral("target")).toString();
+        if (!target.isEmpty()) {
+            targets->insert(target);
+        }
+        if (object.contains(QStringLiteral("children"))) {
+            collectAllTargets(object.value(QStringLiteral("children")).toArray(), targets);
+        }
     }
+}
 
+static QVector<MountRow> mergeConfiguredMounts(const QVector<MountRow> &liveRows, const QSet<QString> &mountedTargets)
+{
     QVector<MountRow> merged = liveRows;
     QString fstabError;
     for (const MountRow &row : FstabParser::parseFile(QStringLiteral("/etc/fstab"), &fstabError)) {
@@ -61,9 +70,17 @@ MountProvider::MountProvider(QObject *parent)
             if (result.ok()) {
                 QString parseError;
                 const QJsonDocument document = parseJsonDocument(result.standardOutput, &parseError);
-                collectMounts(document.object().value(QStringLiteral("filesystems")).toArray(), &rows);
+                const QJsonArray filesystems = document.object().value(QStringLiteral("filesystems")).toArray();
+                collectMounts(filesystems, &rows);
                 if (m_includeConfigured) {
-                    rows = mergeConfiguredMounts(rows);
+                    // Build the occupancy set from every findmnt target, not just the
+                    // network rows above. Otherwise a profile/fstab target currently
+                    // mounted with another filesystem type (bind, tmpfs, local disk)
+                    // would still be shown as a configured row, and Unmount would run
+                    // umount on that unrelated live mount.
+                    QSet<QString> mountedTargets;
+                    collectAllTargets(filesystems, &mountedTargets);
+                    rows = mergeConfiguredMounts(rows, mountedTargets);
                 }
                 if (!parseError.isEmpty()) {
                     error = QStringLiteral("Could not parse findmnt JSON: %1").arg(parseError);

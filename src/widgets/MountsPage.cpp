@@ -58,7 +58,16 @@ MountsPage::MountsPage(QWidget *parent)
     });
     connect(unmountButton, &QPushButton::clicked, this, [this]() {
         const MountRow row = selectedRow();
-        if (!row.target.isEmpty() && ConfirmActionDialog::confirm(this, QStringLiteral("Confirm unmount"), QStringLiteral("Unmount %1?").arg(row.target))) {
+        if (row.target.isEmpty()) {
+            return;
+        }
+        if (row.status != QStringLiteral("Mounted")) {
+            // Configured (fstab/profile) rows are not currently mounted; refuse to
+            // run umount against them.
+            m_status->setText(QStringLiteral("%1 is not mounted.").arg(row.target));
+            return;
+        }
+        if (ConfirmActionDialog::confirm(this, QStringLiteral("Confirm unmount"), QStringLiteral("Unmount %1?").arg(row.target))) {
             m_provider.unmount(row.target);
         }
     });
