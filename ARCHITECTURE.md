@@ -209,6 +209,7 @@ This installs:
 
 - **Arch Linux:** `packaging/PKGBUILD` builds a system package with polkit policy installed to `/usr/share/polkit-1/actions`.
 - **Debian/RPM:** CPack generators are enabled in CMake. Debian packages use `dpkg-shlibdeps` for Qt runtime libraries plus explicit dependencies on CLI tools (`smartmontools`, `network-manager`, etc.). After configuring a Release build, run `cpack -G DEB` or `cpack -G RPM` from the build directory.
+- **Builder prerequisites:** `cpack -G DEB` shells out to `dpkg-shlibdeps` and `file`, so the build host needs `dpkg-dev` and `file` installed (they are present by default on most Debian/Ubuntu systems but missing on minimal CI images). `cpack -G RPM` requires `rpmbuild` from the `rpm` package.
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
