@@ -82,6 +82,10 @@ DisksPage::DisksPage(QWidget *parent)
         table->setColumnCount(5);
         table->setHorizontalHeaderLabels({QStringLiteral("Time"), QStringLiteral("Health"), QStringLiteral("Temp"), QStringLiteral("Reallocated"), QStringLiteral("Pending")});
         table->horizontalHeader()->setStretchLastSection(true);
+        table->setSelectionBehavior(QAbstractItemView::SelectRows);
+        table->setSelectionMode(QAbstractItemView::SingleSelection);
+        table->setEditTriggers(QAbstractItemView::NoEditTriggers);
+        table->verticalHeader()->hide();
         const QVector<SmartHistoryEntry> entries = SmartHistoryStore::entriesForDisk(row.serial, row.path);
         table->setRowCount(entries.size());
         for (int i = 0; i < entries.size(); ++i) {
