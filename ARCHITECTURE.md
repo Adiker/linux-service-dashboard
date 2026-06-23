@@ -104,6 +104,9 @@ Known keys:
 | `modules/mounts` | bool | `true` | Reserved module toggle |
 | `modules/sensors` | bool | `true` | Reserved module toggle |
 | `modules/smart` | bool | `true` | Reserved module toggle |
+| `smart/scheduledRefreshEnabled` | bool | `false` | Enable the opt-in scheduled SMART refresh |
+| `smart/scheduledRefreshMinutes` | int | `30` | Scheduled SMART refresh interval in minutes (minimum 5) |
+| `smart/history/serial/*`, `smart/history/path/*` | string list | – | Per-disk SMART history entries (keyed by serial, else device path) |
 | `theme/preference` | string | `System` | `System`, `Light`, `Dark`, or `OLED` |
 
 Module toggles are persisted by the settings UI but are not yet used to hide pages.
@@ -169,7 +172,9 @@ SMART inventory is split into two privilege levels:
 - `linux-service-dashboard-smart-helper` validates narrow `/dev/...` disk paths and optional transports, then runs only the corresponding `smartctl` read commands.
 - The helper does not expose mount, write, shell, or arbitrary command execution.
 
-The helper policy source is `resources/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy.in`. CMake generates the installed policy at `cmake --install` time from the install prefix, and the app resolves the helper through a configure-time relative path from `bindir` to `libexecdir` at runtime. Keep SMART checks manual unless a future change adds explicit rate limiting and user opt-in.
+The helper policy source is `resources/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy.in`. CMake generates the installed policy at `cmake --install` time from the install prefix, and the app resolves the helper through a configure-time relative path from `bindir` to `libexecdir` at runtime.
+
+SMART checks are manual by default. An opt-in scheduled refresh (`SmartRefreshScheduler`, minimum 5-minute interval) re-runs `Check All` automatically; it is gated by `SmartProvider::isSmartCheckBusy()` so it never enqueues a second batch while one is in flight. Each successful check is appended to `SmartHistoryStore`, keyed by the disk's serial when available and otherwise by device path, and surfaced through the Disks page History dialog. Any change to automatic SMART cadence must preserve this rate limiting and explicit user opt-in.
 
 ---
 
@@ -236,6 +241,6 @@ QT_QPA_PLATFORM=xcb build/linux-service-dashboard
 
 - systemd parsing uses command output instead of DBus.
 - VPN status uses `nmcli` instead of NetworkManager DBus. Active VPN-like tunnel types (`vpn`, `tun`, `wireguard`, `ppp`) are treated as connected so externally created tunnels such as OpenConnect are visible.
-- SMART checks are manual and permission-dependent; installed builds use the polkit helper for authorized read-only SMART access.
+- SMART checks are manual by default (with an opt-in scheduled refresh, minimum 5 minutes) and permission-dependent; installed builds use the polkit helper for authorized read-only SMART access.
 - Module toggles are saved but do not yet hide pages.
 - There is no automated parser test suite yet.

@@ -59,7 +59,14 @@ DisksPage::DisksPage(QWidget *parent)
         m_provider.checkSmart(row);
     });
     connect(smartAllButton, &QPushButton::clicked, this, [this]() {
-        runScheduledSmartChecks();
+        // Manual Check All must honor the explicit user request even mid-check:
+        // checkSmart() queues paths when a batch is already running. The busy guard
+        // only belongs on the scheduled (automatic) path.
+        const QVector<DiskRow> rows = m_model->rows();
+        if (!rows.isEmpty()) {
+            m_status->setText(QStringLiteral("Checking SMART for %1 disks...").arg(rows.size()));
+            m_provider.checkSmart(rows);
+        }
     });
     connect(historyButton, &QPushButton::clicked, this, [this]() {
         const DiskRow row = selectedRow();
