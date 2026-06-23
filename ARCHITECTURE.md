@@ -105,6 +105,7 @@ Known keys:
 | `modules/sensors` | bool | `true` | Reserved module toggle |
 | `modules/smart` | bool | `true` | Reserved module toggle |
 | `theme/preference` | string | `System` | `System`, `Light`, `Dark`, or `OLED` |
+| `tables/<page>/headerState` | byte array | – | Saved column sizes/order per table (`systemd`, `docker`, `mounts`, `sensors`, `disks`); sort order is persisted only for the proxy-backed systemd table |
 
 Module toggles are persisted by the settings UI but are not yet used to hide pages.
 
