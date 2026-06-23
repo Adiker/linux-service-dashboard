@@ -93,30 +93,47 @@ VpnStatus parseNmcliFallback(const QString &output, const QString &timestamp)
     return status;
 }
 
-VpnStatus vpnStatusFromActiveConnections(const QList<QDBusObjectPath> &paths)
+VpnStatus statusForConnection(const QDBusObjectPath &path, quint32 state, const QString &timestamp)
 {
     VpnStatus status;
-    status.lastRefresh = currentTimestamp();
+    status.lastRefresh = timestamp;
+    constexpr quint32 kStateActivated = 2;
+    status.connected = (state == kStateActivated);
+    status.connectionName = readActiveConnectionProperty(path, "Id");
+    status.state = stateLabel(state);
+    status.device = readActiveConnectionDevice(path);
+    return status;
+}
+
+VpnStatus vpnStatusFromActiveConnections(const QList<QDBusObjectPath> &paths)
+{
+    const QString timestamp = currentTimestamp();
+    // NM_ACTIVE_CONNECTION_STATE: 1 activating, 2 activated, 3 deactivating,
+    // 4 deactivated. Prefer a fully activated VPN; only fall back to one that is
+    // still activating, and ignore connections that are tearing down or gone.
+    constexpr quint32 kStateActivating = 1;
+    constexpr quint32 kStateActivated = 2;
+    bool haveActivating = false;
+    QDBusObjectPath activatingPath;
     for (const QDBusObjectPath &path : paths) {
-        const QString type = readActiveConnectionProperty(path, "Type");
-        if (!isVpnLikeConnectionType(type)) {
+        if (!isVpnLikeConnectionType(readActiveConnectionProperty(path, "Type"))) {
             continue;
         }
-        // NM_ACTIVE_CONNECTION_STATE: 1 activating, 2 activated, 3 deactivating,
-        // 4 deactivated. Skip connections that are tearing down or already gone so
-        // a lingering ActiveConnection is not reported as a live VPN.
         const quint32 state = readActiveConnectionState(path);
-        constexpr quint32 kStateActivating = 1;
-        constexpr quint32 kStateActivated = 2;
-        if (state != kStateActivating && state != kStateActivated) {
-            continue;
+        if (state == kStateActivated) {
+            return statusForConnection(path, state, timestamp);
         }
-        status.connected = (state == kStateActivated);
-        status.connectionName = readActiveConnectionProperty(path, "Id");
-        status.state = stateLabel(state);
-        status.device = readActiveConnectionDevice(path);
-        return status;
+        if (state == kStateActivating && !haveActivating) {
+            haveActivating = true;
+            activatingPath = path;
+        }
     }
+    if (haveActivating) {
+        return statusForConnection(activatingPath, kStateActivating, timestamp);
+    }
+
+    VpnStatus status;
+    status.lastRefresh = timestamp;
     status.connected = false;
     status.state = QStringLiteral("Disconnected");
     status.connectionName = QStringLiteral("None");
