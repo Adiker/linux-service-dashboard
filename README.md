@@ -11,7 +11,7 @@ Linux Service Dashboard is a local Qt 6 Widgets desktop application for monitori
 - CIFS/NFS/sshfs mount listing with file manager open and confirmed unmount.
 - Temperature/sensor display using `sensors -j` with a text fallback.
 - Disk inventory via `lsblk -J` and manual SMART checks via `smartctl -j`, with an installed polkit helper for permission-gated SMART reads.
-- QSettings-backed refresh interval, watched services, module toggles, and theme preference.
+- QSettings-backed refresh interval, watched services, user-defined systemd service groups, module toggles, and theme preference.
 - Light, Dark, and OLED themes with system-theme auto mode.
 - System tray menu with Show Dashboard, Refresh Now, and Quit.
 - Embedded application icon plus installable desktop entry for KDE Plasma Wayland/X11 taskbar matching.

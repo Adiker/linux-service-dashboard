@@ -1,5 +1,7 @@
 #pragma once
 
+#include <QString>
+#include <QStringList>
 #include <QWidget>
 
 class QCheckBox;
@@ -23,9 +25,11 @@ private:
     void loadGroupServices();
     void addGroup();
     void renameGroup();
+    QStringList editorServices() const;
 
     QSpinBox *m_refreshInterval = nullptr;
     QComboBox *m_serviceGroup = nullptr;
+    QString m_loadedGroup;
     QPlainTextEdit *m_services = nullptr;
     QCheckBox *m_systemd = nullptr;
     QCheckBox *m_docker = nullptr;

@@ -111,13 +111,29 @@ void SettingsPage::reloadGroups()
     m_serviceGroup->blockSignals(false);
 }
 
+QStringList SettingsPage::editorServices() const
+{
+    QStringList services = m_services->toPlainText().split('\n', Qt::SkipEmptyParts);
+    for (QString &service : services) {
+        service = service.trimmed();
+    }
+    services.removeAll(QString());
+    return services;
+}
+
 void SettingsPage::loadGroupServices()
 {
     const QString group = m_serviceGroup->currentText();
     if (group.isEmpty()) {
         return;
     }
+    // Persist edits to the previously shown group before swapping in another one,
+    // so changing the selector does not silently discard unsaved changes.
+    if (!m_loadedGroup.isEmpty() && m_loadedGroup != group) {
+        ServiceGroupSettings::setServicesForGroup(m_loadedGroup, editorServices());
+    }
     m_services->setPlainText(ServiceGroupSettings::servicesForGroup(group).join('\n'));
+    m_loadedGroup = group;
 }
 
 void SettingsPage::addGroup()
@@ -185,12 +201,7 @@ void SettingsPage::save()
 {
     QSettings settings;
     settings.setValue(QStringLiteral("refresh/intervalSeconds"), m_refreshInterval->value());
-    QStringList services = m_services->toPlainText().split('\n', Qt::SkipEmptyParts);
-    for (QString &service : services) {
-        service = service.trimmed();
-    }
-    services.removeAll(QString());
-    ServiceGroupSettings::setServicesForGroup(m_serviceGroup->currentText(), services);
+    ServiceGroupSettings::setServicesForGroup(m_serviceGroup->currentText(), editorServices());
     settings.setValue(QStringLiteral("modules/systemd"), m_systemd->isChecked());
     settings.setValue(QStringLiteral("modules/docker"), m_docker->isChecked());
     settings.setValue(QStringLiteral("modules/vpn"), m_vpn->isChecked());

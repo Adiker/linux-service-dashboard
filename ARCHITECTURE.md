@@ -97,7 +97,10 @@ Known keys:
 | Key | Type | Default | Purpose |
 |---|---:|---:|---|
 | `refresh/intervalSeconds` | int | `30` | Periodic refresh interval |
-| `systemd/watchedServices` | string list | Docker, NetworkManager, sshd, PostgreSQL, Redis | Units shown in the systemd page |
+| `systemd/watchedServices` | string list | Docker, NetworkManager, sshd, PostgreSQL, Redis | Units for the active group (legacy/compatibility mirror of the active group's list) |
+| `systemd/groups` | string list | `Default` | Names of user-defined service groups |
+| `systemd/group/<name>` | string list | Default service set | Watched units for a specific group |
+| `systemd/activeGroup` | string | `Default` | Group currently selected on the systemd page |
 | `modules/systemd` | bool | `true` | Reserved module toggle |
 | `modules/docker` | bool | `true` | Reserved module toggle |
 | `modules/vpn` | bool | `true` | Reserved module toggle |
