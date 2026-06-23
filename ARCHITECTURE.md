@@ -150,7 +150,7 @@ Pages should use shared object names instead of local styles:
 
 Providers own command execution and parsing:
 
-- `SystemdServiceProvider`: `systemctl`, `journalctl`
+- `SystemdServiceProvider`: systemd1 DBus (`ListUnits`/`ListUnitsFiltered`, bounded timeout) for listing with a `systemctl` fallback; `journalctl` for logs; start/stop/restart actions still use `systemctl`
 - `DockerProvider`: `docker ps`, `docker start/stop/restart/logs/inspect`
 - `NetworkProvider`: `nmcli` active connection parsing for VPN-like types (`vpn`, `tun`, `wireguard`, `ppp`)
 - `MountProvider`: mount listing and unmount commands
@@ -234,7 +234,7 @@ QT_QPA_PLATFORM=xcb build/linux-service-dashboard
 
 ## Known Limitations
 
-- systemd parsing uses command output instead of DBus.
+- systemd listing uses the systemd1 DBus interface (linking `Qt6::DBus`) with a `systemctl` fallback; service control (start/stop/restart) still uses `systemctl`. The DBus list calls are synchronous with a bounded timeout.
 - VPN status uses `nmcli` instead of NetworkManager DBus. Active VPN-like tunnel types (`vpn`, `tun`, `wireguard`, `ppp`) are treated as connected so externally created tunnels such as OpenConnect are visible.
 - SMART checks are manual and permission-dependent; installed builds use the polkit helper for authorized read-only SMART access.
 - Module toggles are saved but do not yet hide pages.

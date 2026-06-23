@@ -11,6 +11,10 @@
 
 namespace {
 
+// Bound the synchronous systemd1 DBus calls so a stuck systemd cannot freeze the
+// GUI thread for the default ~25s timeout before the async systemctl fallback runs.
+constexpr int kDBusTimeoutMs = 3000;
+
 struct UnitInfo {
     QString name;
     QString description;
@@ -48,7 +52,7 @@ QVector<UnitInfo> listUnitsViaDBus(QString *error)
                                                             QStringLiteral("/org/freedesktop/systemd1"),
                                                             QStringLiteral("org.freedesktop.systemd1.Manager"),
                                                             QStringLiteral("ListUnits"));
-    const QDBusMessage reply = bus.call(message);
+    const QDBusMessage reply = bus.call(message, QDBus::Block, kDBusTimeoutMs);
     if (reply.type() != QDBusMessage::ReplyMessage) {
         if (error) {
             *error = reply.errorMessage();
@@ -82,7 +86,7 @@ QVector<UnitInfo> listFailedUnitsViaDBus(QString *error)
                                                             QStringLiteral("org.freedesktop.systemd1.Manager"),
                                                             QStringLiteral("ListUnitsFiltered"));
     message << QStringList{QStringLiteral("failed")};
-    const QDBusMessage reply = bus.call(message);
+    const QDBusMessage reply = bus.call(message, QDBus::Block, kDBusTimeoutMs);
     if (reply.type() != QDBusMessage::ReplyMessage) {
         if (error) {
             *error = reply.errorMessage();
