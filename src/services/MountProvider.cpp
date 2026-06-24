@@ -1,46 +1,16 @@
 #include "MountProvider.h"
 
-#include "../utils/JsonUtils.h"
-
-#include <QJsonArray>
-#include <QJsonObject>
-#include <QSet>
-
-static void collectMounts(const QJsonArray &array, QVector<MountRow> *rows)
-{
-    static const QSet<QString> interestingTypes{QStringLiteral("cifs"), QStringLiteral("nfs"), QStringLiteral("nfs4"), QStringLiteral("sshfs")};
-    for (const QJsonValue &value : array) {
-        const QJsonObject object = value.toObject();
-        const QString type = object.value(QStringLiteral("fstype")).toString();
-        if (interestingTypes.contains(type)) {
-            MountRow row;
-            row.target = object.value(QStringLiteral("target")).toString();
-            row.source = object.value(QStringLiteral("source")).toString();
-            row.filesystemType = type;
-            row.options = object.value(QStringLiteral("options")).toString();
-            row.status = QStringLiteral("Mounted");
-            rows->append(row);
-        }
-        if (object.contains(QStringLiteral("children"))) {
-            collectMounts(object.value(QStringLiteral("children")).toArray(), rows);
-        }
-    }
-}
+#include "../parsers/ProviderParsers.h"
 
 MountProvider::MountProvider(QObject *parent)
     : QObject(parent)
 {
     connect(&m_runner, &CommandRunner::commandFinished, this, [this](const QString &, const CommandResult &result, const QString &context) {
         if (context == QStringLiteral("mount-list")) {
-            QVector<MountRow> rows;
             QString error;
+            QVector<MountRow> rows;
             if (result.ok()) {
-                QString parseError;
-                const QJsonDocument document = parseJsonDocument(result.standardOutput, &parseError);
-                collectMounts(document.object().value(QStringLiteral("filesystems")).toArray(), &rows);
-                if (!parseError.isEmpty()) {
-                    error = QStringLiteral("Could not parse findmnt JSON: %1").arg(parseError);
-                }
+                rows = ProviderParsers::parseFindmntJson(result.standardOutput, &error);
             } else {
                 error = result.startFailed ? QStringLiteral("findmnt not found. Install util-linux.") : result.standardError.trimmed();
             }

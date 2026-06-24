@@ -1,35 +1,16 @@
 #include "DockerProvider.h"
 
-#include "../utils/JsonUtils.h"
-
-#include <QJsonObject>
+#include "../parsers/ProviderParsers.h"
 
 DockerProvider::DockerProvider(QObject *parent)
     : QObject(parent)
 {
     connect(&m_runner, &CommandRunner::commandFinished, this, [this](const QString &, const CommandResult &result, const QString &context) {
         if (context == QStringLiteral("docker-list")) {
-            QVector<DockerContainerRow> rows;
             QString error;
+            QVector<DockerContainerRow> rows;
             if (result.ok()) {
-                const QStringList lines = result.standardOutput.split('\n', Qt::SkipEmptyParts);
-                for (const QString &line : lines) {
-                    QString parseError;
-                    const QJsonDocument document = parseJsonDocument(line, &parseError);
-                    if (!document.isObject()) {
-                        continue;
-                    }
-                    const QJsonObject object = document.object();
-                    DockerContainerRow row;
-                    row.name = object.value(QStringLiteral("Names")).toString();
-                    row.image = object.value(QStringLiteral("Image")).toString();
-                    row.status = object.value(QStringLiteral("Status")).toString();
-                    row.state = object.value(QStringLiteral("State")).toString();
-                    row.ports = object.value(QStringLiteral("Ports")).toString();
-                    row.created = object.value(QStringLiteral("CreatedAt")).toString(object.value(QStringLiteral("Created")).toString());
-                    row.id = object.value(QStringLiteral("ID")).toString();
-                    rows.append(row);
-                }
+                rows = ProviderParsers::parseDockerContainerLines(result.standardOutput, nullptr);
             } else {
                 error = result.startFailed
                     ? QStringLiteral("docker not found. Install the Docker CLI to enable this page.")

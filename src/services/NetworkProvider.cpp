@@ -1,18 +1,7 @@
 #include "NetworkProvider.h"
 
+#include "../parsers/ProviderParsers.h"
 #include "../utils/TimeUtils.h"
-
-namespace {
-
-bool isVpnLikeConnectionType(const QString &type)
-{
-    return type == QStringLiteral("vpn")
-        || type == QStringLiteral("tun")
-        || type == QStringLiteral("wireguard")
-        || type == QStringLiteral("ppp");
-}
-
-} // namespace
 
 NetworkProvider::NetworkProvider(QObject *parent)
     : QObject(parent)
@@ -21,26 +10,14 @@ NetworkProvider::NetworkProvider(QObject *parent)
         if (context != QStringLiteral("vpn-active")) {
             return;
         }
-        VpnStatus status;
-        status.lastRefresh = currentTimestamp();
         QString error;
+        VpnStatus status;
         if (result.ok()) {
-            const QStringList lines = result.standardOutput.split('\n', Qt::SkipEmptyParts);
-            for (const QString &line : lines) {
-                const QStringList fields = line.split(':');
-                if (fields.size() >= 4 && isVpnLikeConnectionType(fields.at(1))) {
-                    status.connected = true;
-                    status.connectionName = fields.at(0);
-                    status.device = fields.at(2);
-                    status.state = fields.at(3);
-                    break;
-                }
-            }
-            if (!status.connected) {
-                status.state = QStringLiteral("Disconnected");
-            }
+            status = ProviderParsers::parseNmcliActiveVpnConnections(result.standardOutput, currentTimestamp(), nullptr);
         } else {
             error = result.startFailed ? QStringLiteral("nmcli not found. Install NetworkManager CLI tools.") : result.standardError.trimmed();
+            status.lastRefresh = currentTimestamp();
+            status.state = QStringLiteral("Unknown");
         }
         emit vpnStatusReady(status, error);
     });
