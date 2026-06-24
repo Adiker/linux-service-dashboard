@@ -5,6 +5,7 @@
 #include <QDBusArgument>
 #include <QDBusConnection>
 #include <QDBusMessage>
+#include <QDBusObjectPath>
 #include <QDBusReply>
 #include <QRegularExpression>
 #include <QSet>
@@ -23,18 +24,17 @@ struct UnitInfo {
     QString subState;
 };
 
-bool parseUnitStructure(QDBusArgument *argument, UnitInfo *unit)
+void parseUnitStructure(const QDBusArgument &argument, UnitInfo *unit)
 {
-    argument->beginStructure();
-    *argument >> unit->name >> unit->description >> unit->loadState >> unit->activeState >> unit->subState;
+    argument.beginStructure();
+    argument >> unit->name >> unit->description >> unit->loadState >> unit->activeState >> unit->subState;
     QString following;
     QDBusObjectPath unitPath;
     quint32 jobId = 0;
     QString jobType;
     QDBusObjectPath jobPath;
-    *argument >> following >> unitPath >> jobId >> jobType >> jobPath;
-    argument->endStructure();
-    return true;
+    argument >> following >> unitPath >> jobId >> jobType >> jobPath;
+    argument.endStructure();
 }
 
 QVector<UnitInfo> listUnitsViaDBus(QString *error)
@@ -60,11 +60,11 @@ QVector<UnitInfo> listUnitsViaDBus(QString *error)
         return units;
     }
 
-    QDBusArgument argument = reply.arguments().at(0).value<QDBusArgument>();
+    const QDBusArgument argument = reply.arguments().at(0).value<QDBusArgument>();
     argument.beginArray();
     while (!argument.atEnd()) {
         UnitInfo unit;
-        parseUnitStructure(&argument, &unit);
+        parseUnitStructure(argument, &unit);
         units.append(unit);
     }
     argument.endArray();
@@ -95,11 +95,11 @@ QVector<UnitInfo> listFailedUnitsViaDBus(QString *error)
     }
 
     QVector<UnitInfo> units;
-    QDBusArgument argument = reply.arguments().at(0).value<QDBusArgument>();
+    const QDBusArgument argument = reply.arguments().at(0).value<QDBusArgument>();
     argument.beginArray();
     while (!argument.atEnd()) {
         UnitInfo unit;
-        parseUnitStructure(&argument, &unit);
+        parseUnitStructure(argument, &unit);
         units.append(unit);
     }
     argument.endArray();
