@@ -121,18 +121,28 @@ QStringList SettingsPage::editorServices() const
     return services;
 }
 
+void SettingsPage::stageCurrentEditor()
+{
+    // Hold the visible group's edits in memory (not QSettings) so they survive a
+    // selector switch but are not persisted until the user clicks Save.
+    if (!m_loadedGroup.isEmpty()) {
+        m_stagedGroupEdits.insert(m_loadedGroup, editorServices());
+    }
+}
+
 void SettingsPage::loadGroupServices()
 {
     const QString group = m_serviceGroup->currentText();
     if (group.isEmpty()) {
         return;
     }
-    // Persist edits to the previously shown group before swapping in another one,
-    // so changing the selector does not silently discard unsaved changes.
-    if (!m_loadedGroup.isEmpty() && m_loadedGroup != group) {
-        ServiceGroupSettings::setServicesForGroup(m_loadedGroup, editorServices());
+    if (m_loadedGroup != group) {
+        stageCurrentEditor();
     }
-    m_services->setPlainText(ServiceGroupSettings::servicesForGroup(group).join('\n'));
+    const QStringList services = m_stagedGroupEdits.contains(group)
+        ? m_stagedGroupEdits.value(group)
+        : ServiceGroupSettings::servicesForGroup(group);
+    m_services->setPlainText(services.join('\n'));
     m_loadedGroup = group;
 }
 
@@ -178,8 +188,11 @@ void SettingsPage::renameGroup()
         return;
     }
     ServiceGroupSettings::renameGroup(current, name);
-    // The loaded group was just renamed; point the tracker at the new name so the
-    // next selector change does not persist (and thus resurrect) the old group.
+    // Carry any staged edits over to the new name and point the tracker at it, so
+    // the next selector change neither loses the edits nor resurrects the old name.
+    if (m_stagedGroupEdits.contains(current)) {
+        m_stagedGroupEdits.insert(name, m_stagedGroupEdits.take(current));
+    }
     m_loadedGroup = name;
     reloadGroups();
     m_serviceGroup->setCurrentText(name);
@@ -204,7 +217,18 @@ void SettingsPage::save()
 {
     QSettings settings;
     settings.setValue(QStringLiteral("refresh/intervalSeconds"), m_refreshInterval->value());
-    ServiceGroupSettings::setServicesForGroup(m_serviceGroup->currentText(), editorServices());
+    // Flush every staged group edit now that the user committed with Save. Write the
+    // currently selected group last so its list also lands in the legacy mirror.
+    stageCurrentEditor();
+    const QString currentGroup = m_serviceGroup->currentText();
+    for (auto it = m_stagedGroupEdits.constBegin(); it != m_stagedGroupEdits.constEnd(); ++it) {
+        if (it.key() != currentGroup) {
+            ServiceGroupSettings::setServicesForGroup(it.key(), it.value());
+        }
+    }
+    if (!currentGroup.isEmpty()) {
+        ServiceGroupSettings::setServicesForGroup(currentGroup, editorServices());
+    }
     settings.setValue(QStringLiteral("modules/systemd"), m_systemd->isChecked());
     settings.setValue(QStringLiteral("modules/docker"), m_docker->isChecked());
     settings.setValue(QStringLiteral("modules/vpn"), m_vpn->isChecked());
