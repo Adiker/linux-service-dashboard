@@ -1,6 +1,7 @@
 #include "ServiceGroupSettings.h"
 
 #include <QSettings>
+#include <QUrl>
 
 namespace ServiceGroupSettings {
 
@@ -17,7 +18,10 @@ const QStringList kDefaultServices{
 
 QString groupKey(const QString &group)
 {
-    return QStringLiteral("systemd/group/%1").arg(group);
+    // Percent-encode the name so a group containing '/' (e.g. "prod/web") does not
+    // create nested QSettings subgroups and collide with other group keys.
+    const QString encoded = QString::fromUtf8(QUrl::toPercentEncoding(group));
+    return QStringLiteral("systemd/group/%1").arg(encoded);
 }
 
 } // namespace
