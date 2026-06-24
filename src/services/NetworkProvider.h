@@ -12,6 +12,8 @@ struct VpnStatus {
     QString lastRefresh;
 };
 
+class QDBusPendingCallWatcher;
+
 class NetworkProvider : public QObject {
     Q_OBJECT
 
@@ -23,5 +25,8 @@ signals:
     void vpnStatusReady(const VpnStatus &status, const QString &error);
 
 private:
+    void refreshVpnViaNmcli();
+    void handleActiveConnectionsReply(QDBusPendingCallWatcher *watcher);
+
     CommandRunner m_runner;
 };

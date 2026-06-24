@@ -7,7 +7,7 @@ Linux Service Dashboard is a local Qt 6 Widgets desktop application for monitori
 - Overview cards for Docker, systemd, VPN, mounts, sensors, and disk health.
 - systemd service table with filtering, refresh, start, stop, restart, and journal viewing.
 - Docker container table using the Docker CLI, with start, stop, restart, logs, and inspect JSON actions.
-- NetworkManager VPN/tunnel status via `nmcli`, including external `tun` links such as OpenConnect.
+- NetworkManager VPN/tunnel status via its DBus interface (asynchronous, with a short timeout), falling back to `nmcli` when the system bus is unavailable; external `tun` links such as OpenConnect are included.
 - CIFS/NFS/sshfs mount listing with file manager open and confirmed unmount.
 - Network shares from `/etc/fstab` and saved mount profiles are shown alongside live mounts; unmount is limited to currently mounted entries.
 - Temperature/sensor display using `sensors -j` with a text fallback.
@@ -88,7 +88,7 @@ OLED uses a black-first palette with brighter contrast for OLED displays and dar
 
 - systemd service parsing uses `systemctl list-units --plain`; it is robust enough for the MVP but should eventually move to DBus.
 - SMART checks are manual by default and cached by the UI. An opt-in scheduled refresh (Settings → SMART scheduling, minimum 5-minute interval) can re-run checks automatically; it is skipped while a check is already in progress. The polkit helper covers normal installed use, but unusual USB bridges may still require bridge-specific `smartctl -d` options.
-- VPN detection uses `nmcli` active connections and treats VPN-like tunnel types such as `vpn`, `tun`, `wireguard`, and `ppp` as connected; the provider is shaped so it can later be replaced with NetworkManager DBus calls.
+- VPN detection queries NetworkManager over DBus (with an `nmcli` fallback) and treats VPN-like tunnel types such as `vpn`, `tun`, `wireguard`, and `ppp` as connected.
 - Mount profiles and fstab entries are read-only here: the app lists them and can save profiles, but does not mount them or edit `/etc/fstab`.
 - Module toggles hide a page from the sidebar and skip its scheduled refresh; the Overview and Settings pages are always available.
 - Provider parsers have unit tests (`ctest --test-dir build`); UI behavior and provider command execution are still validated by manual build and smoke tests.
