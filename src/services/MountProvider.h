@@ -10,7 +10,7 @@ class MountProvider : public QObject {
 
 public:
     explicit MountProvider(QObject *parent = nullptr);
-    void refreshMounts();
+    void refreshMounts(bool includeConfigured = false);
     void unmount(const QString &target);
 
 signals:
@@ -19,4 +19,5 @@ signals:
 
 private:
     CommandRunner m_runner;
+    bool m_includeConfigured = false;
 };

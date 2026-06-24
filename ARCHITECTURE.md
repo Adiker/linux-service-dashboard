@@ -107,6 +107,8 @@ Known keys:
 | `modules/mounts` | bool | `true` | Show the Mounts page and include it in refresh scheduling |
 | `modules/sensors` | bool | `true` | Show the Sensors page and include it in refresh scheduling |
 | `modules/smart` | bool | `true` | Show the Disks/SMART page and include it in refresh scheduling |
+| `mounts/profileNames` | string list | – | Names of saved mount profiles |
+| `mounts/profiles/<name>/{source,target,filesystemType,options}` | string | – | Saved mount profile fields |
 | `smart/scheduledRefreshEnabled` | bool | `false` | Enable the opt-in scheduled SMART refresh |
 | `smart/scheduledRefreshMinutes` | int | `30` | Scheduled SMART refresh interval in minutes (minimum 5) |
 | `smart/history/serial/*`, `smart/history/path/*` | string list | – | Per-disk SMART history entries (keyed by serial, else device path) |

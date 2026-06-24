@@ -59,6 +59,8 @@ qt_add_executable(linux-service-dashboard
     src/core/RefreshScheduler.h
     src/core/ModuleSettings.cpp
     src/core/ModuleSettings.h
+    src/core/MountProfileStore.cpp
+    src/core/MountProfileStore.h
     src/core/ServiceGroupSettings.cpp
     src/core/ServiceGroupSettings.h
     src/core/SmartHistoryStore.cpp
@@ -115,6 +117,8 @@ qt_add_executable(linux-service-dashboard
     src/utils/StatusUtils.h
     src/parsers/ProviderParsers.cpp
     src/parsers/ProviderParsers.h
+    src/utils/FstabParser.cpp
+    src/utils/FstabParser.h
     src/utils/TableLayoutPersistence.cpp
     src/utils/TableLayoutPersistence.h
 )
