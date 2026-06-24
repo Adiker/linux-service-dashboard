@@ -23,6 +23,10 @@ public slots:
 private:
     DiskRow selectedRow() const;
     void runScheduledSmartChecks();
+    // Returns the serial to key SMART history by, or an empty string (path key)
+    // when the serial is shared by several visible disks so their histories are
+    // not merged.
+    QString historyKeySerial(const QString &serial) const;
 
     DiskModel *m_model = nullptr;
     QTableView *m_table = nullptr;

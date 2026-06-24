@@ -86,7 +86,7 @@ DisksPage::DisksPage(QWidget *parent)
         table->setSelectionMode(QAbstractItemView::SingleSelection);
         table->setEditTriggers(QAbstractItemView::NoEditTriggers);
         table->verticalHeader()->hide();
-        const QVector<SmartHistoryEntry> entries = SmartHistoryStore::entriesForDisk(row.serial, row.path);
+        const QVector<SmartHistoryEntry> entries = SmartHistoryStore::entriesForDisk(historyKeySerial(row.serial), row.path);
         table->setRowCount(entries.size());
         for (int i = 0; i < entries.size(); ++i) {
             const SmartHistoryEntry &entry = entries.at(i);
@@ -121,7 +121,7 @@ DisksPage::DisksPage(QWidget *parent)
                 }
             }
             SmartHistoryStore::appendEntry(SmartHistoryEntry{
-                path, serial, currentTimestamp(), smartRow.smartHealth, smartRow.temperature, smartRow.reallocated, smartRow.pending});
+                path, historyKeySerial(serial), currentTimestamp(), smartRow.smartHealth, smartRow.temperature, smartRow.reallocated, smartRow.pending});
             m_status->setText(QStringLiteral("SMART check complete for %1").arg(path));
         } else {
             m_status->setText(error);
@@ -138,6 +138,23 @@ DiskRow DisksPage::selectedRow() const
     const QModelIndex index = m_table->currentIndex();
     if (!index.isValid()) return {};
     return m_model->rowAt(index.row());
+}
+
+QString DisksPage::historyKeySerial(const QString &serial) const
+{
+    const QString trimmed = serial.trimmed();
+    if (trimmed.isEmpty()) {
+        return QString();
+    }
+    int count = 0;
+    for (const DiskRow &row : m_model->rows()) {
+        if (row.serial.trimmed() == trimmed) {
+            ++count;
+        }
+    }
+    // A serial reported by more than one visible disk cannot identify a single
+    // drive, so fall back to the device path to avoid merging their histories.
+    return count > 1 ? QString() : trimmed;
 }
 
 void DisksPage::reloadSmartSchedule()
