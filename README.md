@@ -86,7 +86,7 @@ OLED uses a black-first palette with brighter contrast for OLED displays and dar
 
 ## Known Limitations
 
-- systemd service parsing uses `systemctl list-units --plain`; it is robust enough for the MVP but should eventually move to DBus.
+- systemd listing uses the systemd1 DBus interface with a `systemctl list-units --plain` fallback; service control actions still run through `systemctl`.
 - SMART checks are manual by default and cached by the UI. An opt-in scheduled refresh (Settings → SMART scheduling, minimum 5-minute interval) can re-run checks automatically; it is skipped while a check is already in progress. The polkit helper covers normal installed use, but unusual USB bridges may still require bridge-specific `smartctl -d` options.
 - VPN detection queries NetworkManager over DBus (with an `nmcli` fallback) and treats VPN-like tunnel types such as `vpn`, `tun`, `wireguard`, and `ppp` as connected.
 - Mount profiles and fstab entries are read-only here: the app lists them and can save profiles, but does not mount them or edit `/etc/fstab`.
