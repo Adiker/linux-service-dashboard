@@ -33,6 +33,18 @@ private:
     void buildTray();
     void applyTheme();
     void reloadSettings();
+    void applyModuleVisibility();
+
+    enum PageIndex {
+        PageOverview = 0,
+        PageSystemd,
+        PageDocker,
+        PageVpn,
+        PageMounts,
+        PageSensors,
+        PageDisks,
+        PageSettings,
+    };
 
     QListWidget *m_sidebar = nullptr;
     QStackedWidget *m_stack = nullptr;
@@ -47,4 +59,5 @@ private:
     SensorsPage *m_sensors = nullptr;
     DisksPage *m_disks = nullptr;
     SettingsPage *m_settings = nullptr;
+    ModuleSettings m_modules;
 };

@@ -67,8 +67,6 @@ MountsPage::MountsPage(QWidget *parent)
         QMessageBox::information(this, QStringLiteral("Mounts"), details.isEmpty() ? message : message + QStringLiteral("\n\n") + details);
         refresh();
     });
-
-    refresh();
 }
 
 MountRow MountsPage::selectedRow() const
