@@ -104,6 +104,8 @@ Known keys:
 | `modules/mounts` | bool | `true` | Reserved module toggle |
 | `modules/sensors` | bool | `true` | Reserved module toggle |
 | `modules/smart` | bool | `true` | Reserved module toggle |
+| `mounts/profileNames` | string list | – | Names of saved mount profiles |
+| `mounts/profiles/<name>/{source,target,filesystemType,options}` | string | – | Saved mount profile fields |
 | `theme/preference` | string | `System` | `System`, `Light`, `Dark`, or `OLED` |
 
 Module toggles are persisted by the settings UI but are not yet used to hide pages.

@@ -70,13 +70,17 @@ QVector<MountRow> parseFile(const QString &path, QString *error)
             continue;
         }
         const QString type = fields.at(2);
-        if (!isNetworkFilesystem(type)) {
+        const QString rawSource = fields.at(0);
+        // Legacy SSHFS fstab form: "sshfs#user@host:/path /mnt fuse ...", where the
+        // type is the generic "fuse" and the source carries the sshfs# prefix.
+        const bool isSshfsFuse = type == QStringLiteral("fuse") && rawSource.startsWith(QStringLiteral("sshfs#"));
+        if (!isNetworkFilesystem(type) && !isSshfsFuse) {
             continue;
         }
         MountRow row;
-        row.source = decodeFstabField(fields.at(0));
+        row.source = decodeFstabField(rawSource);
         row.target = decodeFstabField(fields.at(1));
-        row.filesystemType = type;
+        row.filesystemType = isSshfsFuse ? QStringLiteral("sshfs") : type;
         row.options = fields.at(3);
         row.status = QStringLiteral("Configured (fstab)");
         rows.append(row);
