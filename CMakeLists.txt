@@ -61,6 +61,10 @@ qt_add_executable(linux-service-dashboard
     src/core/ModuleSettings.h
     src/core/ServiceGroupSettings.cpp
     src/core/ServiceGroupSettings.h
+    src/core/SmartHistoryStore.cpp
+    src/core/SmartHistoryStore.h
+    src/core/SmartRefreshScheduler.cpp
+    src/core/SmartRefreshScheduler.h
     src/models/ServiceModel.cpp
     src/models/ServiceModel.h
     src/models/DockerContainerModel.cpp

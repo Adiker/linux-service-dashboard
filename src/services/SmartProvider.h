@@ -16,6 +16,7 @@ public:
     void checkSmart(const QString &devicePath);
     void checkSmart(const DiskRow &row);
     void checkSmart(const QVector<DiskRow> &rows);
+    bool isSmartCheckBusy() const;
 
 signals:
     void disksReady(const QVector<DiskRow> &rows, const QString &error);
