@@ -1,5 +1,7 @@
 #include "DisksPage.h"
 
+#include "../utils/TableLayoutPersistence.h"
+
 #include <QHeaderView>
 #include <QLabel>
 #include <QPushButton>
@@ -27,6 +29,7 @@ DisksPage::DisksPage(QWidget *parent)
     m_table->horizontalHeader()->setStretchLastSection(true);
     m_table->verticalHeader()->hide();
     m_table->setSortingEnabled(true);
+    TableLayoutPersistence::bind(m_table, QStringLiteral("tables/disks/headerState"));
     layout->addWidget(m_table, 1);
 
     auto *actions = new QHBoxLayout;

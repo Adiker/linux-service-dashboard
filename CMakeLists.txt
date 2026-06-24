@@ -107,6 +107,8 @@ qt_add_executable(linux-service-dashboard
     src/utils/StatusUtils.h
     src/parsers/ProviderParsers.cpp
     src/parsers/ProviderParsers.h
+    src/utils/TableLayoutPersistence.cpp
+    src/utils/TableLayoutPersistence.h
 )
 
 target_link_libraries(linux-service-dashboard PRIVATE Qt6::Widgets)
