@@ -1,0 +1,33 @@
+{
+	"BUILD_DIR" : "/home/adiker/Dokumenty/service-dashboard-cpp/build-int-dbg/linux-service-dashboard_autogen",
+	"CMAKE_BINARY_DIR" : "/home/adiker/Dokumenty/service-dashboard-cpp/build-int-dbg",
+	"CMAKE_CURRENT_BINARY_DIR" : "/home/adiker/Dokumenty/service-dashboard-cpp/build-int-dbg",
+	"CMAKE_CURRENT_SOURCE_DIR" : "/home/adiker/Dokumenty/service-dashboard-cpp",
+	"CMAKE_SOURCE_DIR" : "/home/adiker/Dokumenty/service-dashboard-cpp",
+	"CROSS_CONFIG" : false,
+	"GENERATOR" : "Unix Makefiles",
+	"INCLUDE_DIR" : "/home/adiker/Dokumenty/service-dashboard-cpp/build-int-dbg/linux-service-dashboard_autogen/include",
+	"INPUTS" : 
+	[
+		"/home/adiker/Dokumenty/service-dashboard-cpp/resources/icons/linux-service-dashboard-16.png",
+		"/home/adiker/Dokumenty/service-dashboard-cpp/resources/icons/linux-service-dashboard-24.png",
+		"/home/adiker/Dokumenty/service-dashboard-cpp/resources/icons/linux-service-dashboard-64.png",
+		"/home/adiker/Dokumenty/service-dashboard-cpp/resources/icons/linux-service-dashboard-256.png",
+		"/home/adiker/Dokumenty/service-dashboard-cpp/resources/icons/linux-service-dashboard-48.png",
+		"/home/adiker/Dokumenty/service-dashboard-cpp/resources/icons/linux-service-dashboard-22.png",
+		"/home/adiker/Dokumenty/service-dashboard-cpp/resources/icons/linux-service-dashboard-32.png",
+		"/home/adiker/Dokumenty/service-dashboard-cpp/resources/icons/linux-service-dashboard-128.png",
+		"/home/adiker/Dokumenty/service-dashboard-cpp/resources/linux-service-dashboard.svg"
+	],
+	"LOCK_FILE" : "/home/adiker/Dokumenty/service-dashboard-cpp/build-int-dbg/CMakeFiles/linux-service-dashboard_autogen.dir/AutoRcc_resources_3YJK5W5UP7_Lock.lock",
+	"MULTI_CONFIG" : false,
+	"OPTIONS" : [ "-name", "resources" ],
+	"OUTPUT_CHECKSUM" : "3YJK5W5UP7",
+	"OUTPUT_NAME" : "qrc_resources.cpp",
+	"RCC_EXECUTABLE" : "/usr/lib/qt6/rcc",
+	"RCC_LIST_OPTIONS" : [ "--list" ],
+	"SETTINGS_FILE" : "/home/adiker/Dokumenty/service-dashboard-cpp/build-int-dbg/CMakeFiles/linux-service-dashboard_autogen.dir/AutoRcc_resources_3YJK5W5UP7_Used.txt",
+	"SOURCE" : "/home/adiker/Dokumenty/service-dashboard-cpp/resources/resources.qrc",
+	"USE_BETTER_GRAPH" : true,
+	"VERBOSITY" : 0
+}

@@ -1,0 +1,6 @@
+set(__QT_DEPLOY_TARGET_linux-service-dashboard_FILE /home/adiker/Dokumenty/service-dashboard-cpp/build-int-dbg/linux-service-dashboard)
+set(__QT_DEPLOY_TARGET_linux-service-dashboard_TYPE EXECUTABLE)
+set(__QT_DEPLOY_TARGET_provider-parser-tests_FILE /home/adiker/Dokumenty/service-dashboard-cpp/build-int-dbg/provider-parser-tests)
+set(__QT_DEPLOY_TARGET_provider-parser-tests_TYPE EXECUTABLE)
+set(__QT_DEPLOY_TARGET_linux-service-dashboard-smart-helper_FILE /home/adiker/Dokumenty/service-dashboard-cpp/build-int-dbg/linux-service-dashboard-smart-helper)
+set(__QT_DEPLOY_TARGET_linux-service-dashboard-smart-helper_TYPE EXECUTABLE)

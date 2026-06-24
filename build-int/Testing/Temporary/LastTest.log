@@ -1,0 +1,32 @@
+Start testing: Jun 24 19:28 CEST
+----------------------------------------------------------
+1/1 Testing: provider-parser-tests
+1/1 Test: provider-parser-tests
+Command: "/home/adiker/Dokumenty/service-dashboard-cpp/build-int/provider-parser-tests"
+Directory: /home/adiker/Dokumenty/service-dashboard-cpp/build-int
+"provider-parser-tests" start time: Jun 24 19:28 CEST
+Output:
+----------------------------------------------------------
+********* Start testing of ProviderParserTests *********
+Config: Using QtTest library 6.11.1, Qt 6.11.1 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 16.1.1 20260430), endeavouros unknown
+PASS   : ProviderParserTests::initTestCase()
+PASS   : ProviderParserTests::systemdListUnits_parsesServicesAndMissingWatched()
+PASS   : ProviderParserTests::systemdFailedCount_ignoresHeader()
+PASS   : ProviderParserTests::dockerList_parsesJsonLines()
+PASS   : ProviderParserTests::nmcliVpn_detectsWireguardConnection()
+PASS   : ProviderParserTests::findmntJson_collectsNetworkMounts()
+PASS   : ProviderParserTests::sensorsJson_extractsTemperatureInput()
+PASS   : ProviderParserTests::fstab_skipsCommentsAndBlankLines()
+PASS   : ProviderParserTests::providerErrors_emptyDockerOutput()
+PASS   : ProviderParserTests::cleanupTestCase()
+Totals: 10 passed, 0 failed, 0 skipped, 0 blacklisted, 1ms
+********* Finished testing of ProviderParserTests *********
+<end of output>
+Test time =   0.01 sec
+----------------------------------------------------------
+Test Passed.
+"provider-parser-tests" end time: Jun 24 19:28 CEST
+"provider-parser-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Jun 24 19:28 CEST
