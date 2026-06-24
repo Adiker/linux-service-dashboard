@@ -59,6 +59,8 @@ qt_add_executable(linux-service-dashboard
     src/core/RefreshScheduler.h
     src/core/ModuleSettings.cpp
     src/core/ModuleSettings.h
+    src/core/ServiceGroupSettings.cpp
+    src/core/ServiceGroupSettings.h
     src/models/ServiceModel.cpp
     src/models/ServiceModel.h
     src/models/DockerContainerModel.cpp
