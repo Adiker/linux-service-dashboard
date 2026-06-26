@@ -11,7 +11,7 @@ Linux Service Dashboard is a local Qt 6 Widgets desktop application for monitori
 - CIFS/NFS/sshfs mount listing with file manager open and confirmed unmount.
 - Temperature/sensor display using `sensors -j` with a text fallback.
 - Disk inventory via `lsblk -J` and manual SMART checks via `smartctl -j`, with an installed polkit helper for permission-gated SMART reads.
-- QSettings-backed refresh interval, watched services, module toggles, and theme preference.
+- QSettings-backed refresh interval, watched services, user-defined systemd service groups, module toggles, and theme preference.
 - Light, Dark, and OLED themes with system-theme auto mode.
 - System tray menu with Show Dashboard, Refresh Now, and Quit.
 - Embedded application icon plus installable desktop entry for KDE Plasma Wayland/X11 taskbar matching.
@@ -84,8 +84,8 @@ OLED uses a black-first palette with brighter contrast for OLED displays and dar
 - SMART checks are manual from the disks page and cached by the UI; frequent automatic SMART polling is intentionally avoided. The polkit helper covers normal installed use, but unusual USB bridges may still require bridge-specific `smartctl -d` options.
 - VPN detection queries NetworkManager over DBus (with an `nmcli` fallback) and treats VPN-like tunnel types such as `vpn`, `tun`, `wireguard`, and `ppp` as connected.
 - Mount profiles and fstab parsing are not implemented yet.
-- Module toggles are persisted but do not yet hide pages.
-- Parser/provider behavior is currently validated by manual build and smoke tests; dedicated unit tests are planned.
+- Module toggles hide a page from the sidebar and skip its scheduled refresh; the Overview and Settings pages are always available.
+- Provider parsers have unit tests (`ctest --test-dir build`); UI behavior and provider command execution are still validated by manual build and smoke tests.
 
 ## Screenshots
 

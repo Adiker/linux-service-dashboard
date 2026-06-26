@@ -1,5 +1,6 @@
 #include "NetworkProvider.h"
 
+#include "../parsers/ProviderParsers.h"
 #include "../utils/TimeUtils.h"
 
 #include <QDBusArgument>
@@ -74,25 +75,6 @@ QString stateLabel(quint32 state)
     }
 }
 
-VpnStatus parseNmcliFallback(const QString &output, const QString &timestamp)
-{
-    VpnStatus status;
-    status.lastRefresh = timestamp;
-    const QStringList lines = output.split('\n', Qt::SkipEmptyParts);
-    for (const QString &line : lines) {
-        const QStringList fields = line.split(':');
-        if (fields.size() >= 4 && isVpnLikeConnectionType(fields.at(1))) {
-            status.connected = true;
-            status.connectionName = fields.at(0);
-            status.device = fields.at(2);
-            status.state = fields.at(3);
-            return status;
-        }
-    }
-    status.state = QStringLiteral("Disconnected");
-    return status;
-}
-
 VpnStatus statusForConnection(const QDBusObjectPath &path, quint32 state, const QString &timestamp)
 {
     VpnStatus status;
@@ -153,7 +135,7 @@ NetworkProvider::NetworkProvider(QObject *parent)
         QString error;
         VpnStatus status;
         if (result.ok()) {
-            status = parseNmcliFallback(result.standardOutput, currentTimestamp());
+            status = ProviderParsers::parseNmcliActiveVpnConnections(result.standardOutput, currentTimestamp(), nullptr);
         } else {
             error = result.startFailed ? QStringLiteral("nmcli not found. Install NetworkManager CLI tools.") : result.standardError.trimmed();
             status.lastRefresh = currentTimestamp();
