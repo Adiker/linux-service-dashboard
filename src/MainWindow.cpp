@@ -81,6 +81,7 @@ void MainWindow::buildUi() {
 
     connect(m_sidebar, &QListWidget::currentRowChanged, m_stack, &QStackedWidget::setCurrentIndex);
     connect(m_settings, &SettingsPage::settingsChanged, this, &MainWindow::reloadSettings);
+    connect(m_settings, &SettingsPage::settingsChanged, m_systemd, &SystemdPage::reloadGroupSelector);
     m_sidebar->setCurrentRow(0);
 }
 
