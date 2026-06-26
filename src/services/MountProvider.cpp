@@ -1,33 +1,13 @@
 #include "MountProvider.h"
 
 #include "../core/MountProfileStore.h"
+#include "../parsers/ProviderParsers.h"
 #include "../utils/FstabParser.h"
 #include "../utils/JsonUtils.h"
 
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QSet>
-
-static void collectMounts(const QJsonArray &array, QVector<MountRow> *rows)
-{
-    static const QSet<QString> interestingTypes{QStringLiteral("cifs"), QStringLiteral("nfs"), QStringLiteral("nfs4"), QStringLiteral("sshfs"), QStringLiteral("fuse.sshfs")};
-    for (const QJsonValue &value : array) {
-        const QJsonObject object = value.toObject();
-        const QString type = object.value(QStringLiteral("fstype")).toString();
-        if (interestingTypes.contains(type)) {
-            MountRow row;
-            row.target = object.value(QStringLiteral("target")).toString();
-            row.source = object.value(QStringLiteral("source")).toString();
-            row.filesystemType = type;
-            row.options = object.value(QStringLiteral("options")).toString();
-            row.status = QStringLiteral("Mounted");
-            rows->append(row);
-        }
-        if (object.contains(QStringLiteral("children"))) {
-            collectMounts(object.value(QStringLiteral("children")).toArray(), rows);
-        }
-    }
-}
 
 static void collectAllTargets(const QJsonArray &array, QSet<QString> *targets)
 {
@@ -69,13 +49,13 @@ MountProvider::MountProvider(QObject *parent)
 {
     connect(&m_runner, &CommandRunner::commandFinished, this, [this](const QString &, const CommandResult &result, const QString &context) {
         if (context == QStringLiteral("mount-list")) {
-            QVector<MountRow> rows;
             QString error;
+            QVector<MountRow> rows;
             if (result.ok()) {
                 QString parseError;
+                rows = ProviderParsers::parseFindmntJson(result.standardOutput, &error);
                 const QJsonDocument document = parseJsonDocument(result.standardOutput, &parseError);
                 const QJsonArray filesystems = document.object().value(QStringLiteral("filesystems")).toArray();
-                collectMounts(filesystems, &rows);
                 if (m_includeConfigured) {
                     // Build the occupancy set from every findmnt target, not just the
                     // network rows above. Otherwise a profile/fstab target currently
@@ -86,7 +66,7 @@ MountProvider::MountProvider(QObject *parent)
                     collectAllTargets(filesystems, &mountedTargets);
                     rows = mergeConfiguredMounts(rows, mountedTargets);
                 }
-                if (!parseError.isEmpty()) {
+                if (!parseError.isEmpty() && error.isEmpty()) {
                     error = QStringLiteral("Could not parse findmnt JSON: %1").arg(parseError);
                 }
             } else {
