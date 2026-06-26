@@ -74,6 +74,20 @@ SettingsPage::SettingsPage(QWidget* parent) : QWidget(parent) {
     }
     layout->addWidget(modules);
 
+    auto* smartTitle = new QLabel(QStringLiteral("SMART scheduling"), this);
+    smartTitle->setObjectName(QStringLiteral("sectionTitle"));
+    layout->addWidget(smartTitle);
+    auto* smartGroup = new QFrame(this);
+    smartGroup->setObjectName(QStringLiteral("settingsSection"));
+    auto* smartLayout = new QFormLayout(smartGroup);
+    m_smartScheduled = new QCheckBox(QStringLiteral("Enable scheduled SMART refresh"), smartGroup);
+    smartLayout->addRow(m_smartScheduled);
+    m_smartIntervalMinutes = new QSpinBox(smartGroup);
+    m_smartIntervalMinutes->setRange(5, 1440);
+    m_smartIntervalMinutes->setSuffix(QStringLiteral(" minutes"));
+    smartLayout->addRow(QStringLiteral("SMART interval"), m_smartIntervalMinutes);
+    layout->addWidget(smartGroup);
+
     auto* themeTitle = new QLabel(QStringLiteral("Theme"), this);
     themeTitle->setObjectName(QStringLiteral("sectionTitle"));
     layout->addWidget(themeTitle);
@@ -203,6 +217,8 @@ void SettingsPage::load() {
     m_mounts->setChecked(settings.value(QStringLiteral("modules/mounts"), true).toBool());
     m_sensors->setChecked(settings.value(QStringLiteral("modules/sensors"), true).toBool());
     m_smart->setChecked(settings.value(QStringLiteral("modules/smart"), true).toBool());
+    m_smartScheduled->setChecked(settings.value(QStringLiteral("smart/scheduledRefreshEnabled"), false).toBool());
+    m_smartIntervalMinutes->setValue(settings.value(QStringLiteral("smart/scheduledRefreshMinutes"), 30).toInt());
     m_theme->setCurrentText(settings.value(QStringLiteral("theme/preference"), QStringLiteral("System")).toString());
 }
 
@@ -227,6 +243,8 @@ void SettingsPage::save() {
     settings.setValue(QStringLiteral("modules/mounts"), m_mounts->isChecked());
     settings.setValue(QStringLiteral("modules/sensors"), m_sensors->isChecked());
     settings.setValue(QStringLiteral("modules/smart"), m_smart->isChecked());
+    settings.setValue(QStringLiteral("smart/scheduledRefreshEnabled"), m_smartScheduled->isChecked());
+    settings.setValue(QStringLiteral("smart/scheduledRefreshMinutes"), m_smartIntervalMinutes->value());
     settings.setValue(QStringLiteral("theme/preference"), m_theme->currentText());
     emit settingsChanged();
 }

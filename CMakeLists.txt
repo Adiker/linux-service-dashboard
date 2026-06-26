@@ -57,6 +57,10 @@ qt_add_executable(linux-service-dashboard
     src/core/CommandRunner.h
     src/core/RefreshScheduler.cpp
     src/core/RefreshScheduler.h
+    src/core/SmartHistoryStore.cpp
+    src/core/SmartHistoryStore.h
+    src/core/SmartRefreshScheduler.cpp
+    src/core/SmartRefreshScheduler.h
     src/core/MountProfileStore.cpp
     src/core/MountProfileStore.h
     src/core/ServiceGroupSettings.cpp

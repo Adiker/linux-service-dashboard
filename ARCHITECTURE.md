@@ -109,6 +109,9 @@ Known keys:
 | `modules/smart` | bool | `true` | Show the Disks/SMART page and include it in refresh scheduling |
 | `mounts/profileNames` | string list | – | Names of saved mount profiles |
 | `mounts/profiles/<name>/{source,target,filesystemType,options}` | string | – | Saved mount profile fields |
+| `smart/scheduledRefreshEnabled` | bool | `false` | Enable the opt-in scheduled SMART refresh |
+| `smart/scheduledRefreshMinutes` | int | `30` | Scheduled SMART refresh interval in minutes (minimum 5) |
+| `smart/history/serial/*`, `smart/history/path/*` | string list | – | Per-disk SMART history entries (keyed by serial, else device path) |
 | `theme/preference` | string | `System` | `System`, `Light`, `Dark`, or `OLED` |
 | `tables/<page>/headerState` | byte array | – | Saved column sizes/order per table (`systemd`, `docker`, `mounts`, `sensors`, `disks`); sort order is persisted only for the proxy-backed systemd table |
 
@@ -175,7 +178,9 @@ SMART inventory is split into two privilege levels:
 - `linux-service-dashboard-smart-helper` validates narrow `/dev/...` disk paths and optional transports, then runs only the corresponding `smartctl` read commands.
 - The helper does not expose mount, write, shell, or arbitrary command execution.
 
-The helper policy source is `resources/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy.in`. CMake generates the installed policy at `cmake --install` time from the install prefix, and the app resolves the helper through a configure-time relative path from `bindir` to `libexecdir` at runtime. Keep SMART checks manual unless a future change adds explicit rate limiting and user opt-in.
+The helper policy source is `resources/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy.in`. CMake generates the installed policy at `cmake --install` time from the install prefix, and the app resolves the helper through a configure-time relative path from `bindir` to `libexecdir` at runtime.
+
+SMART checks are manual by default. An opt-in scheduled refresh (`SmartRefreshScheduler`, minimum 5-minute interval) re-runs `Check All` automatically; it is gated by `SmartProvider::isSmartCheckBusy()` so it never enqueues a second batch while one is in flight. Each successful check is appended to `SmartHistoryStore`, keyed by the disk's serial when available and otherwise by device path, and surfaced through the Disks page History dialog. Any change to automatic SMART cadence must preserve this rate limiting and explicit user opt-in.
 
 ---
 
@@ -243,6 +248,6 @@ QT_QPA_PLATFORM=xcb build/linux-service-dashboard
 
 - systemd listing uses the systemd1 DBus interface (linking `Qt6::DBus`) with a `systemctl` fallback; service control (start/stop/restart) still uses `systemctl`. The DBus list calls are synchronous with a bounded timeout.
 - VPN status uses the NetworkManager DBus interface (linking `Qt6::DBus`), with an `nmcli` fallback when the system bus is unavailable. Active VPN-like tunnel types (`vpn`, `tun`, `wireguard`, `ppp`) are treated as connected so externally created tunnels such as OpenConnect are visible.
-- SMART checks are manual and permission-dependent; installed builds use the polkit helper for authorized read-only SMART access.
+- SMART checks are manual by default (with an opt-in scheduled refresh, minimum 5 minutes) and permission-dependent; installed builds use the polkit helper for authorized read-only SMART access.
 - Disabling a module hides its page and skips its scheduled refresh, but the underlying provider classes are still constructed.
 - Automated coverage is limited to the provider parser unit tests (`provider-parser-tests`); UI and provider command execution are still validated manually.

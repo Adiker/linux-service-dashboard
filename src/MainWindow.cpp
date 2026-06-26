@@ -118,6 +118,7 @@ void MainWindow::reloadSettings() {
     m_modules = loadModuleSettings();
     applyModuleVisibility();
     applyTheme();
+    m_disks->reloadSmartSchedule();
     refreshAll();
 }
 
