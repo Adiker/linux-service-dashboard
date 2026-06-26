@@ -84,8 +84,8 @@ OLED uses a black-first palette with brighter contrast for OLED displays and dar
 - SMART checks are manual from the disks page and cached by the UI; frequent automatic SMART polling is intentionally avoided. The polkit helper covers normal installed use, but unusual USB bridges may still require bridge-specific `smartctl -d` options.
 - VPN detection uses `nmcli` active connections and treats VPN-like tunnel types such as `vpn`, `tun`, `wireguard`, and `ppp` as connected; the provider is shaped so it can later be replaced with NetworkManager DBus calls.
 - Mount profiles and fstab parsing are not implemented yet.
-- Module toggles are persisted but do not yet hide pages.
-- Parser/provider behavior is currently validated by manual build and smoke tests; dedicated unit tests are planned.
+- Module toggles hide a page from the sidebar and skip its scheduled refresh; the Overview and Settings pages are always available.
+- Provider parsers have unit tests (`ctest --test-dir build`); UI behavior and provider command execution are still validated by manual build and smoke tests.
 
 ## Screenshots
 

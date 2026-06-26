@@ -98,16 +98,16 @@ Known keys:
 |---|---:|---:|---|
 | `refresh/intervalSeconds` | int | `30` | Periodic refresh interval |
 | `systemd/watchedServices` | string list | Docker, NetworkManager, sshd, PostgreSQL, Redis | Units shown in the systemd page |
-| `modules/systemd` | bool | `true` | Reserved module toggle |
-| `modules/docker` | bool | `true` | Reserved module toggle |
-| `modules/vpn` | bool | `true` | Reserved module toggle |
-| `modules/mounts` | bool | `true` | Reserved module toggle |
-| `modules/sensors` | bool | `true` | Reserved module toggle |
-| `modules/smart` | bool | `true` | Reserved module toggle |
+| `modules/systemd` | bool | `true` | Show the systemd page and include it in refresh scheduling |
+| `modules/docker` | bool | `true` | Show the Docker page and include it in refresh scheduling |
+| `modules/vpn` | bool | `true` | Show the VPN page and include it in refresh scheduling |
+| `modules/mounts` | bool | `true` | Show the Mounts page and include it in refresh scheduling |
+| `modules/sensors` | bool | `true` | Show the Sensors page and include it in refresh scheduling |
+| `modules/smart` | bool | `true` | Show the Disks/SMART page and include it in refresh scheduling |
 | `theme/preference` | string | `System` | `System`, `Light`, `Dark`, or `OLED` |
 | `tables/<page>/headerState` | byte array | – | Saved column sizes/order per table (`systemd`, `docker`, `mounts`, `sensors`, `disks`); sort order is persisted only for the proxy-backed systemd table |
 
-Module toggles are persisted by the settings UI but are not yet used to hide pages.
+Module toggles drive sidebar visibility and refresh scheduling: `MainWindow::applyModuleVisibility()` hides disabled pages and `refreshAll()` skips their providers, while the Overview page hides the matching cards. The Overview and Settings pages are always shown.
 
 ---
 
@@ -210,11 +210,12 @@ This installs:
 
 ## Checks
 
-There is no CTest suite yet. For code changes, run:
+Provider parsers are covered by a CTest target (`provider-parser-tests`, built from `tests/test_provider_parsers.cpp`). For code changes, build and run the tests:
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc)
+ctest --test-dir build --output-on-failure
 ```
 
 For platform smoke tests where no display interaction is needed:
@@ -238,5 +239,5 @@ QT_QPA_PLATFORM=xcb build/linux-service-dashboard
 - systemd parsing uses command output instead of DBus.
 - VPN status uses `nmcli` instead of NetworkManager DBus. Active VPN-like tunnel types (`vpn`, `tun`, `wireguard`, `ppp`) are treated as connected so externally created tunnels such as OpenConnect are visible.
 - SMART checks are manual and permission-dependent; installed builds use the polkit helper for authorized read-only SMART access.
-- Module toggles are saved but do not yet hide pages.
-- There is no automated parser test suite yet.
+- Disabling a module hides its page and skips its scheduled refresh, but the underlying provider classes are still constructed.
+- Automated coverage is limited to the provider parser unit tests (`provider-parser-tests`); UI and provider command execution are still validated manually.
