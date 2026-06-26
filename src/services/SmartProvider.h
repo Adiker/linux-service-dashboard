@@ -10,23 +10,23 @@
 class SmartProvider : public QObject {
     Q_OBJECT
 
-public:
-    explicit SmartProvider(QObject *parent = nullptr);
+  public:
+    explicit SmartProvider(QObject* parent = nullptr);
     void refreshDisks();
-    void checkSmart(const QString &devicePath);
-    void checkSmart(const DiskRow &row);
-    void checkSmart(const QVector<DiskRow> &rows);
+    void checkSmart(const QString& devicePath);
+    void checkSmart(const DiskRow& row);
+    void checkSmart(const QVector<DiskRow>& rows);
     bool isSmartCheckBusy() const;
 
-signals:
-    void disksReady(const QVector<DiskRow> &rows, const QString &error);
-    void smartReady(const QString &devicePath, const DiskRow &smartRow, const QString &error);
+  signals:
+    void disksReady(const QVector<DiskRow>& rows, const QString& error);
+    void smartReady(const QString& devicePath, const DiskRow& smartRow, const QString& error);
 
-private:
+  private:
     void startNextSmartCheck();
-    void runDirectSmartCheck(const DiskRow &row);
-    bool runPrivilegedSmartChecks(const DiskRow &firstRow);
-    void finishPrivilegedSmartChecks(const CommandResult &result);
+    void runDirectSmartCheck(const DiskRow& row);
+    bool runPrivilegedSmartChecks(const DiskRow& firstRow);
+    void finishPrivilegedSmartChecks(const CommandResult& result);
 
     CommandRunner m_runner;
     QQueue<DiskRow> m_pendingSmartChecks;

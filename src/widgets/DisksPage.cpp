@@ -13,9 +13,7 @@
 #include <QTableWidget>
 #include <QVBoxLayout>
 
-DisksPage::DisksPage(QWidget* parent)
-    : QWidget(parent)
-    , m_smartScheduler(new SmartRefreshScheduler(this)) {
+DisksPage::DisksPage(QWidget* parent) : QWidget(parent), m_smartScheduler(new SmartRefreshScheduler(this)) {
     auto* layout = new QVBoxLayout(this);
     auto* header = new QHBoxLayout;
     auto* title = new QLabel(QStringLiteral("Disks / SMART"), this);
@@ -81,11 +79,8 @@ DisksPage::DisksPage(QWidget* parent)
         auto* dialogLayout = new QVBoxLayout(dialog);
         auto* table = new QTableWidget(dialog);
         table->setColumnCount(5);
-        table->setHorizontalHeaderLabels({QStringLiteral("Time"),
-                                          QStringLiteral("Health"),
-                                          QStringLiteral("Temp"),
-                                          QStringLiteral("Reallocated"),
-                                          QStringLiteral("Pending")});
+        table->setHorizontalHeaderLabels({QStringLiteral("Time"), QStringLiteral("Health"), QStringLiteral("Temp"),
+                                          QStringLiteral("Reallocated"), QStringLiteral("Pending")});
         table->horizontalHeader()->setStretchLastSection(true);
         table->setSelectionBehavior(QAbstractItemView::SelectRows);
         table->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -121,8 +116,8 @@ DisksPage::DisksPage(QWidget* parent)
                     }
                 }
             }
-            SmartHistoryStore::appendEntry(SmartHistoryEntry{
-                path, historyKeySerial(serial), currentTimestamp(), smartRow.smartHealth, smartRow.temperature, smartRow.reallocated, smartRow.pending});
+            SmartHistoryStore::appendEntry(SmartHistoryEntry{path, historyKeySerial(serial), currentTimestamp(), smartRow.smartHealth,
+                                                             smartRow.temperature, smartRow.reallocated, smartRow.pending});
             m_status->setText(QStringLiteral("SMART check complete for %1").arg(path));
         } else {
             m_status->setText(error);

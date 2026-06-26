@@ -6,13 +6,13 @@
 class SmartRefreshScheduler : public QObject {
     Q_OBJECT
 
-public:
-    explicit SmartRefreshScheduler(QObject *parent = nullptr);
+  public:
+    explicit SmartRefreshScheduler(QObject* parent = nullptr);
     void reloadFromSettings();
 
-signals:
+  signals:
     void smartRefreshRequested();
 
-private:
+  private:
     QTimer m_timer;
 };
