@@ -17,16 +17,16 @@ class QDBusPendingCallWatcher;
 class NetworkProvider : public QObject {
     Q_OBJECT
 
-public:
-    explicit NetworkProvider(QObject *parent = nullptr);
+  public:
+    explicit NetworkProvider(QObject* parent = nullptr);
     void refreshVpnStatus();
 
-signals:
-    void vpnStatusReady(const VpnStatus &status, const QString &error);
+  signals:
+    void vpnStatusReady(const VpnStatus& status, const QString& error);
 
-private:
+  private:
     void refreshVpnViaNmcli();
-    void handleActiveConnectionsReply(QDBusPendingCallWatcher *watcher);
+    void handleActiveConnectionsReply(QDBusPendingCallWatcher* watcher);
 
     CommandRunner m_runner;
 };
