@@ -2,6 +2,7 @@
 
 #include "../core/SmartHistoryStore.h"
 #include "../core/SmartRefreshScheduler.h"
+#include "../utils/TableLayoutPersistence.h"
 #include "../utils/TimeUtils.h"
 
 #include <QDialog>
@@ -12,15 +13,14 @@
 #include <QTableWidget>
 #include <QVBoxLayout>
 
-DisksPage::DisksPage(QWidget *parent)
+DisksPage::DisksPage(QWidget* parent)
     : QWidget(parent)
-    , m_smartScheduler(new SmartRefreshScheduler(this))
-{
-    auto *layout = new QVBoxLayout(this);
-    auto *header = new QHBoxLayout;
-    auto *title = new QLabel(QStringLiteral("Disks / SMART"), this);
+    , m_smartScheduler(new SmartRefreshScheduler(this)) {
+    auto* layout = new QVBoxLayout(this);
+    auto* header = new QHBoxLayout;
+    auto* title = new QLabel(QStringLiteral("Disks / SMART"), this);
     title->setObjectName(QStringLiteral("pageTitle"));
-    auto *refreshButton = new QPushButton(QIcon::fromTheme(QStringLiteral("view-refresh")), QStringLiteral("Refresh"), this);
+    auto* refreshButton = new QPushButton(QIcon::fromTheme(QStringLiteral("view-refresh")), QStringLiteral("Refresh"), this);
     header->addWidget(title);
     header->addStretch();
     header->addWidget(refreshButton);
@@ -34,12 +34,13 @@ DisksPage::DisksPage(QWidget *parent)
     m_table->horizontalHeader()->setStretchLastSection(true);
     m_table->verticalHeader()->hide();
     m_table->setSortingEnabled(true);
+    TableLayoutPersistence::bind(m_table, QStringLiteral("tables/disks/headerState"));
     layout->addWidget(m_table, 1);
 
-    auto *actions = new QHBoxLayout;
-    auto *smartButton = new QPushButton(QIcon::fromTheme(QStringLiteral("drive-harddisk")), QStringLiteral("Check SMART"), this);
-    auto *smartAllButton = new QPushButton(QIcon::fromTheme(QStringLiteral("drive-harddisk")), QStringLiteral("Check All SMART"), this);
-    auto *historyButton = new QPushButton(QIcon::fromTheme(QStringLiteral("view-list-details")), QStringLiteral("History"), this);
+    auto* actions = new QHBoxLayout;
+    auto* smartButton = new QPushButton(QIcon::fromTheme(QStringLiteral("drive-harddisk")), QStringLiteral("Check SMART"), this);
+    auto* smartAllButton = new QPushButton(QIcon::fromTheme(QStringLiteral("drive-harddisk")), QStringLiteral("Check All SMART"), this);
+    auto* historyButton = new QPushButton(QIcon::fromTheme(QStringLiteral("view-list-details")), QStringLiteral("History"), this);
     actions->addWidget(smartButton);
     actions->addWidget(smartAllButton);
     actions->addWidget(historyButton);
@@ -74,13 +75,17 @@ DisksPage::DisksPage(QWidget *parent)
             m_status->setText(QStringLiteral("Select a disk to view SMART history."));
             return;
         }
-        auto *dialog = new QDialog(this);
-        dialog->setWindowTitle(QStringLiteral("SMART history — %1").arg(row.path));
+        auto* dialog = new QDialog(this);
+        dialog->setWindowTitle(QStringLiteral("SMART history - %1").arg(row.path));
         dialog->resize(720, 420);
-        auto *dialogLayout = new QVBoxLayout(dialog);
-        auto *table = new QTableWidget(dialog);
+        auto* dialogLayout = new QVBoxLayout(dialog);
+        auto* table = new QTableWidget(dialog);
         table->setColumnCount(5);
-        table->setHorizontalHeaderLabels({QStringLiteral("Time"), QStringLiteral("Health"), QStringLiteral("Temp"), QStringLiteral("Reallocated"), QStringLiteral("Pending")});
+        table->setHorizontalHeaderLabels({QStringLiteral("Time"),
+                                          QStringLiteral("Health"),
+                                          QStringLiteral("Temp"),
+                                          QStringLiteral("Reallocated"),
+                                          QStringLiteral("Pending")});
         table->horizontalHeader()->setStretchLastSection(true);
         table->setSelectionBehavior(QAbstractItemView::SelectRows);
         table->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -89,7 +94,7 @@ DisksPage::DisksPage(QWidget *parent)
         const QVector<SmartHistoryEntry> entries = SmartHistoryStore::entriesForDisk(historyKeySerial(row.serial), row.path);
         table->setRowCount(entries.size());
         for (int i = 0; i < entries.size(); ++i) {
-            const SmartHistoryEntry &entry = entries.at(i);
+            const SmartHistoryEntry& entry = entries.at(i);
             table->setItem(i, 0, new QTableWidgetItem(entry.timestamp));
             table->setItem(i, 1, new QTableWidgetItem(entry.health));
             table->setItem(i, 2, new QTableWidgetItem(entry.temperature));
@@ -100,20 +105,16 @@ DisksPage::DisksPage(QWidget *parent)
         dialog->setAttribute(Qt::WA_DeleteOnClose);
         dialog->show();
     });
-    connect(&m_provider, &SmartProvider::disksReady, this, [this](const QVector<DiskRow> &rows, const QString &error) {
+    connect(&m_provider, &SmartProvider::disksReady, this, [this](const QVector<DiskRow>& rows, const QString& error) {
         m_model->setRows(rows);
         m_status->setText(error.isEmpty() ? QStringLiteral("%1 disks").arg(rows.size()) : error);
     });
-    connect(&m_provider, &SmartProvider::smartReady, this, [this](const QString &path, const DiskRow &smartRow, const QString &error) {
+    connect(&m_provider, &SmartProvider::smartReady, this, [this](const QString& path, const DiskRow& smartRow, const QString& error) {
         m_model->updateSmart(path, smartRow);
         if (error.isEmpty()) {
-            // smartctl JSON does not echo the lsblk serial, so recover the stable
-            // disk identity from the inventory row that matches this device path.
-            // Otherwise history is saved under the path key but read back under the
-            // serial key, leaving the History dialog empty for disks with serials.
             QString serial = smartRow.serial;
             if (serial.trimmed().isEmpty()) {
-                for (const DiskRow &inventoryRow : m_model->rows()) {
+                for (const DiskRow& inventoryRow : m_model->rows()) {
                     if (inventoryRow.path == path) {
                         serial = inventoryRow.serial;
                         break;
@@ -133,21 +134,20 @@ DisksPage::DisksPage(QWidget *parent)
     refresh();
 }
 
-DiskRow DisksPage::selectedRow() const
-{
+DiskRow DisksPage::selectedRow() const {
     const QModelIndex index = m_table->currentIndex();
-    if (!index.isValid()) return {};
+    if (!index.isValid())
+        return {};
     return m_model->rowAt(index.row());
 }
 
-QString DisksPage::historyKeySerial(const QString &serial) const
-{
+QString DisksPage::historyKeySerial(const QString& serial) const {
     const QString trimmed = serial.trimmed();
     if (trimmed.isEmpty()) {
         return QString();
     }
     int count = 0;
-    for (const DiskRow &row : m_model->rows()) {
+    for (const DiskRow& row : m_model->rows()) {
         if (row.serial.trimmed() == trimmed) {
             ++count;
         }
@@ -157,13 +157,11 @@ QString DisksPage::historyKeySerial(const QString &serial) const
     return count > 1 ? QString() : trimmed;
 }
 
-void DisksPage::reloadSmartSchedule()
-{
+void DisksPage::reloadSmartSchedule() {
     m_smartScheduler->reloadFromSettings();
 }
 
-void DisksPage::runScheduledSmartChecks()
-{
+void DisksPage::runScheduledSmartChecks() {
     if (m_provider.isSmartCheckBusy()) {
         m_status->setText(QStringLiteral("SMART check already in progress; skipping scheduled refresh."));
         return;
@@ -175,8 +173,7 @@ void DisksPage::runScheduledSmartChecks()
     }
 }
 
-void DisksPage::refresh()
-{
+void DisksPage::refresh() {
     m_status->setText(QStringLiteral("Refreshing..."));
     m_provider.refreshDisks();
 }
