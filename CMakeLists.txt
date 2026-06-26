@@ -107,6 +107,8 @@ qt_add_executable(linux-service-dashboard
     src/utils/TimeUtils.h
     src/utils/StatusUtils.cpp
     src/utils/StatusUtils.h
+    src/utils/TableLayoutPersistence.cpp
+    src/utils/TableLayoutPersistence.h
     src/parsers/ProviderParsers.cpp
     src/parsers/ProviderParsers.h
 )

@@ -1,5 +1,6 @@
 #include "MountsPage.h"
 
+#include "../utils/TableLayoutPersistence.h"
 #include "ConfirmActionDialog.h"
 
 #include <QDesktopServices>
@@ -29,6 +30,7 @@ MountsPage::MountsPage(QWidget* parent) : QWidget(parent) {
     m_table->setSelectionMode(QAbstractItemView::SingleSelection);
     m_table->horizontalHeader()->setStretchLastSection(true);
     m_table->verticalHeader()->hide();
+    TableLayoutPersistence::bind(m_table, QStringLiteral("tables/mounts/headerState"));
     layout->addWidget(m_table, 1);
 
     auto* actions = new QHBoxLayout;

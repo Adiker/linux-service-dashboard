@@ -1,5 +1,6 @@
 #include "DockerPage.h"
 
+#include "../utils/TableLayoutPersistence.h"
 #include "ConfirmActionDialog.h"
 #include "LogViewerDialog.h"
 
@@ -29,6 +30,7 @@ DockerPage::DockerPage(QWidget* parent) : QWidget(parent) {
     m_table->horizontalHeader()->setStretchLastSection(true);
     m_table->verticalHeader()->hide();
     m_table->setSortingEnabled(true);
+    TableLayoutPersistence::bind(m_table, QStringLiteral("tables/docker/headerState"));
     layout->addWidget(m_table, 1);
 
     auto* actions = new QHBoxLayout;
