@@ -9,9 +9,11 @@ set(CMAKE_AUTORCC ON)
 
 include(GNUInstallDirs)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Test)
 
 qt_standard_project_setup()
+
+enable_testing()
 
 set(SMART_HELPER_TARGET linux-service-dashboard-smart-helper)
 if(IS_ABSOLUTE "${CMAKE_INSTALL_LIBEXECDIR}")
@@ -57,6 +59,8 @@ qt_add_executable(linux-service-dashboard
     src/core/RefreshScheduler.h
     src/core/ServiceGroupSettings.cpp
     src/core/ServiceGroupSettings.h
+    src/core/ModuleSettings.cpp
+    src/core/ModuleSettings.h
     src/models/ServiceModel.cpp
     src/models/ServiceModel.h
     src/models/DockerContainerModel.cpp
@@ -105,10 +109,26 @@ qt_add_executable(linux-service-dashboard
     src/utils/TimeUtils.h
     src/utils/StatusUtils.cpp
     src/utils/StatusUtils.h
+    src/utils/TableLayoutPersistence.cpp
+    src/utils/TableLayoutPersistence.h
+    src/parsers/ProviderParsers.cpp
+    src/parsers/ProviderParsers.h
 )
 
 target_link_libraries(linux-service-dashboard PRIVATE Qt6::Widgets)
 target_compile_definitions(linux-service-dashboard PRIVATE SMART_HELPER_RELATIVE_PATH="${SMART_HELPER_RELATIVE_PATH}")
+
+qt_add_executable(provider-parser-tests
+    tests/test_provider_parsers.cpp
+    src/parsers/ProviderParsers.cpp
+    src/utils/JsonUtils.cpp
+    src/utils/StatusUtils.cpp
+)
+
+target_link_libraries(provider-parser-tests PRIVATE Qt6::Test Qt6::Core)
+target_include_directories(provider-parser-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
+add_test(NAME provider-parser-tests COMMAND provider-parser-tests)
 
 qt_add_executable(${SMART_HELPER_TARGET}
     src/helpers/SmartHelper.cpp
