@@ -7,11 +7,12 @@ Linux Service Dashboard is a local Qt 6 Widgets desktop application for monitori
 - Overview cards for Docker, systemd, VPN, mounts, sensors, and disk health.
 - systemd service table with filtering, refresh, start, stop, restart, and journal viewing.
 - Docker container table using the Docker CLI, with start, stop, restart, logs, and inspect JSON actions.
-- NetworkManager VPN/tunnel status via `nmcli`, including external `tun` links such as OpenConnect.
+- NetworkManager VPN/tunnel status via its DBus interface (asynchronous, with a short timeout), falling back to `nmcli` when the system bus is unavailable; external `tun` links such as OpenConnect are included.
 - CIFS/NFS/sshfs mount listing with file manager open and confirmed unmount.
+- Network shares from `/etc/fstab` and saved mount profiles are shown alongside live mounts; unmount is limited to currently mounted entries.
 - Temperature/sensor display using `sensors -j` with a text fallback.
 - Disk inventory via `lsblk -J` and manual SMART checks via `smartctl -j`, with an installed polkit helper for permission-gated SMART reads.
-- QSettings-backed refresh interval, watched services, module toggles, and theme preference.
+- QSettings-backed refresh interval, watched services, user-defined systemd service groups, module toggles, and theme preference.
 - Light, Dark, and OLED themes with system-theme auto mode.
 - System tray menu with Show Dashboard, Refresh Now, and Quit.
 - Embedded application icon plus installable desktop entry for KDE Plasma Wayland/X11 taskbar matching.
@@ -85,12 +86,12 @@ OLED uses a black-first palette with brighter contrast for OLED displays and dar
 
 ## Known Limitations
 
-- systemd service parsing uses `systemctl list-units --plain`; it is robust enough for the MVP but should eventually move to DBus.
-- SMART checks are manual from the disks page and cached by the UI; frequent automatic SMART polling is intentionally avoided. The polkit helper covers normal installed use, but unusual USB bridges may still require bridge-specific `smartctl -d` options.
-- VPN detection uses `nmcli` active connections and treats VPN-like tunnel types such as `vpn`, `tun`, `wireguard`, and `ppp` as connected; the provider is shaped so it can later be replaced with NetworkManager DBus calls.
-- Mount profiles and fstab parsing are not implemented yet.
-- Module toggles are persisted but do not yet hide pages.
-- Parser/provider behavior is currently validated by manual build and smoke tests; dedicated unit tests are planned.
+- systemd listing uses the systemd1 DBus interface with a `systemctl list-units --plain` fallback; service control actions still run through `systemctl`.
+- SMART checks are manual by default and cached by the UI. An opt-in scheduled refresh (Settings > SMART scheduling, minimum 5-minute interval) can re-run checks automatically; it is skipped while a check is already in progress. The polkit helper covers normal installed use, but unusual USB bridges may still require bridge-specific `smartctl -d` options.
+- Mount profiles and fstab entries are read-only here: the app lists them and can save profiles, but does not mount them or edit `/etc/fstab`.
+- VPN detection queries NetworkManager over DBus (with an `nmcli` fallback) and treats VPN-like tunnel types such as `vpn`, `tun`, `wireguard`, and `ppp` as connected.
+- Module toggles hide a page from the sidebar and skip its scheduled refresh; the Overview and Settings pages are always available.
+- Provider parsers have unit tests (`ctest --test-dir build`); UI behavior and provider command execution are still validated by manual build and smoke tests.
 
 ## Screenshots
 

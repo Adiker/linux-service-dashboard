@@ -97,16 +97,25 @@ Known keys:
 | Key | Type | Default | Purpose |
 |---|---:|---:|---|
 | `refresh/intervalSeconds` | int | `30` | Periodic refresh interval |
-| `systemd/watchedServices` | string list | Docker, NetworkManager, sshd, PostgreSQL, Redis | Units shown in the systemd page |
-| `modules/systemd` | bool | `true` | Reserved module toggle |
-| `modules/docker` | bool | `true` | Reserved module toggle |
-| `modules/vpn` | bool | `true` | Reserved module toggle |
-| `modules/mounts` | bool | `true` | Reserved module toggle |
-| `modules/sensors` | bool | `true` | Reserved module toggle |
-| `modules/smart` | bool | `true` | Reserved module toggle |
+| `systemd/watchedServices` | string list | Docker, NetworkManager, sshd, PostgreSQL, Redis | Units for the active group (legacy/compatibility mirror of the active group's list) |
+| `systemd/groups` | string list | `Default` | Names of user-defined service groups |
+| `systemd/group/<name>` | string list | Default service set | Watched units for a specific group |
+| `systemd/activeGroup` | string | `Default` | Group currently selected on the systemd page |
+| `modules/systemd` | bool | `true` | Show the systemd page and include it in refresh scheduling |
+| `modules/docker` | bool | `true` | Show the Docker page and include it in refresh scheduling |
+| `modules/vpn` | bool | `true` | Show the VPN page and include it in refresh scheduling |
+| `modules/mounts` | bool | `true` | Show the Mounts page and include it in refresh scheduling |
+| `modules/sensors` | bool | `true` | Show the Sensors page and include it in refresh scheduling |
+| `modules/smart` | bool | `true` | Show the Disks/SMART page and include it in refresh scheduling |
+| `mounts/profileNames` | string list | – | Names of saved mount profiles |
+| `mounts/profiles/<name>/{source,target,filesystemType,options}` | string | – | Saved mount profile fields |
+| `smart/scheduledRefreshEnabled` | bool | `false` | Enable the opt-in scheduled SMART refresh |
+| `smart/scheduledRefreshMinutes` | int | `30` | Scheduled SMART refresh interval in minutes (minimum 5) |
+| `smart/history/serial/*`, `smart/history/path/*` | string list | – | Per-disk SMART history entries (keyed by serial, else device path) |
 | `theme/preference` | string | `System` | `System`, `Light`, `Dark`, or `OLED` |
+| `tables/<page>/headerState` | byte array | – | Saved column sizes/order per table (`systemd`, `docker`, `mounts`, `sensors`, `disks`); sort order is persisted only for the proxy-backed systemd table |
 
-Module toggles are persisted by the settings UI but are not yet used to hide pages.
+Module toggles drive sidebar visibility and refresh scheduling: `MainWindow::applyModuleVisibility()` hides disabled pages and `refreshAll()` skips their providers, while the Overview page hides the matching cards. The Overview and Settings pages are always shown.
 
 ---
 
@@ -150,9 +159,9 @@ Pages should use shared object names instead of local styles:
 
 Providers own command execution and parsing:
 
-- `SystemdServiceProvider`: `systemctl`, `journalctl`
+- `SystemdServiceProvider`: systemd1 DBus (`ListUnits`/`ListUnitsFiltered`, bounded timeout) for listing with a `systemctl` fallback; `journalctl` for logs; start/stop/restart actions still use `systemctl`
 - `DockerProvider`: `docker ps`, `docker start/stop/restart/logs/inspect`
-- `NetworkProvider`: `nmcli` active connection parsing for VPN-like types (`vpn`, `tun`, `wireguard`, `ppp`)
+- `NetworkProvider`: NetworkManager DBus (`org.freedesktop.NetworkManager`) for active VPN-like connections (`vpn`, `tun`, `wireguard`, `ppp`), with an `nmcli` fallback when the system bus is unavailable. The `ActiveConnections` query is asynchronous; per-connection property reads use a bounded (5s) timeout.
 - `MountProvider`: mount listing and unmount commands
 - `SensorProvider`: `sensors -j` with text fallback
 - `SmartProvider`: `lsblk -J`, `smartctl -j`, and `pkexec` fallback to the installed SMART helper
@@ -169,7 +178,9 @@ SMART inventory is split into two privilege levels:
 - `linux-service-dashboard-smart-helper` validates narrow `/dev/...` disk paths and optional transports, then runs only the corresponding `smartctl` read commands.
 - The helper does not expose mount, write, shell, or arbitrary command execution.
 
-The helper policy source is `resources/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy.in`. CMake generates the installed policy at `cmake --install` time from the install prefix, and the app resolves the helper through a configure-time relative path from `bindir` to `libexecdir` at runtime. Keep SMART checks manual unless a future change adds explicit rate limiting and user opt-in.
+The helper policy source is `resources/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy.in`. CMake generates the installed policy at `cmake --install` time from the install prefix, and the app resolves the helper through a configure-time relative path from `bindir` to `libexecdir` at runtime.
+
+SMART checks are manual by default. An opt-in scheduled refresh (`SmartRefreshScheduler`, minimum 5-minute interval) re-runs `Check All` automatically; it is gated by `SmartProvider::isSmartCheckBusy()` so it never enqueues a second batch while one is in flight. Each successful check is appended to `SmartHistoryStore`, keyed by the disk's serial when available and otherwise by device path, and surfaced through the Disks page History dialog. Any change to automatic SMART cadence must preserve this rate limiting and explicit user opt-in.
 
 ---
 
@@ -221,11 +232,12 @@ cpack -G DEB --config build/CPackConfig.cmake
 
 ## Checks
 
-There is no CTest suite yet. For code changes, run:
+Provider parsers are covered by a CTest target (`provider-parser-tests`, built from `tests/test_provider_parsers.cpp`). For code changes, build and run the tests:
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc)
+ctest --test-dir build --output-on-failure
 ```
 
 For platform smoke tests where no display interaction is needed:
@@ -246,8 +258,8 @@ QT_QPA_PLATFORM=xcb build/linux-service-dashboard
 
 ## Known Limitations
 
-- systemd parsing uses command output instead of DBus.
-- VPN status uses `nmcli` instead of NetworkManager DBus. Active VPN-like tunnel types (`vpn`, `tun`, `wireguard`, `ppp`) are treated as connected so externally created tunnels such as OpenConnect are visible.
-- SMART checks are manual and permission-dependent; installed builds use the polkit helper for authorized read-only SMART access.
-- Module toggles are saved but do not yet hide pages.
-- There is no automated parser test suite yet.
+- systemd listing uses the systemd1 DBus interface (linking `Qt6::DBus`) with a `systemctl` fallback; service control (start/stop/restart) still uses `systemctl`. The DBus list calls are synchronous with a bounded timeout.
+- VPN status uses the NetworkManager DBus interface (linking `Qt6::DBus`), with an `nmcli` fallback when the system bus is unavailable. Active VPN-like tunnel types (`vpn`, `tun`, `wireguard`, `ppp`) are treated as connected so externally created tunnels such as OpenConnect are visible.
+- SMART checks are manual by default (with an opt-in scheduled refresh, minimum 5 minutes) and permission-dependent; installed builds use the polkit helper for authorized read-only SMART access.
+- Disabling a module hides its page and skips its scheduled refresh, but the underlying provider classes are still constructed.
+- Automated coverage is limited to the provider parser unit tests (`provider-parser-tests`); UI and provider command execution are still validated manually.
