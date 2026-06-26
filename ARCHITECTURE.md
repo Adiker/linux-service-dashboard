@@ -154,7 +154,7 @@ Pages should use shared object names instead of local styles:
 
 Providers own command execution and parsing:
 
-- `SystemdServiceProvider`: `systemctl`, `journalctl`
+- `SystemdServiceProvider`: systemd1 DBus (`ListUnits`/`ListUnitsFiltered`, bounded timeout) for listing with a `systemctl` fallback; `journalctl` for logs; start/stop/restart actions still use `systemctl`
 - `DockerProvider`: `docker ps`, `docker start/stop/restart/logs/inspect`
 - `NetworkProvider`: NetworkManager DBus (`org.freedesktop.NetworkManager`) for active VPN-like connections (`vpn`, `tun`, `wireguard`, `ppp`), with an `nmcli` fallback when the system bus is unavailable. The `ActiveConnections` query is asynchronous; per-connection property reads use a bounded (5s) timeout.
 - `MountProvider`: mount listing and unmount commands
@@ -239,7 +239,7 @@ QT_QPA_PLATFORM=xcb build/linux-service-dashboard
 
 ## Known Limitations
 
-- systemd parsing uses command output instead of DBus.
+- systemd listing uses the systemd1 DBus interface (linking `Qt6::DBus`) with a `systemctl` fallback; service control (start/stop/restart) still uses `systemctl`. The DBus list calls are synchronous with a bounded timeout.
 - VPN status uses the NetworkManager DBus interface (linking `Qt6::DBus`), with an `nmcli` fallback when the system bus is unavailable. Active VPN-like tunnel types (`vpn`, `tun`, `wireguard`, `ppp`) are treated as connected so externally created tunnels such as OpenConnect are visible.
 - SMART checks are manual and permission-dependent; installed builds use the polkit helper for authorized read-only SMART access.
 - Disabling a module hides its page and skips its scheduled refresh, but the underlying provider classes are still constructed.
