@@ -9,7 +9,7 @@ set(CMAKE_AUTORCC ON)
 
 include(GNUInstallDirs)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Test)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Test DBus)
 
 qt_standard_project_setup()
 
@@ -115,7 +115,7 @@ qt_add_executable(linux-service-dashboard
     src/parsers/ProviderParsers.h
 )
 
-target_link_libraries(linux-service-dashboard PRIVATE Qt6::Widgets)
+target_link_libraries(linux-service-dashboard PRIVATE Qt6::Widgets Qt6::DBus)
 target_compile_definitions(linux-service-dashboard PRIVATE SMART_HELPER_RELATIVE_PATH="${SMART_HELPER_RELATIVE_PATH}")
 
 qt_add_executable(provider-parser-tests
