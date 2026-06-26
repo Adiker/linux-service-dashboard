@@ -9,15 +9,11 @@ namespace {
 
 const QString kDefaultGroup = QStringLiteral("Default");
 const QStringList kDefaultServices{
-    QStringLiteral("docker.service"),
-    QStringLiteral("NetworkManager.service"),
-    QStringLiteral("sshd.service"),
-    QStringLiteral("postgresql.service"),
-    QStringLiteral("redis.service"),
+    QStringLiteral("docker.service"),     QStringLiteral("NetworkManager.service"), QStringLiteral("sshd.service"),
+    QStringLiteral("postgresql.service"), QStringLiteral("redis.service"),
 };
 
-QString groupKey(const QString &group)
-{
+QString groupKey(const QString& group) {
     // Percent-encode the name so a group containing '/' (e.g. "prod/web") does not
     // create nested QSettings subgroups and collide with other group keys.
     const QString encoded = QString::fromUtf8(QUrl::toPercentEncoding(group));
@@ -26,8 +22,7 @@ QString groupKey(const QString &group)
 
 } // namespace
 
-void ensureDefaultGroup()
-{
+void ensureDefaultGroup() {
     QSettings settings;
     QStringList groups = settings.value(QStringLiteral("systemd/groups")).toStringList();
     if (groups.isEmpty()) {
@@ -43,35 +38,30 @@ void ensureDefaultGroup()
     }
 }
 
-QStringList groupNames()
-{
+QStringList groupNames() {
     ensureDefaultGroup();
     QSettings settings;
     return settings.value(QStringLiteral("systemd/groups")).toStringList();
 }
 
-QString activeGroup()
-{
+QString activeGroup() {
     ensureDefaultGroup();
     QSettings settings;
     return settings.value(QStringLiteral("systemd/activeGroup"), kDefaultGroup).toString();
 }
 
-void setActiveGroup(const QString &group)
-{
+void setActiveGroup(const QString& group) {
     QSettings settings;
     settings.setValue(QStringLiteral("systemd/activeGroup"), group);
 }
 
-QStringList servicesForGroup(const QString &group)
-{
+QStringList servicesForGroup(const QString& group) {
     ensureDefaultGroup();
     QSettings settings;
     return settings.value(groupKey(group), kDefaultServices).toStringList();
 }
 
-void setServicesForGroup(const QString &group, const QStringList &services)
-{
+void setServicesForGroup(const QString& group, const QStringList& services) {
     QSettings settings;
     QStringList groups = settings.value(QStringLiteral("systemd/groups")).toStringList();
     if (!groups.contains(group)) {
@@ -82,8 +72,7 @@ void setServicesForGroup(const QString &group, const QStringList &services)
     settings.setValue(QStringLiteral("systemd/watchedServices"), services);
 }
 
-void renameGroup(const QString &from, const QString &to)
-{
+void renameGroup(const QString& from, const QString& to) {
     if (from.isEmpty() || to.isEmpty() || from == to) {
         return;
     }

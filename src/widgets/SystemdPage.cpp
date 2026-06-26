@@ -29,7 +29,7 @@ SystemdPage::SystemdPage(QWidget* parent) : QWidget(parent) {
     header->addWidget(m_filter, 1);
     m_groupSelector = new QComboBox(this);
     m_groupSelector->setMinimumWidth(160);
-    for (const QString &group : ServiceGroupSettings::groupNames()) {
+    for (const QString& group : ServiceGroupSettings::groupNames()) {
         m_groupSelector->addItem(group);
     }
     m_groupSelector->setCurrentText(ServiceGroupSettings::activeGroup());
@@ -67,7 +67,7 @@ SystemdPage::SystemdPage(QWidget* parent) : QWidget(parent) {
     layout->addLayout(actions);
 
     connect(m_filter, &QLineEdit::textChanged, m_proxy, &QSortFilterProxyModel::setFilterFixedString);
-    connect(m_groupSelector, &QComboBox::currentTextChanged, this, [this](const QString &group) {
+    connect(m_groupSelector, &QComboBox::currentTextChanged, this, [this](const QString& group) {
         ServiceGroupSettings::setActiveGroup(group);
         refresh();
     });
@@ -119,12 +119,11 @@ void SystemdPage::refresh() {
     m_provider.refreshServices(watchedServices());
 }
 
-void SystemdPage::reloadGroupSelector()
-{
+void SystemdPage::reloadGroupSelector() {
     const QString current = m_groupSelector->currentText();
     m_groupSelector->blockSignals(true);
     m_groupSelector->clear();
-    for (const QString &group : ServiceGroupSettings::groupNames()) {
+    for (const QString& group : ServiceGroupSettings::groupNames()) {
         m_groupSelector->addItem(group);
     }
     const int index = m_groupSelector->findText(ServiceGroupSettings::activeGroup());
