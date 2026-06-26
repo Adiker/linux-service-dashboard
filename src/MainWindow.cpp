@@ -18,9 +18,7 @@
 #include <QStyle>
 #include <QSystemTrayIcon>
 
-MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent)
-{
+MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     setWindowTitle(QStringLiteral("Linux Service Dashboard"));
     setWindowIcon(serviceDashboardIcon());
     resize(1200, 800);
@@ -32,11 +30,10 @@ MainWindow::MainWindow(QWidget *parent)
     connect(&m_scheduler, &RefreshScheduler::refreshRequested, this, &MainWindow::refreshAll);
 }
 
-void MainWindow::buildUi()
-{
-    auto *central = new QWidget(this);
+void MainWindow::buildUi() {
+    auto* central = new QWidget(this);
     central->setObjectName(QStringLiteral("appRoot"));
-    auto *layout = new QHBoxLayout(central);
+    auto* layout = new QHBoxLayout(central);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
 
@@ -44,14 +41,8 @@ void MainWindow::buildUi()
     m_sidebar->setObjectName(QStringLiteral("sidebar"));
     m_sidebar->setFixedWidth(230);
     const QStringList items{
-        QStringLiteral("Overview"),
-        QStringLiteral("Systemd Services"),
-        QStringLiteral("Docker"),
-        QStringLiteral("VPN"),
-        QStringLiteral("Mounts"),
-        QStringLiteral("Sensors"),
-        QStringLiteral("Disks / SMART"),
-        QStringLiteral("Settings"),
+        QStringLiteral("Overview"), QStringLiteral("Systemd Services"), QStringLiteral("Docker"),        QStringLiteral("VPN"),
+        QStringLiteral("Mounts"),   QStringLiteral("Sensors"),          QStringLiteral("Disks / SMART"), QStringLiteral("Settings"),
     };
     const QStringList icons{
         QStringLiteral("view-dashboard"),
@@ -64,7 +55,7 @@ void MainWindow::buildUi()
         QStringLiteral("settings-configure"),
     };
     for (int i = 0; i < items.size(); ++i) {
-        auto *entry = new QListWidgetItem(QIcon::fromTheme(icons.value(i)), items.at(i), m_sidebar);
+        auto* entry = new QListWidgetItem(QIcon::fromTheme(icons.value(i)), items.at(i), m_sidebar);
         entry->setSizeHint(QSize(0, 42));
     }
     layout->addWidget(m_sidebar);
@@ -80,9 +71,9 @@ void MainWindow::buildUi()
     m_disks = new DisksPage(m_stack);
     m_settings = new SettingsPage(m_stack);
 
-    for (QWidget *page : {static_cast<QWidget *>(m_overview), static_cast<QWidget *>(m_systemd), static_cast<QWidget *>(m_docker),
-                          static_cast<QWidget *>(m_vpn), static_cast<QWidget *>(m_mounts), static_cast<QWidget *>(m_sensors),
-                          static_cast<QWidget *>(m_disks), static_cast<QWidget *>(m_settings)}) {
+    for (QWidget* page : {static_cast<QWidget*>(m_overview), static_cast<QWidget*>(m_systemd), static_cast<QWidget*>(m_docker),
+                          static_cast<QWidget*>(m_vpn), static_cast<QWidget*>(m_mounts), static_cast<QWidget*>(m_sensors),
+                          static_cast<QWidget*>(m_disks), static_cast<QWidget*>(m_settings)}) {
         m_stack->addWidget(page);
     }
     layout->addWidget(m_stack, 1);
@@ -93,14 +84,13 @@ void MainWindow::buildUi()
     m_sidebar->setCurrentRow(0);
 }
 
-void MainWindow::buildTray()
-{
+void MainWindow::buildTray() {
     m_tray = new QSystemTrayIcon(serviceDashboardIcon(), this);
-    auto *menu = new QMenu(this);
-    auto *showAction = menu->addAction(QStringLiteral("Show Dashboard"));
-    auto *refreshAction = menu->addAction(QStringLiteral("Refresh Now"));
+    auto* menu = new QMenu(this);
+    auto* showAction = menu->addAction(QStringLiteral("Show Dashboard"));
+    auto* refreshAction = menu->addAction(QStringLiteral("Refresh Now"));
     menu->addSeparator();
-    auto *quitAction = menu->addAction(QStringLiteral("Quit"));
+    auto* quitAction = menu->addAction(QStringLiteral("Quit"));
     connect(showAction, &QAction::triggered, this, [this]() {
         showNormal();
         raise();
@@ -120,8 +110,7 @@ void MainWindow::buildTray()
     m_tray->show();
 }
 
-void MainWindow::reloadSettings()
-{
+void MainWindow::reloadSettings() {
     QSettings settings;
     m_scheduler.setIntervalSeconds(settings.value(QStringLiteral("refresh/intervalSeconds"), 30).toInt());
     m_scheduler.start();
@@ -131,19 +120,13 @@ void MainWindow::reloadSettings()
     refreshAll();
 }
 
-void MainWindow::applyModuleVisibility()
-{
-    QListWidgetItem *items[] = {
-        m_sidebar->item(PageOverview),
-        m_sidebar->item(PageSystemd),
-        m_sidebar->item(PageDocker),
-        m_sidebar->item(PageVpn),
-        m_sidebar->item(PageMounts),
-        m_sidebar->item(PageSensors),
-        m_sidebar->item(PageDisks),
-        m_sidebar->item(PageSettings),
+void MainWindow::applyModuleVisibility() {
+    QListWidgetItem* items[] = {
+        m_sidebar->item(PageOverview), m_sidebar->item(PageSystemd), m_sidebar->item(PageDocker), m_sidebar->item(PageVpn),
+        m_sidebar->item(PageMounts),   m_sidebar->item(PageSensors), m_sidebar->item(PageDisks),  m_sidebar->item(PageSettings),
     };
-    const bool enabled[] = {true, m_modules.systemd, m_modules.docker, m_modules.vpn, m_modules.mounts, m_modules.sensors, m_modules.smart, true};
+    const bool enabled[] = {true, m_modules.systemd, m_modules.docker, m_modules.vpn, m_modules.mounts, m_modules.sensors, m_modules.smart,
+                            true};
     for (int i = 0; i < 8; ++i) {
         if (items[i]) {
             items[i]->setHidden(!enabled[i]);
@@ -154,8 +137,7 @@ void MainWindow::applyModuleVisibility()
     }
 }
 
-void MainWindow::applyTheme()
-{
+void MainWindow::applyTheme() {
     QSettings settings;
     const QString preference = settings.value(QStringLiteral("theme/preference"), QStringLiteral("System")).toString();
     const bool systemDark = palette().color(QPalette::Window).lightness() < 128;
@@ -365,19 +347,18 @@ void MainWindow::applyTheme()
             border: 1px solid %5;
         }
     )")
-        .arg(window)
-        .arg(sidebar)
-        .arg(surface)
-        .arg(surfaceAlt)
-        .arg(border)
-        .arg(text)
-        .arg(muted)
-        .arg(accent)
-        .arg(accentSoft));
+                            .arg(window)
+                            .arg(sidebar)
+                            .arg(surface)
+                            .arg(surfaceAlt)
+                            .arg(border)
+                            .arg(text)
+                            .arg(muted)
+                            .arg(accent)
+                            .arg(accentSoft));
 }
 
-void MainWindow::refreshAll()
-{
+void MainWindow::refreshAll() {
     m_overview->refresh(m_modules);
     if (m_modules.systemd) {
         m_systemd->refresh();
@@ -399,8 +380,7 @@ void MainWindow::refreshAll()
     }
 }
 
-void MainWindow::closeEvent(QCloseEvent *event)
-{
+void MainWindow::closeEvent(QCloseEvent* event) {
     if (m_tray && m_tray->isVisible()) {
         hide();
         event->ignore();
