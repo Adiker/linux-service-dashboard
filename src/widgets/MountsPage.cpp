@@ -1,7 +1,6 @@
 #include "MountsPage.h"
 
 #include "../utils/TableLayoutPersistence.h"
-
 #include "ConfirmActionDialog.h"
 
 #include <QDesktopServices>

@@ -1,7 +1,6 @@
 #include "SystemdPage.h"
 
 #include "../utils/TableLayoutPersistence.h"
-
 #include "ConfirmActionDialog.h"
 #include "LogViewerDialog.h"
 
