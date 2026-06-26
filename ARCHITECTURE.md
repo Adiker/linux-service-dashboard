@@ -209,11 +209,12 @@ This installs:
 
 ## Checks
 
-There is no CTest suite yet. For code changes, run:
+Provider parsers are covered by a CTest target (`provider-parser-tests`, built from `tests/test_provider_parsers.cpp`). For code changes, build and run the tests:
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc)
+ctest --test-dir build --output-on-failure
 ```
 
 For platform smoke tests where no display interaction is needed:
@@ -238,4 +239,4 @@ QT_QPA_PLATFORM=xcb build/linux-service-dashboard
 - VPN status uses `nmcli` instead of NetworkManager DBus. Active VPN-like tunnel types (`vpn`, `tun`, `wireguard`, `ppp`) are treated as connected so externally created tunnels such as OpenConnect are visible.
 - SMART checks are manual and permission-dependent; installed builds use the polkit helper for authorized read-only SMART access.
 - Disabling a module hides its page and skips its scheduled refresh, but the underlying provider classes are still constructed.
-- There is no automated parser test suite yet.
+- Automated coverage is limited to the provider parser unit tests (`provider-parser-tests`); UI and provider command execution are still validated manually.

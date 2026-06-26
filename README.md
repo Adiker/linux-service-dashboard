@@ -85,7 +85,7 @@ OLED uses a black-first palette with brighter contrast for OLED displays and dar
 - VPN detection uses `nmcli` active connections and treats VPN-like tunnel types such as `vpn`, `tun`, `wireguard`, and `ppp` as connected; the provider is shaped so it can later be replaced with NetworkManager DBus calls.
 - Mount profiles and fstab parsing are not implemented yet.
 - Module toggles hide a page from the sidebar and skip its scheduled refresh; the Overview and Settings pages are always available.
-- Parser/provider behavior is currently validated by manual build and smoke tests; dedicated unit tests are planned.
+- Provider parsers have unit tests (`ctest --test-dir build`); UI behavior and provider command execution are still validated by manual build and smoke tests.
 
 ## Screenshots
 
