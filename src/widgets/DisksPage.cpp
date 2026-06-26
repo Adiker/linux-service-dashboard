@@ -1,19 +1,19 @@
 #include "DisksPage.h"
 
+#include "../utils/TableLayoutPersistence.h"
+
 #include <QHeaderView>
 #include <QLabel>
 #include <QPushButton>
 #include <QTableView>
 #include <QVBoxLayout>
 
-DisksPage::DisksPage(QWidget *parent)
-    : QWidget(parent)
-{
-    auto *layout = new QVBoxLayout(this);
-    auto *header = new QHBoxLayout;
-    auto *title = new QLabel(QStringLiteral("Disks / SMART"), this);
+DisksPage::DisksPage(QWidget* parent) : QWidget(parent) {
+    auto* layout = new QVBoxLayout(this);
+    auto* header = new QHBoxLayout;
+    auto* title = new QLabel(QStringLiteral("Disks / SMART"), this);
     title->setObjectName(QStringLiteral("pageTitle"));
-    auto *refreshButton = new QPushButton(QIcon::fromTheme(QStringLiteral("view-refresh")), QStringLiteral("Refresh"), this);
+    auto* refreshButton = new QPushButton(QIcon::fromTheme(QStringLiteral("view-refresh")), QStringLiteral("Refresh"), this);
     header->addWidget(title);
     header->addStretch();
     header->addWidget(refreshButton);
@@ -27,11 +27,12 @@ DisksPage::DisksPage(QWidget *parent)
     m_table->horizontalHeader()->setStretchLastSection(true);
     m_table->verticalHeader()->hide();
     m_table->setSortingEnabled(true);
+    TableLayoutPersistence::bind(m_table, QStringLiteral("tables/disks/headerState"));
     layout->addWidget(m_table, 1);
 
-    auto *actions = new QHBoxLayout;
-    auto *smartButton = new QPushButton(QIcon::fromTheme(QStringLiteral("drive-harddisk")), QStringLiteral("Check SMART"), this);
-    auto *smartAllButton = new QPushButton(QIcon::fromTheme(QStringLiteral("drive-harddisk")), QStringLiteral("Check All SMART"), this);
+    auto* actions = new QHBoxLayout;
+    auto* smartButton = new QPushButton(QIcon::fromTheme(QStringLiteral("drive-harddisk")), QStringLiteral("Check SMART"), this);
+    auto* smartAllButton = new QPushButton(QIcon::fromTheme(QStringLiteral("drive-harddisk")), QStringLiteral("Check All SMART"), this);
     actions->addWidget(smartButton);
     actions->addWidget(smartAllButton);
     actions->addStretch();
@@ -56,11 +57,11 @@ DisksPage::DisksPage(QWidget *parent)
             m_provider.checkSmart(rows);
         }
     });
-    connect(&m_provider, &SmartProvider::disksReady, this, [this](const QVector<DiskRow> &rows, const QString &error) {
+    connect(&m_provider, &SmartProvider::disksReady, this, [this](const QVector<DiskRow>& rows, const QString& error) {
         m_model->setRows(rows);
         m_status->setText(error.isEmpty() ? QStringLiteral("%1 disks").arg(rows.size()) : error);
     });
-    connect(&m_provider, &SmartProvider::smartReady, this, [this](const QString &path, const DiskRow &smartRow, const QString &error) {
+    connect(&m_provider, &SmartProvider::smartReady, this, [this](const QString& path, const DiskRow& smartRow, const QString& error) {
         m_model->updateSmart(path, smartRow);
         if (error.isEmpty()) {
             m_status->setText(QStringLiteral("SMART check complete for %1").arg(path));
@@ -68,19 +69,16 @@ DisksPage::DisksPage(QWidget *parent)
             m_status->setText(error);
         }
     });
-
-    refresh();
 }
 
-DiskRow DisksPage::selectedRow() const
-{
+DiskRow DisksPage::selectedRow() const {
     const QModelIndex index = m_table->currentIndex();
-    if (!index.isValid()) return {};
+    if (!index.isValid())
+        return {};
     return m_model->rowAt(index.row());
 }
 
-void DisksPage::refresh()
-{
+void DisksPage::refresh() {
     m_status->setText(QStringLiteral("Refreshing..."));
     m_provider.refreshDisks();
 }

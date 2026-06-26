@@ -1,5 +1,6 @@
 #include "SystemdServiceProvider.h"
 
+#include "../parsers/ProviderParsers.h"
 #include "../utils/TimeUtils.h"
 
 #include <QDBusArgument>
@@ -7,7 +8,6 @@
 #include <QDBusMessage>
 #include <QDBusObjectPath>
 #include <QDBusReply>
-#include <QRegularExpression>
 #include <QSet>
 
 namespace {
@@ -139,52 +139,6 @@ QVector<ServiceRow> buildServiceRows(const QVector<UnitInfo> &units, const QStri
     return rows;
 }
 
-QVector<ServiceRow> parseSystemctlListUnits(const QString &output, const QStringList &watchedServices, const QString &timestamp)
-{
-    QVector<ServiceRow> rows;
-    const QRegularExpression lineExpression(QStringLiteral(R"(^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(.*)$)"));
-    QSet<QString> seen;
-    const QStringList lines = output.split('\n', Qt::SkipEmptyParts);
-    for (const QString &line : lines) {
-        const auto match = lineExpression.match(line.trimmed());
-        if (!match.hasMatch() || !match.captured(1).endsWith(QStringLiteral(".service"))) {
-            continue;
-        }
-        ServiceRow row;
-        row.unit = match.captured(1);
-        row.loadState = match.captured(2);
-        row.activeState = match.captured(3);
-        row.subState = match.captured(4);
-        row.description = match.captured(5);
-        row.lastRefresh = timestamp;
-        if (watchedServices.isEmpty() || watchedServices.contains(row.unit)) {
-            rows.append(row);
-            seen.insert(row.unit);
-        }
-    }
-    for (const QString &unit : watchedServices) {
-        if (!seen.contains(unit)) {
-            rows.append(ServiceRow{unit, QStringLiteral("unavailable"), QStringLiteral("unknown"), QStringLiteral("-"), QStringLiteral("Unit not found"), timestamp});
-        }
-    }
-    return rows;
-}
-
-int parseSystemctlFailedCount(const QString &output)
-{
-    int count = 0;
-    const QStringList lines = output.split('\n', Qt::SkipEmptyParts);
-    for (const QString &line : lines) {
-        if (line.trimmed().startsWith(QStringLiteral("UNIT "))) {
-            continue;
-        }
-        if (line.contains(QStringLiteral(".service"))) {
-            ++count;
-        }
-    }
-    return count;
-}
-
 } // namespace
 
 SystemdServiceProvider::SystemdServiceProvider(QObject *parent)
@@ -193,17 +147,21 @@ SystemdServiceProvider::SystemdServiceProvider(QObject *parent)
     connect(&m_runner, &CommandRunner::commandFinished, this, [this](const QString &, const CommandResult &result, const QString &context) {
         if (context == QStringLiteral("systemd-list")) {
             QString error;
-            if (!result.ok()) {
+            QVector<ServiceRow> rows;
+            if (result.ok()) {
+                rows = ProviderParsers::parseSystemdListUnits(result.standardOutput, m_watched, currentTimestamp(), nullptr);
+            } else {
                 error = result.startFailed
                     ? QStringLiteral("systemctl not found or failed to start.")
                     : result.standardError.trimmed();
+                rows = ProviderParsers::parseSystemdListUnits(QString(), m_watched, currentTimestamp(), nullptr);
             }
-            emit servicesReady(parseSystemctlListUnits(result.standardOutput, m_watched, currentTimestamp()), error);
+            emit servicesReady(rows, error);
         } else if (context == QStringLiteral("systemd-failed")) {
             QString error;
             int count = 0;
             if (result.ok() || result.exitCode == 1) {
-                count = parseSystemctlFailedCount(result.standardOutput);
+                count = ProviderParsers::parseSystemdFailedCount(result.standardOutput, nullptr);
             } else {
                 error = result.startFailed ? QStringLiteral("systemctl not found.") : result.standardError.trimmed();
             }
