@@ -6,8 +6,8 @@
 
 #include <QDesktopServices>
 #include <QHeaderView>
-#include <QLabel>
 #include <QInputDialog>
+#include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QPushButton>
@@ -77,7 +77,9 @@ MountsPage::MountsPage(QWidget* parent) : QWidget(parent) {
             return;
         }
         bool ok = false;
-        const QString name = QInputDialog::getText(this, QStringLiteral("Save mount profile"), QStringLiteral("Profile name"), QLineEdit::Normal, row.target, &ok).trimmed();
+        const QString name = QInputDialog::getText(this, QStringLiteral("Save mount profile"), QStringLiteral("Profile name"),
+                                                   QLineEdit::Normal, row.target, &ok)
+                                 .trimmed();
         if (!ok || name.isEmpty()) {
             return;
         }

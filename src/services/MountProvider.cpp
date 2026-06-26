@@ -9,9 +9,8 @@
 #include <QJsonObject>
 #include <QSet>
 
-static void collectAllTargets(const QJsonArray &array, QSet<QString> *targets)
-{
-    for (const QJsonValue &value : array) {
+static void collectAllTargets(const QJsonArray& array, QSet<QString>* targets) {
+    for (const QJsonValue& value : array) {
         const QJsonObject object = value.toObject();
         const QString target = object.value(QStringLiteral("target")).toString();
         // Ignore autofs placeholders: with x-systemd.automount the target carries an
@@ -27,16 +26,15 @@ static void collectAllTargets(const QJsonArray &array, QSet<QString> *targets)
     }
 }
 
-static QVector<MountRow> mergeConfiguredMounts(const QVector<MountRow> &liveRows, const QSet<QString> &mountedTargets)
-{
+static QVector<MountRow> mergeConfiguredMounts(const QVector<MountRow>& liveRows, const QSet<QString>& mountedTargets) {
     QVector<MountRow> merged = liveRows;
     QString fstabError;
-    for (const MountRow &row : FstabParser::parseFile(QStringLiteral("/etc/fstab"), &fstabError)) {
+    for (const MountRow& row : FstabParser::parseFile(QStringLiteral("/etc/fstab"), &fstabError)) {
         if (!mountedTargets.contains(row.target)) {
             merged.append(row);
         }
     }
-    for (const MountRow &row : MountProfileStore::loadProfiles()) {
+    for (const MountRow& row : MountProfileStore::loadProfiles()) {
         if (!mountedTargets.contains(row.target)) {
             merged.append(row);
         }
@@ -44,10 +42,8 @@ static QVector<MountRow> mergeConfiguredMounts(const QVector<MountRow> &liveRows
     return merged;
 }
 
-MountProvider::MountProvider(QObject *parent)
-    : QObject(parent)
-{
-    connect(&m_runner, &CommandRunner::commandFinished, this, [this](const QString &, const CommandResult &result, const QString &context) {
+MountProvider::MountProvider(QObject* parent) : QObject(parent) {
+    connect(&m_runner, &CommandRunner::commandFinished, this, [this](const QString&, const CommandResult& result, const QString& context) {
         if (context == QStringLiteral("mount-list")) {
             QString error;
             QVector<MountRow> rows;
@@ -75,19 +71,18 @@ MountProvider::MountProvider(QObject *parent)
             emit mountsReady(rows, error);
         } else if (context.startsWith(QStringLiteral("mount-unmount:"))) {
             const QString target = context.mid(QStringLiteral("mount-unmount:").size());
-            emit actionFinished(result.ok() ? QStringLiteral("Unmounted %1.").arg(target) : QStringLiteral("Could not unmount %1.").arg(target),
+            emit actionFinished(result.ok() ? QStringLiteral("Unmounted %1.").arg(target)
+                                            : QStringLiteral("Could not unmount %1.").arg(target),
                                 result.ok() ? result.standardOutput : result.standardError);
         }
     });
 }
 
-void MountProvider::refreshMounts(bool includeConfigured)
-{
+void MountProvider::refreshMounts(bool includeConfigured) {
     m_includeConfigured = includeConfigured;
     m_runner.run(QStringLiteral("findmnt"), {QStringLiteral("--json")}, 15000, QStringLiteral("mount-list"));
 }
 
-void MountProvider::unmount(const QString &target)
-{
+void MountProvider::unmount(const QString& target) {
     m_runner.run(QStringLiteral("umount"), {target}, 30000, QStringLiteral("mount-unmount:%1").arg(target));
 }

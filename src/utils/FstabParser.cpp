@@ -7,17 +7,12 @@ namespace FstabParser {
 
 namespace {
 
-bool isNetworkFilesystem(const QString &type)
-{
-    return type == QStringLiteral("cifs")
-        || type == QStringLiteral("nfs")
-        || type == QStringLiteral("nfs4")
-        || type == QStringLiteral("sshfs")
-        || type == QStringLiteral("fuse.sshfs");
+bool isNetworkFilesystem(const QString& type) {
+    return type == QStringLiteral("cifs") || type == QStringLiteral("nfs") || type == QStringLiteral("nfs4") ||
+           type == QStringLiteral("sshfs") || type == QStringLiteral("fuse.sshfs");
 }
 
-QString decodeFstabField(const QString &field)
-{
+QString decodeFstabField(const QString& field) {
     QString decoded;
     decoded.reserve(field.size());
     for (int i = 0; i < field.size(); ++i) {
@@ -45,8 +40,7 @@ QString decodeFstabField(const QString &field)
 
 } // namespace
 
-QVector<MountRow> parseFile(const QString &path, QString *error)
-{
+QVector<MountRow> parseFile(const QString& path, QString* error) {
     QVector<MountRow> rows;
     if (error) {
         error->clear();
@@ -60,7 +54,7 @@ QVector<MountRow> parseFile(const QString &path, QString *error)
     }
     const QString content = QString::fromUtf8(file.readAll());
     const QStringList lines = content.split('\n', Qt::SkipEmptyParts);
-    for (const QString &rawLine : lines) {
+    for (const QString& rawLine : lines) {
         const QString line = rawLine.trimmed();
         if (line.isEmpty() || line.startsWith('#')) {
             continue;
