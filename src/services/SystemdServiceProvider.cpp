@@ -24,8 +24,7 @@ struct UnitInfo {
     QString subState;
 };
 
-void parseUnitStructure(const QDBusArgument &argument, UnitInfo *unit)
-{
+void parseUnitStructure(const QDBusArgument& argument, UnitInfo* unit) {
     // The argument must be const so the const (demarshalling) overloads of
     // beginStructure()/operator>> are selected; the non-const overloads marshal
     // (write) and silently no-op on a received, read-only reply, which leaves the
@@ -41,8 +40,7 @@ void parseUnitStructure(const QDBusArgument &argument, UnitInfo *unit)
     argument.endStructure();
 }
 
-QVector<UnitInfo> listUnitsViaDBus(QString *error)
-{
+QVector<UnitInfo> listUnitsViaDBus(QString* error) {
     QVector<UnitInfo> units;
     QDBusConnection bus = QDBusConnection::systemBus();
     if (!bus.isConnected()) {
@@ -52,10 +50,9 @@ QVector<UnitInfo> listUnitsViaDBus(QString *error)
         return units;
     }
 
-    QDBusMessage message = QDBusMessage::createMethodCall(QStringLiteral("org.freedesktop.systemd1"),
-                                                            QStringLiteral("/org/freedesktop/systemd1"),
-                                                            QStringLiteral("org.freedesktop.systemd1.Manager"),
-                                                            QStringLiteral("ListUnits"));
+    QDBusMessage message =
+        QDBusMessage::createMethodCall(QStringLiteral("org.freedesktop.systemd1"), QStringLiteral("/org/freedesktop/systemd1"),
+                                       QStringLiteral("org.freedesktop.systemd1.Manager"), QStringLiteral("ListUnits"));
     const QDBusMessage reply = bus.call(message, QDBus::Block, kDBusTimeoutMs);
     if (reply.type() != QDBusMessage::ReplyMessage) {
         if (error) {
@@ -75,8 +72,7 @@ QVector<UnitInfo> listUnitsViaDBus(QString *error)
     return units;
 }
 
-QVector<UnitInfo> listFailedUnitsViaDBus(QString *error)
-{
+QVector<UnitInfo> listFailedUnitsViaDBus(QString* error) {
     QDBusConnection bus = QDBusConnection::systemBus();
     if (!bus.isConnected()) {
         if (error) {
@@ -85,10 +81,9 @@ QVector<UnitInfo> listFailedUnitsViaDBus(QString *error)
         return {};
     }
 
-    QDBusMessage message = QDBusMessage::createMethodCall(QStringLiteral("org.freedesktop.systemd1"),
-                                                            QStringLiteral("/org/freedesktop/systemd1"),
-                                                            QStringLiteral("org.freedesktop.systemd1.Manager"),
-                                                            QStringLiteral("ListUnitsFiltered"));
+    QDBusMessage message =
+        QDBusMessage::createMethodCall(QStringLiteral("org.freedesktop.systemd1"), QStringLiteral("/org/freedesktop/systemd1"),
+                                       QStringLiteral("org.freedesktop.systemd1.Manager"), QStringLiteral("ListUnitsFiltered"));
     message << QStringList{QStringLiteral("failed")};
     const QDBusMessage reply = bus.call(message, QDBus::Block, kDBusTimeoutMs);
     if (reply.type() != QDBusMessage::ReplyMessage) {
@@ -110,11 +105,10 @@ QVector<UnitInfo> listFailedUnitsViaDBus(QString *error)
     return units;
 }
 
-QVector<ServiceRow> buildServiceRows(const QVector<UnitInfo> &units, const QStringList &watchedServices, const QString &timestamp)
-{
+QVector<ServiceRow> buildServiceRows(const QVector<UnitInfo>& units, const QStringList& watchedServices, const QString& timestamp) {
     QVector<ServiceRow> rows;
     QSet<QString> seen;
-    for (const UnitInfo &unit : units) {
+    for (const UnitInfo& unit : units) {
         if (!unit.name.endsWith(QStringLiteral(".service"))) {
             continue;
         }
@@ -131,9 +125,10 @@ QVector<ServiceRow> buildServiceRows(const QVector<UnitInfo> &units, const QStri
         rows.append(row);
         seen.insert(unit.name);
     }
-    for (const QString &unit : watchedServices) {
+    for (const QString& unit : watchedServices) {
         if (!seen.contains(unit)) {
-            rows.append(ServiceRow{unit, QStringLiteral("unavailable"), QStringLiteral("unknown"), QStringLiteral("-"), QStringLiteral("Unit not found"), timestamp});
+            rows.append(ServiceRow{unit, QStringLiteral("unavailable"), QStringLiteral("unknown"), QStringLiteral("-"),
+                                   QStringLiteral("Unit not found"), timestamp});
         }
     }
     return rows;
@@ -141,19 +136,15 @@ QVector<ServiceRow> buildServiceRows(const QVector<UnitInfo> &units, const QStri
 
 } // namespace
 
-SystemdServiceProvider::SystemdServiceProvider(QObject *parent)
-    : QObject(parent)
-{
-    connect(&m_runner, &CommandRunner::commandFinished, this, [this](const QString &, const CommandResult &result, const QString &context) {
+SystemdServiceProvider::SystemdServiceProvider(QObject* parent) : QObject(parent) {
+    connect(&m_runner, &CommandRunner::commandFinished, this, [this](const QString&, const CommandResult& result, const QString& context) {
         if (context == QStringLiteral("systemd-list")) {
             QString error;
             QVector<ServiceRow> rows;
             if (result.ok()) {
                 rows = ProviderParsers::parseSystemdListUnits(result.standardOutput, m_watched, currentTimestamp(), nullptr);
             } else {
-                error = result.startFailed
-                    ? QStringLiteral("systemctl not found or failed to start.")
-                    : result.standardError.trimmed();
+                error = result.startFailed ? QStringLiteral("systemctl not found or failed to start.") : result.standardError.trimmed();
                 rows = ProviderParsers::parseSystemdListUnits(QString(), m_watched, currentTimestamp(), nullptr);
             }
             emit servicesReady(rows, error);
@@ -168,21 +159,18 @@ SystemdServiceProvider::SystemdServiceProvider(QObject *parent)
             emit failedCountReady(count, error);
         } else if (context.startsWith(QStringLiteral("systemd-logs:"))) {
             const QString unit = context.mid(QStringLiteral("systemd-logs:").size());
-            emit logsReady(QStringLiteral("journalctl -u %1").arg(unit),
-                           result.ok() ? result.standardOutput : result.standardError);
+            emit logsReady(QStringLiteral("journalctl -u %1").arg(unit), result.ok() ? result.standardOutput : result.standardError);
         } else if (context.startsWith(QStringLiteral("systemd-action:"))) {
             const QString action = context.section(':', 1, 1);
             const QString unit = context.section(':', 2);
-            const QString message = result.ok()
-                ? QStringLiteral("%1 %2 succeeded.").arg(action, unit)
-                : QStringLiteral("%1 %2 failed.").arg(action, unit);
+            const QString message =
+                result.ok() ? QStringLiteral("%1 %2 succeeded.").arg(action, unit) : QStringLiteral("%1 %2 failed.").arg(action, unit);
             emit actionFinished(message, result.ok() ? result.standardOutput : result.standardError);
         }
     });
 }
 
-void SystemdServiceProvider::refreshServices(const QStringList &watchedServices)
-{
+void SystemdServiceProvider::refreshServices(const QStringList& watchedServices) {
     m_watched = watchedServices;
     QString error;
     const QVector<UnitInfo> units = listUnitsViaDBus(&error);
@@ -192,18 +180,17 @@ void SystemdServiceProvider::refreshServices(const QStringList &watchedServices)
     }
 
     m_runner.run(QStringLiteral("systemctl"),
-                 {QStringLiteral("list-units"), QStringLiteral("--type=service"), QStringLiteral("--all"), QStringLiteral("--no-pager"), QStringLiteral("--plain")},
-                 15000,
-                 QStringLiteral("systemd-list"));
+                 {QStringLiteral("list-units"), QStringLiteral("--type=service"), QStringLiteral("--all"), QStringLiteral("--no-pager"),
+                  QStringLiteral("--plain")},
+                 15000, QStringLiteral("systemd-list"));
 }
 
-void SystemdServiceProvider::refreshFailedCount()
-{
+void SystemdServiceProvider::refreshFailedCount() {
     QString error;
     const QVector<UnitInfo> units = listFailedUnitsViaDBus(&error);
     if (!units.isEmpty() || error.isEmpty()) {
         int count = 0;
-        for (const UnitInfo &unit : units) {
+        for (const UnitInfo& unit : units) {
             if (unit.name.endsWith(QStringLiteral(".service"))) {
                 ++count;
             }
@@ -212,21 +199,16 @@ void SystemdServiceProvider::refreshFailedCount()
         return;
     }
 
-    m_runner.run(QStringLiteral("systemctl"),
-                 {QStringLiteral("--failed"), QStringLiteral("--no-pager")},
-                 12000,
+    m_runner.run(QStringLiteral("systemctl"), {QStringLiteral("--failed"), QStringLiteral("--no-pager")}, 12000,
                  QStringLiteral("systemd-failed"));
 }
 
-void SystemdServiceProvider::serviceLogs(const QString &unit)
-{
+void SystemdServiceProvider::serviceLogs(const QString& unit) {
     m_runner.run(QStringLiteral("journalctl"),
-                 {QStringLiteral("-u"), unit, QStringLiteral("-n"), QStringLiteral("300"), QStringLiteral("--no-pager")},
-                 20000,
+                 {QStringLiteral("-u"), unit, QStringLiteral("-n"), QStringLiteral("300"), QStringLiteral("--no-pager")}, 20000,
                  QStringLiteral("systemd-logs:%1").arg(unit));
 }
 
-void SystemdServiceProvider::controlService(const QString &unit, const QString &action)
-{
+void SystemdServiceProvider::controlService(const QString& unit, const QString& action) {
     m_runner.run(QStringLiteral("systemctl"), {action, unit}, 30000, QStringLiteral("systemd-action:%1:%2").arg(action, unit));
 }
