@@ -1,11 +1,14 @@
 #include "MountsPage.h"
 
+#include "../core/MountProfileStore.h"
 #include "../utils/TableLayoutPersistence.h"
 #include "ConfirmActionDialog.h"
 
 #include <QDesktopServices>
 #include <QHeaderView>
+#include <QInputDialog>
 #include <QLabel>
+#include <QLineEdit>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QTableView>
@@ -36,8 +39,10 @@ MountsPage::MountsPage(QWidget* parent) : QWidget(parent) {
     auto* actions = new QHBoxLayout;
     auto* openButton = new QPushButton(QIcon::fromTheme(QStringLiteral("folder-open")), QStringLiteral("Open path"), this);
     auto* unmountButton = new QPushButton(QStringLiteral("Unmount"), this);
+    auto* saveProfileButton = new QPushButton(QStringLiteral("Save profile"), this);
     actions->addWidget(openButton);
     actions->addWidget(unmountButton);
+    actions->addWidget(saveProfileButton);
     actions->addStretch();
     m_status = new QLabel(this);
     actions->addWidget(m_status);
@@ -52,10 +57,35 @@ MountsPage::MountsPage(QWidget* parent) : QWidget(parent) {
     });
     connect(unmountButton, &QPushButton::clicked, this, [this]() {
         const MountRow row = selectedRow();
-        if (!row.target.isEmpty() &&
-            ConfirmActionDialog::confirm(this, QStringLiteral("Confirm unmount"), QStringLiteral("Unmount %1?").arg(row.target))) {
+        if (row.target.isEmpty()) {
+            return;
+        }
+        if (row.status != QStringLiteral("Mounted")) {
+            // Configured (fstab/profile) rows are not currently mounted; refuse to
+            // run umount against them.
+            m_status->setText(QStringLiteral("%1 is not mounted.").arg(row.target));
+            return;
+        }
+        if (ConfirmActionDialog::confirm(this, QStringLiteral("Confirm unmount"), QStringLiteral("Unmount %1?").arg(row.target))) {
             m_provider.unmount(row.target);
         }
+    });
+    connect(saveProfileButton, &QPushButton::clicked, this, [this]() {
+        const MountRow row = selectedRow();
+        if (row.target.isEmpty()) {
+            m_status->setText(QStringLiteral("Select a mount to save as profile."));
+            return;
+        }
+        bool ok = false;
+        const QString name = QInputDialog::getText(this, QStringLiteral("Save mount profile"), QStringLiteral("Profile name"),
+                                                   QLineEdit::Normal, row.target, &ok)
+                                 .trimmed();
+        if (!ok || name.isEmpty()) {
+            return;
+        }
+        MountProfileStore::saveProfile(row, name);
+        m_status->setText(QStringLiteral("Saved profile %1.").arg(name));
+        refresh();
     });
     connect(&m_provider, &MountProvider::mountsReady, this, [this](const QVector<MountRow>& rows, const QString& error) {
         m_model->setRows(rows);
@@ -76,5 +106,5 @@ MountRow MountsPage::selectedRow() const {
 
 void MountsPage::refresh() {
     m_status->setText(QStringLiteral("Refreshing..."));
-    m_provider.refreshMounts();
+    m_provider.refreshMounts(true);
 }

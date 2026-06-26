@@ -107,6 +107,8 @@ Known keys:
 | `modules/mounts` | bool | `true` | Show the Mounts page and include it in refresh scheduling |
 | `modules/sensors` | bool | `true` | Show the Sensors page and include it in refresh scheduling |
 | `modules/smart` | bool | `true` | Show the Disks/SMART page and include it in refresh scheduling |
+| `mounts/profileNames` | string list | – | Names of saved mount profiles |
+| `mounts/profiles/<name>/{source,target,filesystemType,options}` | string | – | Saved mount profile fields |
 | `theme/preference` | string | `System` | `System`, `Light`, `Dark`, or `OLED` |
 | `tables/<page>/headerState` | byte array | – | Saved column sizes/order per table (`systemd`, `docker`, `mounts`, `sensors`, `disks`); sort order is persisted only for the proxy-backed systemd table |
 
