@@ -24,6 +24,8 @@ QVector<ModuleDescriptor> centerModules() {
         {"mounts", t(QT_TRANSLATE_NOOP("Modules", "Mounts")), t(QT_TRANSLATE_NOOP("Modules", "Data and disks")), "findmnt"},
         {"backups", t(QT_TRANSLATE_NOOP("Modules", "Backups")), t(QT_TRANSLATE_NOOP("Modules", "Backups and synchronization")),
          "systemctl"},
+        {"snapshots", t(QT_TRANSLATE_NOOP("Modules", "Kopia snapshots")), t(QT_TRANSLATE_NOOP("Modules", "Backups and synchronization")),
+         "kopia", true},
         {"sync", t(QT_TRANSLATE_NOOP("Modules", "Synchronization and cloud drives")),
          t(QT_TRANSLATE_NOOP("Modules", "Backups and synchronization")), "systemctl"},
         {"metrics", t(QT_TRANSLATE_NOOP("Modules", "Performance")), t(QT_TRANSLATE_NOOP("Modules", "Hardware and session")), ""},

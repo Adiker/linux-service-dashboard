@@ -263,3 +263,7 @@ SystemCenter owns provider instances; existing pages borrow them. CenterSnapshot
 ## Scoped services and inventories
 
 ServiceScope and ServiceRef distinguish the two managers. ListUnits uses asynchronous bounded DBus calls and asynchronous systemctl fallbacks; list-unit-files supplies installed unloaded services. Actions whitelist verbs and unit names and protect critical session units. InventoryProvider batches structured timer/socket reads across scopes and Docker inventories. Newer systemctl JSON is required for structured task views; unsupported output is surfaced as unavailable rather than guessed.
+
+## Backup evidence boundaries
+
+InventoryProvider consumes shared service/timer/mount snapshots. It reads only whitelisted systemd execution properties for detected backup jobs, associating schedules by scope and activation target. Kopia is resolved from PATH or the packaged KopiaUI CLI; its config path is opt-in, and read errors preserve stale snapshots. No repository is connected, restored, initialized or verified automatically. Synchronization completion is always unknown without native transfer evidence.

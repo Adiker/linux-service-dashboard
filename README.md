@@ -108,3 +108,7 @@ The grouped sidebar and Ctrl+K search share the same provider snapshots. Pin ite
 ## Services and containers
 
 Services lists system and user scopes, including installed but not-loaded units. Filter locally by scope or existing service groups; group entries may use `user:unit.service` or `system:unit.service` to disambiguate. Critical session services are read-only. Timers and sockets show their scope and activation target; autostart lists the effective user/system desktop entries. Compose containers are grouped by project and service, with standalone containers separate. Images and volumes are read-only inventories; CPU/memory sampling occurs only while the container page is visible.
+
+## Backups and synchronization
+
+Backups shows detected systemd backup jobs, last execution result and next timer activation. A successful job is not a verification of backup integrity. Kopia snapshots requires selecting an existing repository configuration; reads use closed stdin, no keyring authentication and no credential persistence. Missing credentials/repositories remain unavailable. Timeshift restore stays in its own application. Synchronization reports service/mount state only and never claims that transfers completed. Mounts includes local filesystems and rclone without traversing their contents; core system mountpoints cannot be unmounted here. New profiles omit inline password options.

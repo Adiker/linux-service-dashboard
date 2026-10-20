@@ -94,6 +94,19 @@ void SystemCenter::publish(const QString& id, const QStringList& headers, const 
         s.headers = headers;
     s.error = error;
     emit changed(id);
+    if (error.isEmpty() && id == "systemd") {
+        inventory.setServices(rows);
+        refresh("backups");
+        refresh("sync");
+    }
+    if (error.isEmpty() && id == "timers") {
+        inventory.setTimers(rows);
+        refresh("backups");
+    }
+    if (error.isEmpty() && id == "mounts") {
+        inventory.setMounts(rows);
+        refresh("sync");
+    }
 }
 void SystemCenter::refresh(const QString& id) {
     if (!centerModuleEnabled(id))
