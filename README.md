@@ -96,3 +96,29 @@ Screenshots will be added once the UI stabilizes:
 - systemd services page
 - Docker containers page
 - Sensors and SMART pages
+
+## Build identity
+
+Run `linux-service-dashboard --version` without a display to print the version and build revision. The tray menu also provides About.
+
+## System center navigation
+
+The grouped sidebar and Ctrl+K search share the same provider snapshots. Pin items from search or module views to show them on the dashboard. A failed refresh retains the last successful snapshot, marked stale. Settings adds module toggles and System/Polish/English language selection (takes effect after restarting). Install Qt Linguist tools (`qt6-tools` on Arch; `qt6-tools-dev` and `qt6-tools-dev-tools` on Debian) to build translations. New integration pages are filled in subsequent increments.
+
+## Services and containers
+
+Services lists system and user scopes, including installed but not-loaded units. Filter locally by scope or existing service groups; group entries may use `user:unit.service` or `system:unit.service` to disambiguate. Critical session services are read-only. Timers and sockets show their scope and activation target; autostart lists the effective user/system desktop entries. Compose containers are grouped by project and service, with standalone containers separate. Images and volumes are read-only inventories; CPU/memory sampling occurs only while the container page is visible.
+
+## Backups and synchronization
+
+Backups shows detected systemd backup jobs, last execution result and next timer activation. A successful job is not a verification of backup integrity. Kopia snapshots requires selecting an existing repository configuration; reads use closed stdin, no keyring authentication and no credential persistence. Missing credentials/repositories remain unavailable. Timeshift restore stays in its own application. Synchronization reports service/mount state only and never claims that transfers completed. Mounts includes local filesystems and rclone without traversing their contents; core system mountpoints cannot be unmounted here. New profiles omit inline password options.
+
+## Network and local servers
+
+VPN lists all detected NetworkManager connections and external kernel tunnels, with the evidence source. An activated connection or tunnel does not verify reachability. Network views show addresses, routes, DNS and byte counters; firewall zones and listening sockets are read-only. Server cards reuse shared scoped service state. Configure a panel address on a selected server/synchronization row, then Open it; addresses must be HTTP(S) without credentials, query parameters or fragments. No network scanning or automatic panel discovery runs.
+
+## Hardware and software inventories
+
+Performance reads CPU/memory/swap and available GPU/VRAM counters from procfs/sysfs. Sampling runs every two seconds only while visible. Sensor units distinguish temperature, RPM, voltage and other readings. Audio, connected Bluetooth devices, power, printing, USB and partition capacity are read-only views; optional tools report errors without installation. Specialist tools open separately.
+
+Applications follows XDG desktop IDs, user precedence, Hidden/NoDisplay, desktop visibility and TryExec; entries are grouped by category and launched through `gio launch`, never by parsing Exec. Packages includes native packages and Flatpak applications/runtimes; foreign Pacman packages are not assumed to be AUR. Catalog/VM inventories run on demand, with filesystem discovery off the UI thread. VirtualBox lists registered/running VMs; QEMU detection reports processes without claiming guest health.
