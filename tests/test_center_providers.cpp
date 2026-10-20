@@ -43,6 +43,12 @@ class CenterProviderTests : public QObject {
             else
                 QCOMPARE(row.unit, "°C");
         }
+        const auto frequency =
+            ProviderParsers::parseSensorsJson(R"({"chip":{"Clock":{"freq1_input":1500000000,"freq1_max":2000000000}}})", &error);
+        QCOMPARE(frequency.size(), 1);
+        QCOMPARE(frequency[0].current, 1500.0);
+        QCOMPARE(frequency[0].high, 2000.0);
+        QCOMPARE(frequency[0].unit, "MHz");
         auto packages = SystemInventory::parse("packages", "foreign", "custom-package 1.2.3\n", &error);
         QCOMPARE(packages.size(), 1);
         QVERIFY(packages[0].meta.value("foreign").toBool());

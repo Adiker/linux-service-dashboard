@@ -212,6 +212,12 @@ QVector<SensorRow> parseSensorsJson(const QString& output, QString* error) {
                 }
             }
             if (hasInput) {
+                // libsensors JSON frequencies are in Hz; display them consistently in MHz.
+                if (inputKey.startsWith("freq")) {
+                    input /= 1e6;
+                    high /= 1e6;
+                    critical /= 1e6;
+                }
                 const QString unit = inputKey.startsWith("temp")    ? "°C"
                                      : inputKey.startsWith("fan")   ? "RPM"
                                      : inputKey.startsWith("in")    ? "V"
