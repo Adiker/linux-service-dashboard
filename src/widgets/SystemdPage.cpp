@@ -16,7 +16,7 @@
 #include <QTableView>
 #include <QVBoxLayout>
 
-SystemdPage::SystemdPage(QWidget* parent) : QWidget(parent) {
+SystemdPage::SystemdPage(SystemdServiceProvider& provider, QWidget* parent) : QWidget(parent), m_provider(provider) {
     auto* layout = new QVBoxLayout(this);
     auto* header = new QHBoxLayout;
     auto* title = new QLabel(QStringLiteral("Systemd Services"), this);
@@ -32,8 +32,13 @@ SystemdPage::SystemdPage(QWidget* parent) : QWidget(parent) {
     for (const QString& group : ServiceGroupSettings::groupNames()) {
         m_groupSelector->addItem(group);
     }
-    m_groupSelector->setCurrentText(ServiceGroupSettings::activeGroup());
+    m_groupSelector->insertItem(0, tr("All services"));
+    m_groupSelector->setCurrentIndex(0);
     header->addWidget(m_groupSelector);
+    m_scopeSelector = new QComboBox(this);
+    m_scopeSelector->addItems({tr("All scopes"), tr("System"), tr("User")});
+    header->addWidget(m_scopeSelector);
+    connect(m_scopeSelector, &QComboBox::currentIndexChanged, this, [this]() { applyFilters(); });
     header->addWidget(refreshButton);
     layout->addLayout(header);
 
@@ -41,7 +46,7 @@ SystemdPage::SystemdPage(QWidget* parent) : QWidget(parent) {
     m_proxy = new QSortFilterProxyModel(this);
     m_proxy->setSourceModel(m_model);
     m_proxy->setFilterCaseSensitivity(Qt::CaseInsensitive);
-    m_proxy->setFilterKeyColumn(0);
+    m_proxy->setFilterKeyColumn(-1);
 
     m_table = new QTableView(this);
     m_table->setModel(m_proxy);
@@ -68,24 +73,23 @@ SystemdPage::SystemdPage(QWidget* parent) : QWidget(parent) {
 
     connect(m_filter, &QLineEdit::textChanged, m_proxy, &QSortFilterProxyModel::setFilterFixedString);
     connect(m_groupSelector, &QComboBox::currentTextChanged, this, [this](const QString& group) {
-        ServiceGroupSettings::setActiveGroup(group);
-        refresh();
+        if (m_groupSelector->currentIndex() > 0)
+            ServiceGroupSettings::setActiveGroup(group);
+        applyFilters();
     });
     connect(refreshButton, &QPushButton::clicked, this, &SystemdPage::refresh);
     connect(logsButton, &QPushButton::clicked, this, [this]() {
         const ServiceRow row = selectedRow();
         if (!row.unit.isEmpty()) {
-            m_provider.serviceLogs(row.unit);
+            m_provider.serviceLogs(row.unit, row.scope);
         }
     });
     connect(&m_provider, &SystemdServiceProvider::servicesReady, this, [this](const QVector<ServiceRow>& rows, const QString& error) {
-        m_model->setRows(rows);
+        if (error.isEmpty()) {
+            m_rows = rows;
+            applyFilters();
+        }
         m_status->setText(error.isEmpty() ? QStringLiteral("%1 services").arg(rows.size()) : error);
-    });
-    connect(&m_provider, &SystemdServiceProvider::logsReady, this, [this](const QString& title, const QString& text) {
-        auto* dialog = new LogViewerDialog(title, text, this);
-        dialog->setAttribute(Qt::WA_DeleteOnClose);
-        dialog->show();
     });
     connect(&m_provider, &SystemdServiceProvider::actionFinished, this, [this](const QString& message, const QString& details) {
         QMessageBox::information(this, QStringLiteral("systemd"), details.isEmpty() ? message : message + QStringLiteral("\n\n") + details);
@@ -94,7 +98,7 @@ SystemdPage::SystemdPage(QWidget* parent) : QWidget(parent) {
 }
 
 QStringList SystemdPage::watchedServices() const {
-    return ServiceGroupSettings::servicesForGroup(ServiceGroupSettings::activeGroup());
+    return ServiceGroupSettings::servicesForGroup(m_groupSelector->currentText());
 }
 
 ServiceRow SystemdPage::selectedRow() const {
@@ -108,21 +112,27 @@ void SystemdPage::runAction(const QString& action) {
     const ServiceRow row = selectedRow();
     if (row.unit.isEmpty())
         return;
-    if (ConfirmActionDialog::confirm(this, QStringLiteral("Confirm systemd action"),
-                                     QStringLiteral("Run systemctl %1 %2?").arg(action, row.unit))) {
-        m_provider.controlService(row.unit, action);
+    if (SystemdServiceProvider::isProtectedUnit(row.unit)) {
+        m_status->setText(tr("Read-only service"));
+        return;
+    }
+    if (ConfirmActionDialog::confirm(
+            this, QStringLiteral("Confirm systemd action"),
+            tr("Run systemctl %1 %2 %3?").arg(row.scope == ServiceScope::User ? "--user" : "--system", action, row.unit))) {
+        m_provider.controlService(row.unit, action, row.scope);
     }
 }
 
 void SystemdPage::refresh() {
     m_status->setText(QStringLiteral("Refreshing..."));
-    m_provider.refreshServices(watchedServices());
+    m_provider.refreshServices({});
 }
 
 void SystemdPage::reloadGroupSelector() {
     const QString current = m_groupSelector->currentText();
     m_groupSelector->blockSignals(true);
     m_groupSelector->clear();
+    m_groupSelector->addItem(tr("All services"));
     for (const QString& group : ServiceGroupSettings::groupNames()) {
         m_groupSelector->addItem(group);
     }
@@ -135,4 +145,20 @@ void SystemdPage::reloadGroupSelector() {
     }
     m_groupSelector->blockSignals(false);
     refresh();
+}
+
+void SystemdPage::applyFilters() {
+    QVector<ServiceRow> out;
+    const auto watched = watchedServices();
+    for (const auto& r : m_rows) {
+        if (m_scopeSelector->currentIndex() == 1 && r.scope != ServiceScope::System)
+            continue;
+        if (m_scopeSelector->currentIndex() == 2 && r.scope != ServiceScope::User)
+            continue;
+        if (m_groupSelector->currentIndex() > 0 && !watched.isEmpty() && !watched.contains(r.unit) &&
+            !watched.contains((r.scope == ServiceScope::User ? "user:" : "system:") + r.unit))
+            continue;
+        out.append(r);
+    }
+    m_model->setRows(out);
 }

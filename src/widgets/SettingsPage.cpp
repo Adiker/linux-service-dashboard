@@ -1,5 +1,6 @@
 #include "SettingsPage.h"
 
+#include "../core/CenterTypes.h"
 #include "../core/ServiceGroupSettings.h"
 
 #include <QCheckBox>
@@ -15,6 +16,7 @@
 #include <QPushButton>
 #include <QSettings>
 #include <QSpinBox>
+#include <QStandardPaths>
 #include <QVBoxLayout>
 
 SettingsPage::SettingsPage(QWidget* parent) : QWidget(parent) {
@@ -72,6 +74,17 @@ SettingsPage::SettingsPage(QWidget* parent) : QWidget(parent) {
     for (QCheckBox* box : {m_systemd, m_docker, m_vpn, m_mounts, m_sensors, m_smart}) {
         modulesLayout->addWidget(box);
     }
+    const QStringList existing{"overview", "settings", "systemd", "docker", "vpn", "mounts", "sensors", "smart"};
+    for (const auto& module : centerModules()) {
+        if (existing.contains(module.id))
+            continue;
+        auto* box = new QCheckBox(module.group + " / " + module.title, modules);
+        const bool installed = module.tool.isEmpty() || !QStandardPaths::findExecutable(module.tool).isEmpty();
+        box->setToolTip(installed ? tr("Available; configuration and running state are detected separately.")
+                                  : tr("Tool not installed: %1").arg(module.tool));
+        m_extraModules[module.id] = box;
+        modulesLayout->addWidget(box);
+    }
     layout->addWidget(modules);
 
     auto* smartTitle = new QLabel(QStringLiteral("SMART scheduling"), this);
@@ -97,6 +110,11 @@ SettingsPage::SettingsPage(QWidget* parent) : QWidget(parent) {
     m_theme = new QComboBox(themeGroup);
     m_theme->addItems({QStringLiteral("System"), QStringLiteral("Light"), QStringLiteral("Dark"), QStringLiteral("OLED")});
     themeLayout->addRow(QStringLiteral("Preference"), m_theme);
+    m_language = new QComboBox(themeGroup);
+    m_language->addItem(tr("System"), "System");
+    m_language->addItem("Polski", "pl");
+    m_language->addItem("English", "en");
+    themeLayout->addRow(tr("Language (restart required)"), m_language);
     layout->addWidget(themeGroup);
 
     auto* saveButton = new QPushButton(QIcon::fromTheme(QStringLiteral("document-save")), QStringLiteral("Save"), this);
@@ -208,6 +226,9 @@ void SettingsPage::renameGroup() {
 
 void SettingsPage::load() {
     QSettings settings;
+    for (auto it = m_extraModules.cbegin(); it != m_extraModules.cend(); ++it)
+        it.value()->setChecked(settings.value("modules/" + it.key(), true).toBool());
+    m_language->setCurrentIndex(qMax(0, m_language->findData(settings.value("ui/language", "System"))));
     m_refreshInterval->setValue(settings.value(QStringLiteral("refresh/intervalSeconds"), 30).toInt());
     reloadGroups();
     loadGroupServices();
@@ -246,5 +267,8 @@ void SettingsPage::save() {
     settings.setValue(QStringLiteral("smart/scheduledRefreshEnabled"), m_smartScheduled->isChecked());
     settings.setValue(QStringLiteral("smart/scheduledRefreshMinutes"), m_smartIntervalMinutes->value());
     settings.setValue(QStringLiteral("theme/preference"), m_theme->currentText());
+    for (auto it = m_extraModules.cbegin(); it != m_extraModules.cend(); ++it)
+        settings.setValue("modules/" + it.key(), it.value()->isChecked());
+    settings.setValue("ui/language", m_language->currentData());
     emit settingsChanged();
 }

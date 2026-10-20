@@ -15,7 +15,7 @@
 #include <QUrl>
 #include <QVBoxLayout>
 
-MountsPage::MountsPage(QWidget* parent) : QWidget(parent) {
+MountsPage::MountsPage(MountProvider& provider, QWidget* parent) : QWidget(parent), m_provider(provider) {
     auto* layout = new QVBoxLayout(this);
     auto* header = new QHBoxLayout;
     auto* title = new QLabel(QStringLiteral("Mounts"), this);
@@ -88,7 +88,8 @@ MountsPage::MountsPage(QWidget* parent) : QWidget(parent) {
         refresh();
     });
     connect(&m_provider, &MountProvider::mountsReady, this, [this](const QVector<MountRow>& rows, const QString& error) {
-        m_model->setRows(rows);
+        if (error.isEmpty())
+            m_model->setRows(rows);
         m_status->setText(error.isEmpty() ? QStringLiteral("%1 mounts").arg(rows.size()) : error);
     });
     connect(&m_provider, &MountProvider::actionFinished, this, [this](const QString& message, const QString& details) {

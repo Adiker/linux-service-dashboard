@@ -14,7 +14,7 @@ class DisksPage : public QWidget {
     Q_OBJECT
 
   public:
-    explicit DisksPage(QWidget* parent = nullptr);
+    explicit DisksPage(SmartProvider& provider, QWidget* parent = nullptr);
 
   public slots:
     void refresh();
@@ -31,6 +31,6 @@ class DisksPage : public QWidget {
     DiskModel* m_model = nullptr;
     QTableView* m_table = nullptr;
     QLabel* m_status = nullptr;
-    SmartProvider m_provider;
+    SmartProvider& m_provider;
     SmartRefreshScheduler* m_smartScheduler = nullptr;
 };
