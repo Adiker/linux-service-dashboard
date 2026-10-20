@@ -11,15 +11,15 @@ class QTableView;
 class SensorsPage : public QWidget {
     Q_OBJECT
 
-public:
-    explicit SensorsPage(QWidget *parent = nullptr);
+  public:
+    explicit SensorsPage(SensorProvider& provider, QWidget* parent = nullptr);
 
-public slots:
+  public slots:
     void refresh();
 
-private:
-    SensorModel *m_model = nullptr;
-    QTableView *m_table = nullptr;
-    QLabel *m_status = nullptr;
-    SensorProvider m_provider;
+  private:
+    SensorModel* m_model = nullptr;
+    QTableView* m_table = nullptr;
+    QLabel* m_status = nullptr;
+    SensorProvider& m_provider;
 };
