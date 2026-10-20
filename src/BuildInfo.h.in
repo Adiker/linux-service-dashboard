@@ -1,0 +1,3 @@
+#pragma once
+#define LSD_VERSION "@PROJECT_VERSION@"
+#define LSD_REVISION "@LSD_REVISION@"

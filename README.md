@@ -96,3 +96,7 @@ Screenshots will be added once the UI stabilizes:
 - systemd services page
 - Docker containers page
 - Sensors and SMART pages
+
+## Build identity
+
+Run `linux-service-dashboard --version` without a display to print the version and build revision. The tray menu also provides About.

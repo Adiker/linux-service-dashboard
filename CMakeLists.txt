@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(linux-service-dashboard VERSION 0.1.0 LANGUAGES CXX)
+project(linux-service-dashboard VERSION 0.2.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -8,6 +8,12 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_AUTORCC ON)
 
 include(GNUInstallDirs)
+execute_process(COMMAND git rev-parse --short=12 HEAD WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    OUTPUT_VARIABLE LSD_REVISION OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+if(NOT LSD_REVISION)
+    set(LSD_REVISION "unknown")
+endif()
+configure_file(src/BuildInfo.h.in generated/BuildInfo.h @ONLY)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets Test DBus)
 
@@ -123,6 +129,7 @@ qt_add_executable(linux-service-dashboard
     src/parsers/ProviderParsers.h
 )
 
+target_include_directories(linux-service-dashboard PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generated)
 target_link_libraries(linux-service-dashboard PRIVATE Qt6::Widgets Qt6::DBus)
 target_compile_definitions(linux-service-dashboard PRIVATE SMART_HELPER_RELATIVE_PATH="${SMART_HELPER_RELATIVE_PATH}")
 

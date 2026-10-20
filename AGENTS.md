@@ -72,11 +72,12 @@ The runtime icon is embedded as PNG files through `resources/resources.qrc`; ins
 
 ## Tests
 
-There is no dedicated unit-test target yet. For code changes, run:
+Provider parsers have a CTest target. For code changes, run:
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc)
+ctest --test-dir build --output-on-failure
 ```
 
 For desktop integration changes, also smoke-test startup with available Qt platform plugins, for example:
