@@ -27,24 +27,28 @@ QString CommandRunner::run(const QString& program, const QStringList& arguments,
     auto completed = std::make_shared<bool>(false);
     result->program = program;
     result->arguments = arguments;
-    auto drain = [process, result]() {
-        const auto append = [result](QString& target, const QByteArray& data) {
+    auto output = std::make_shared<QByteArray>();
+    auto errors = std::make_shared<QByteArray>();
+    auto drain = [process, result, output, errors]() {
+        const auto append = [result](QByteArray& target, const QByteArray& data) {
             constexpr qsizetype limit = 2 * 1024 * 1024;
-            const QString value = QString::fromLocal8Bit(data);
             const auto remaining = qMax<qsizetype>(0, limit - target.size());
-            target += value.left(remaining);
-            if (value.size() > remaining)
+            target += data.left(remaining);
+            if (data.size() > remaining)
                 result->outputTruncated = true;
         };
-        append(result->standardOutput, process->readAllStandardOutput());
-        append(result->standardError, process->readAllStandardError());
+        append(*output, process->readAllStandardOutput());
+        append(*errors, process->readAllStandardError());
     };
-    const auto finish = [this, process, timer, result, completed, id, context, drain](int code) {
+    const auto finish = [this, process, timer, result, completed, id, context, drain, output, errors](int code) {
         if (*completed)
             return;
         *completed = true;
         timer->stop();
         drain();
+        // Decode once: readyRead chunks may split a multibyte UTF-8 character.
+        result->standardOutput = QString::fromLocal8Bit(*output);
+        result->standardError = QString::fromLocal8Bit(*errors);
         result->exitCode = code;
         if (result->errorString.isEmpty() && !result->ok())
             result->errorString = process->errorString();
