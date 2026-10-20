@@ -1,85 +1,95 @@
 #include "CommandRunner.h"
 
 #include <QProcess>
+#include <QProcessEnvironment>
 #include <QTimer>
 #include <QUuid>
-
-#include <functional>
 #include <memory>
 
-CommandRunner::CommandRunner(QObject *parent)
-    : QObject(parent)
-{
+CommandRunner::CommandRunner(QObject* parent) : QObject(parent) {}
+CommandRunner::~CommandRunner() {
+    for (auto* process : findChildren<QProcess*>()) {
+        process->kill();
+        process->waitForFinished(100);
+    }
 }
-
-QString CommandRunner::run(const QString &program,
-                           const QStringList &arguments,
-                           int timeoutMs,
-                           const QString &context)
-{
+QString CommandRunner::run(const QString& program, const QStringList& arguments, int timeoutMs, const QString& context) {
+    if (!context.isEmpty() && m_pending.contains(context))
+        return m_pending.value(context);
     const QString id = QUuid::createUuid().toString(QUuid::WithoutBraces);
-    auto *process = new QProcess(this);
-    auto *timer = new QTimer(process);
+    if (!context.isEmpty())
+        m_pending[context] = id;
+    auto* process = new QProcess(this);
+    auto* timer = new QTimer(process);
     timer->setSingleShot(true);
-
     auto result = std::make_shared<CommandResult>();
     auto completed = std::make_shared<bool>(false);
     result->program = program;
     result->arguments = arguments;
-
-    std::function<void(int)> finishOnce = [this, process, timer, result, completed, id, context](int exitCode) {
-        if (*completed) {
+    auto drain = [process, result]() {
+        const auto append = [result](QString& target, const QByteArray& data) {
+            constexpr qsizetype limit = 2 * 1024 * 1024;
+            const QString value = QString::fromLocal8Bit(data);
+            const auto remaining = qMax<qsizetype>(0, limit - target.size());
+            target += value.left(remaining);
+            if (value.size() > remaining)
+                result->outputTruncated = true;
+        };
+        append(result->standardOutput, process->readAllStandardOutput());
+        append(result->standardError, process->readAllStandardError());
+    };
+    const auto finish = [this, process, timer, result, completed, id, context, drain](int code) {
+        if (*completed)
             return;
-        }
         *completed = true;
         timer->stop();
-        result->exitCode = exitCode;
-        result->standardOutput = QString::fromLocal8Bit(process->readAllStandardOutput());
-        result->standardError = QString::fromLocal8Bit(process->readAllStandardError());
-        if (result->errorString.isEmpty()) {
+        drain();
+        result->exitCode = code;
+        if (result->errorString.isEmpty() && !result->ok())
             result->errorString = process->errorString();
+        if (result->timedOut)
+            result->standardError += "\nCommand timed out.";
+        if (result->outputTruncated)
+            result->standardError += "\nOutput limit exceeded (2 MiB per stream).";
+        if (result->startFailed)
+            result->standardError += "\n" + result->errorString;
+        if (!context.isEmpty())
+            m_pending.remove(context);
+        if (!result->ok()) {
+            // Never retain raw arguments or command output in the diagnostic history.
+            m_failedCommandLog.append(result->program + ": exit " + QString::number(code));
+            while (m_failedCommandLog.size() > 100)
+                m_failedCommandLog.removeFirst();
         }
-
-        const CommandResult value = *result;
-        if (!value.ok()) {
-            m_failedCommandLog.append(QStringLiteral("%1: %2").arg(value.commandLine(), value.standardError.trimmed()));
-        }
-        emit commandFinished(id, value, context);
+        emit commandFinished(id, *result, context);
         process->deleteLater();
     };
-
-    connect(timer, &QTimer::timeout, process, [process, result, finishOnce]() {
+    connect(process, &QProcess::readyReadStandardOutput, process, drain);
+    connect(process, &QProcess::readyReadStandardError, process, drain);
+    connect(timer, &QTimer::timeout, process, [process, result]() {
         result->timedOut = true;
-        if (process->state() == QProcess::NotRunning) {
-            finishOnce(-1);
-            return;
-        }
         process->kill();
     });
-
-    connect(process, &QProcess::errorOccurred, process, [process, result, finishOnce](QProcess::ProcessError error) {
-        result->errorString = process->errorString();
+    connect(process, &QProcess::errorOccurred, process, [result, finish](QProcess::ProcessError error) {
         if (error == QProcess::FailedToStart) {
             result->startFailed = true;
-            finishOnce(-1);
+            finish(-1);
         }
     });
-
-    connect(process,
-            qOverload<int, QProcess::ExitStatus>(&QProcess::finished),
-            this,
-            [finishOnce](int exitCode, QProcess::ExitStatus) {
-                finishOnce(exitCode);
-            });
-
+    connect(process, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), process,
+            [finish](int code, QProcess::ExitStatus) { finish(code); });
+    auto env = QProcessEnvironment::systemEnvironment();
+    env.insert("LC_ALL", "C.UTF-8");
+    env.insert("SYSTEMD_PAGER", "");
+    env.insert("NO_COLOR", "1");
+    process->setProcessEnvironment(env);
+    process->setStandardInputFile(QProcess::nullDevice());
     process->setProgram(program);
     process->setArguments(arguments);
     process->start();
-    timer->start(timeoutMs);
+    timer->start(qMax(1, timeoutMs));
     return id;
 }
-
-QStringList CommandRunner::failedCommandLog() const
-{
+QStringList CommandRunner::failedCommandLog() const {
     return m_failedCommandLog;
 }

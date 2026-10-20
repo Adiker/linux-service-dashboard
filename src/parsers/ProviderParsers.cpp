@@ -13,18 +13,15 @@ namespace ProviderParsers {
 
 namespace {
 
-bool isVpnLikeConnectionType(const QString &type)
-{
-    return type == QStringLiteral("vpn")
-        || type == QStringLiteral("tun")
-        || type == QStringLiteral("wireguard")
-        || type == QStringLiteral("ppp");
+bool isVpnLikeConnectionType(const QString& type) {
+    return type == QStringLiteral("vpn") || type == QStringLiteral("tun") || type == QStringLiteral("wireguard") ||
+           type == QStringLiteral("ppp");
 }
 
-void collectMounts(const QJsonArray &array, QVector<MountRow> *rows)
-{
-    static const QSet<QString> interestingTypes{QStringLiteral("cifs"), QStringLiteral("nfs"), QStringLiteral("nfs4"), QStringLiteral("sshfs")};
-    for (const QJsonValue &value : array) {
+void collectMounts(const QJsonArray& array, QVector<MountRow>* rows) {
+    static const QSet<QString> interestingTypes{QStringLiteral("cifs"), QStringLiteral("nfs"), QStringLiteral("nfs4"),
+                                                QStringLiteral("sshfs")};
+    for (const QJsonValue& value : array) {
         const QJsonObject object = value.toObject();
         const QString type = object.value(QStringLiteral("fstype")).toString();
         if (interestingTypes.contains(type)) {
@@ -44,11 +41,8 @@ void collectMounts(const QJsonArray &array, QVector<MountRow> *rows)
 
 } // namespace
 
-QVector<ServiceRow> parseSystemdListUnits(const QString &output,
-                                          const QStringList &watchedServices,
-                                          const QString &timestamp,
-                                          QString *error)
-{
+QVector<ServiceRow> parseSystemdListUnits(const QString& output, const QStringList& watchedServices, const QString& timestamp,
+                                          QString* error) {
     QVector<ServiceRow> rows;
     if (error) {
         error->clear();
@@ -56,7 +50,7 @@ QVector<ServiceRow> parseSystemdListUnits(const QString &output,
     const QRegularExpression lineExpression(QStringLiteral(R"(^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(.*)$)"));
     QSet<QString> seen;
     const QStringList lines = output.split('\n', Qt::SkipEmptyParts);
-    for (const QString &line : lines) {
+    for (const QString& line : lines) {
         const auto match = lineExpression.match(line.trimmed());
         if (!match.hasMatch() || !match.captured(1).endsWith(QStringLiteral(".service"))) {
             continue;
@@ -73,22 +67,22 @@ QVector<ServiceRow> parseSystemdListUnits(const QString &output,
             seen.insert(row.unit);
         }
     }
-    for (const QString &unit : watchedServices) {
+    for (const QString& unit : watchedServices) {
         if (!seen.contains(unit)) {
-            rows.append(ServiceRow{unit, QStringLiteral("unavailable"), QStringLiteral("unknown"), QStringLiteral("-"), QStringLiteral("Unit not found"), timestamp});
+            rows.append(ServiceRow{unit, QStringLiteral("unavailable"), QStringLiteral("unknown"), QStringLiteral("-"),
+                                   QStringLiteral("Unit not found"), timestamp});
         }
     }
     return rows;
 }
 
-int parseSystemdFailedCount(const QString &output, QString *error)
-{
+int parseSystemdFailedCount(const QString& output, QString* error) {
     if (error) {
         error->clear();
     }
     int count = 0;
     const QStringList lines = output.split('\n', Qt::SkipEmptyParts);
-    for (const QString &line : lines) {
+    for (const QString& line : lines) {
         if (line.trimmed().startsWith(QStringLiteral("UNIT "))) {
             continue;
         }
@@ -99,17 +93,18 @@ int parseSystemdFailedCount(const QString &output, QString *error)
     return count;
 }
 
-QVector<DockerContainerRow> parseDockerContainerLines(const QString &output, QString *error)
-{
+QVector<DockerContainerRow> parseDockerContainerLines(const QString& output, QString* error) {
     QVector<DockerContainerRow> rows;
     if (error) {
         error->clear();
     }
     const QStringList lines = output.split('\n', Qt::SkipEmptyParts);
-    for (const QString &line : lines) {
+    for (const QString& line : lines) {
         QString parseError;
         const QJsonDocument document = parseJsonDocument(line, &parseError);
         if (!document.isObject()) {
+            if (error)
+                *error = QStringLiteral("Invalid Docker JSON: %1").arg(parseError);
             continue;
         }
         const QJsonObject object = document.object();
@@ -121,20 +116,29 @@ QVector<DockerContainerRow> parseDockerContainerLines(const QString &output, QSt
         row.ports = object.value(QStringLiteral("Ports")).toString();
         row.created = object.value(QStringLiteral("CreatedAt")).toString(object.value(QStringLiteral("Created")).toString());
         row.id = object.value(QStringLiteral("ID")).toString();
+        const auto labels = object.value("Labels").toString().split(',');
+        for (const auto& label : labels) {
+            if (label.startsWith("com.docker.compose.project="))
+                row.project = label.mid(QStringLiteral("com.docker.compose.project=").size());
+            if (label.startsWith("com.docker.compose.service="))
+                row.composeService = label.mid(QStringLiteral("com.docker.compose.service=").size());
+        }
+        row.health = object.value("HealthStatus").toString();
+        if (row.health.isEmpty())
+            row.health = row.status.contains("(unhealthy)") ? "unhealthy" : row.status.contains("(healthy)") ? "healthy" : "unknown";
         rows.append(row);
     }
     return rows;
 }
 
-VpnStatus parseNmcliActiveVpnConnections(const QString &output, const QString &timestamp, QString *error)
-{
+VpnStatus parseNmcliActiveVpnConnections(const QString& output, const QString& timestamp, QString* error) {
     if (error) {
         error->clear();
     }
     VpnStatus status;
     status.lastRefresh = timestamp;
     const QStringList lines = output.split('\n', Qt::SkipEmptyParts);
-    for (const QString &line : lines) {
+    for (const QString& line : lines) {
         const QStringList fields = line.split(':');
         if (fields.size() >= 4 && isVpnLikeConnectionType(fields.at(1))) {
             status.connected = true;
@@ -150,8 +154,7 @@ VpnStatus parseNmcliActiveVpnConnections(const QString &output, const QString &t
     return status;
 }
 
-QVector<MountRow> parseFindmntJson(const QString &output, QString *error)
-{
+QVector<MountRow> parseFindmntJson(const QString& output, QString* error) {
     QVector<MountRow> rows;
     if (error) {
         error->clear();
@@ -168,8 +171,7 @@ QVector<MountRow> parseFindmntJson(const QString &output, QString *error)
     return rows;
 }
 
-QVector<SensorRow> parseSensorsJson(const QString &output, QString *error)
-{
+QVector<SensorRow> parseSensorsJson(const QString& output, QString* error) {
     QVector<SensorRow> rows;
     if (error) {
         error->clear();
@@ -210,14 +212,13 @@ QVector<SensorRow> parseSensorsJson(const QString &output, QString *error)
     return rows;
 }
 
-QVector<FstabEntry> parseFstab(const QString &content, QString *error)
-{
+QVector<FstabEntry> parseFstab(const QString& content, QString* error) {
     QVector<FstabEntry> entries;
     if (error) {
         error->clear();
     }
     const QStringList lines = content.split('\n', Qt::SkipEmptyParts);
-    for (const QString &rawLine : lines) {
+    for (const QString& rawLine : lines) {
         const QString line = rawLine.trimmed();
         if (line.isEmpty() || line.startsWith('#')) {
             continue;
