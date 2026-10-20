@@ -100,3 +100,7 @@ Screenshots will be added once the UI stabilizes:
 ## Build identity
 
 Run `linux-service-dashboard --version` without a display to print the version and build revision. The tray menu also provides About.
+
+## System center navigation
+
+The grouped sidebar and Ctrl+K search share the same provider snapshots. Pin items from search or module views to show them on the dashboard. A failed refresh retains the last successful snapshot, marked stale. Settings adds module toggles and System/Polish/English language selection (takes effect after restarting). Install Qt Linguist tools (`qt6-tools` on Arch; `qt6-tools-dev` and `qt6-tools-dev-tools` on Debian) to build translations. New integration pages are filled in subsequent increments.

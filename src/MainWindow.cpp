@@ -2,6 +2,7 @@
 
 #include "AppIcon.h"
 #include "core/ModuleSettings.h"
+#include "widgets/LogViewerDialog.h"
 
 #include <QAction>
 #include <QApplication>
@@ -11,20 +12,24 @@
 #include <QHBoxLayout>
 #include <QIcon>
 #include <QLabel>
-#include <QListWidget>
-#include <QListWidgetItem>
+#include <QLineEdit>
 #include <QMenu>
 #include <QMessageBox>
+#include <QScrollArea>
 #include <QSettings>
+#include <QShortcut>
 #include <QStackedWidget>
 #include <QStyle>
 #include <QSystemTrayIcon>
+#include <QTimer>
+#include <QTreeWidget>
+#include <QTreeWidgetItemIterator>
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     setWindowTitle(QStringLiteral("Linux Service Dashboard"));
     setWindowIcon(serviceDashboardIcon());
     resize(1200, 800);
-    m_modules = loadModuleSettings();
+    m_center = new SystemCenter(this);
     buildUi();
     buildTray();
     reloadSettings();
@@ -34,57 +39,105 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
 
 void MainWindow::buildUi() {
     auto* central = new QWidget(this);
-    central->setObjectName(QStringLiteral("appRoot"));
-    auto* layout = new QHBoxLayout(central);
-    layout->setContentsMargins(0, 0, 0, 0);
-    layout->setSpacing(0);
-
-    m_sidebar = new QListWidget(central);
-    m_sidebar->setObjectName(QStringLiteral("sidebar"));
-    m_sidebar->setFixedWidth(230);
-    const QStringList items{
-        QStringLiteral("Overview"), QStringLiteral("Systemd Services"), QStringLiteral("Docker"),        QStringLiteral("VPN"),
-        QStringLiteral("Mounts"),   QStringLiteral("Sensors"),          QStringLiteral("Disks / SMART"), QStringLiteral("Settings"),
-    };
-    const QStringList icons{
-        QStringLiteral("view-dashboard"),
-        QStringLiteral("preferences-system-services"),
-        QStringLiteral("docker"),
-        QStringLiteral("network-vpn"),
-        QStringLiteral("drive-harddisk"),
-        QStringLiteral("temperature-normal"),
-        QStringLiteral("drive-harddisk-solidstate"),
-        QStringLiteral("settings-configure"),
-    };
-    for (int i = 0; i < items.size(); ++i) {
-        auto* entry = new QListWidgetItem(QIcon::fromTheme(icons.value(i)), items.at(i), m_sidebar);
-        entry->setSizeHint(QSize(0, 42));
-    }
+    central->setObjectName("appRoot");
+    auto* outer = new QVBoxLayout(central);
+    outer->setContentsMargins(8, 8, 8, 8);
+    auto* search = new QLineEdit;
+    search->setPlaceholderText(tr("Search pages, services, containers and software… (Ctrl+K)"));
+    search->setObjectName("globalSearch");
+    outer->addWidget(search);
+    auto* layout = new QHBoxLayout;
+    outer->addLayout(layout, 1);
+    m_sidebar = new QTreeWidget;
+    m_sidebar->setObjectName("sidebar");
+    m_sidebar->setHeaderHidden(true);
+    m_sidebar->setMinimumWidth(210);
+    m_sidebar->setMaximumWidth(300);
     layout->addWidget(m_sidebar);
-
-    m_stack = new QStackedWidget(central);
-    m_stack->setObjectName(QStringLiteral("contentStack"));
-    m_overview = new OverviewPage(m_stack);
-    m_systemd = new SystemdPage(m_stack);
-    m_docker = new DockerPage(m_stack);
-    m_vpn = new VpnPage(m_stack);
-    m_mounts = new MountsPage(m_stack);
-    m_sensors = new SensorsPage(m_stack);
-    m_disks = new DisksPage(m_stack);
-    m_settings = new SettingsPage(m_stack);
-
-    for (QWidget* page : {static_cast<QWidget*>(m_overview), static_cast<QWidget*>(m_systemd), static_cast<QWidget*>(m_docker),
-                          static_cast<QWidget*>(m_vpn), static_cast<QWidget*>(m_mounts), static_cast<QWidget*>(m_sensors),
-                          static_cast<QWidget*>(m_disks), static_cast<QWidget*>(m_settings)}) {
-        m_stack->addWidget(page);
-    }
+    m_stack = new QStackedWidget;
+    m_stack->setObjectName("contentStack");
     layout->addWidget(m_stack, 1);
-    setCentralWidget(central);
-
-    connect(m_sidebar, &QListWidget::currentRowChanged, m_stack, &QStackedWidget::setCurrentIndex);
+    m_overview = new OverviewPage(m_center, m_stack);
+    m_systemd = new SystemdPage(m_center->systemd, m_stack);
+    m_docker = new DockerPage(m_center->docker, m_stack);
+    m_vpn = new VpnPage(m_center->network, m_stack);
+    m_mounts = new MountsPage(m_center->mounts, m_stack);
+    m_sensors = new SensorsPage(m_center->sensors, m_stack);
+    m_disks = new DisksPage(m_center->smart, m_stack);
+    m_settings = new SettingsPage;
+    auto* settingsScroll = new QScrollArea;
+    settingsScroll->setWidgetResizable(true);
+    settingsScroll->setWidget(m_settings);
+    m_pages = {{"overview", m_overview}, {"systemd", m_systemd}, {"docker", m_docker}, {"vpn", m_vpn},
+               {"mounts", m_mounts},     {"sensors", m_sensors}, {"smart", m_disks},   {"settings", settingsScroll}};
+    QHash<QString, QTreeWidgetItem*> groups;
+    for (const auto& module : centerModules()) {
+        if (!groups.contains(module.group))
+            groups[module.group] = new QTreeWidgetItem(m_sidebar, {module.group});
+        auto* entry = new QTreeWidgetItem(groups[module.group], {module.title});
+        entry->setData(0, Qt::UserRole, module.id);
+        if (!m_pages.contains(module.id))
+            m_pages[module.id] = new CenterPage(module.id, m_center, m_stack);
+        m_stack->addWidget(m_pages[module.id]);
+        if (auto* page = qobject_cast<CenterPage*>(m_pages[module.id]))
+            connect(page, &CenterPage::navigate, this, &MainWindow::navigate);
+    }
+    m_searchPage = new CenterPage("search", m_center, m_stack);
+    m_stack->addWidget(m_searchPage);
+    connect(m_searchPage, &CenterPage::navigate, this, &MainWindow::navigate);
+    m_sidebar->expandAll();
+    connect(m_sidebar, &QTreeWidget::currentItemChanged, this, [this](auto* item) {
+        if (!item)
+            return;
+        if (item->data(0, Qt::UserRole).toString().isEmpty()) {
+            if (item->childCount())
+                m_sidebar->setCurrentItem(item->child(0));
+            return;
+        }
+        navigate(item->data(0, Qt::UserRole).toString());
+    });
+    auto* debounce = new QTimer(this);
+    debounce->setSingleShot(true);
+    debounce->setInterval(200);
+    connect(search, &QLineEdit::textChanged, debounce, [debounce]() { debounce->start(); });
+    connect(debounce, &QTimer::timeout, this, [this, search]() {
+        if (search->text().trimmed().isEmpty()) {
+            navigate("overview");
+            return;
+        }
+        m_searchPage->setSearch(search->text());
+        m_stack->setCurrentWidget(m_searchPage);
+    });
+    auto* shortcut = new QShortcut(QKeySequence("Ctrl+K"), this);
+    connect(shortcut, &QShortcut::activated, search, qOverload<>(&QLineEdit::setFocus));
     connect(m_settings, &SettingsPage::settingsChanged, this, &MainWindow::reloadSettings);
     connect(m_settings, &SettingsPage::settingsChanged, m_systemd, &SystemdPage::reloadGroupSelector);
-    m_sidebar->setCurrentRow(0);
+    connect(m_center, &SystemCenter::textReady, this, [this](const auto& title, const auto& text) {
+        auto* dialog = new LogViewerDialog(title, text, this);
+        dialog->setAttribute(Qt::WA_DeleteOnClose);
+        dialog->show();
+    });
+    m_metricTimer = new QTimer(this);
+    m_metricTimer->setInterval(2000);
+    connect(m_metricTimer, &QTimer::timeout, this, [this]() {
+        if (isVisible() && m_stack->currentWidget() == m_pages.value("metrics"))
+            m_center->refresh("metrics");
+    });
+    m_metricTimer->start();
+    setCentralWidget(central);
+    navigate("overview");
+}
+void MainWindow::navigate(const QString& module, const QString& id) {
+    if (!m_pages.contains(module) || !centerModuleEnabled(module))
+        return;
+    m_stack->setCurrentWidget(m_pages[module]);
+    if (auto* page = qobject_cast<CenterPage*>(m_pages[module])) {
+        page->render();
+        if (!id.isEmpty())
+            page->selectRecord(id);
+    }
+    if (module != "overview" && module != "settings")
+        m_center->refresh(module);
 }
 
 void MainWindow::buildTray() {
@@ -123,7 +176,6 @@ void MainWindow::reloadSettings() {
     QSettings settings;
     m_scheduler.setIntervalSeconds(settings.value(QStringLiteral("refresh/intervalSeconds"), 30).toInt());
     m_scheduler.start();
-    m_modules = loadModuleSettings();
     applyModuleVisibility();
     applyTheme();
     m_disks->reloadSmartSchedule();
@@ -131,20 +183,23 @@ void MainWindow::reloadSettings() {
 }
 
 void MainWindow::applyModuleVisibility() {
-    QListWidgetItem* items[] = {
-        m_sidebar->item(PageOverview), m_sidebar->item(PageSystemd), m_sidebar->item(PageDocker), m_sidebar->item(PageVpn),
-        m_sidebar->item(PageMounts),   m_sidebar->item(PageSensors), m_sidebar->item(PageDisks),  m_sidebar->item(PageSettings),
-    };
-    const bool enabled[] = {true, m_modules.systemd, m_modules.docker, m_modules.vpn, m_modules.mounts, m_modules.sensors, m_modules.smart,
-                            true};
-    for (int i = 0; i < 8; ++i) {
-        if (items[i]) {
-            items[i]->setHidden(!enabled[i]);
-        }
+    QTreeWidgetItemIterator it(m_sidebar);
+    while (*it) {
+        const auto id = (*it)->data(0, Qt::UserRole).toString();
+        if (!id.isEmpty())
+            (*it)->setHidden(!centerModuleEnabled(id));
+        ++it;
     }
-    if (m_sidebar->currentItem() && m_sidebar->currentItem()->isHidden()) {
-        m_sidebar->setCurrentRow(PageOverview);
+    for (int i = 0; i < m_sidebar->topLevelItemCount(); ++i) {
+        auto* group = m_sidebar->topLevelItem(i);
+        bool any = false;
+        for (int j = 0; j < group->childCount(); ++j)
+            any = any || !group->child(j)->isHidden();
+        group->setHidden(!any);
     }
+    for (auto it = m_pages.cbegin(); it != m_pages.cend(); ++it)
+        if (it.value() == m_stack->currentWidget() && !centerModuleEnabled(it.key()))
+            navigate("overview");
 }
 
 void MainWindow::applyTheme() {
@@ -175,23 +230,23 @@ void MainWindow::applyTheme() {
             background: transparent;
             color: %6;
         }
-        QListWidget#sidebar {
+        QTreeWidget#sidebar {
             background: %2;
             border: 0;
             padding: 16px 10px;
         }
-        QListWidget#sidebar::item {
+        QTreeWidget#sidebar::item {
             border-radius: 6px;
             padding: 10px 12px;
             margin: 3px 0;
             color: %7;
             border: 1px solid transparent;
         }
-        QListWidget#sidebar::item:hover {
+        QTreeWidget#sidebar::item:hover {
             background: %4;
             color: %6;
         }
-        QListWidget#sidebar::item:selected {
+        QTreeWidget#sidebar::item:selected {
             background: %9;
             color: %6;
             border-color: %8;
@@ -217,7 +272,7 @@ void MainWindow::applyTheme() {
             font-size: 18pt;
             font-weight: 700;
         }
-        QTableView {
+        QTableView, QTreeView {
             background: %3;
             alternate-background-color: %4;
             gridline-color: %5;
@@ -369,25 +424,8 @@ void MainWindow::applyTheme() {
 }
 
 void MainWindow::refreshAll() {
-    m_overview->refresh(m_modules);
-    if (m_modules.systemd) {
-        m_systemd->refresh();
-    }
-    if (m_modules.docker) {
-        m_docker->refresh();
-    }
-    if (m_modules.vpn) {
-        m_vpn->refresh();
-    }
-    if (m_modules.mounts) {
-        m_mounts->refresh();
-    }
-    if (m_modules.sensors) {
-        m_sensors->refresh();
-    }
-    if (m_modules.smart) {
-        m_disks->refresh();
-    }
+    m_center->refreshScheduled();
+    m_overview->render();
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {

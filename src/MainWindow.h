@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/RefreshScheduler.h"
+#include "core/SystemCenter.h"
 #include "widgets/DisksPage.h"
 #include "widgets/DockerPage.h"
 #include "widgets/MountsPage.h"
@@ -10,9 +11,12 @@
 #include "widgets/SystemdPage.h"
 #include "widgets/VpnPage.h"
 
+#include <QHash>
 #include <QMainWindow>
 
-class QListWidget;
+class QTreeWidget;
+class QLineEdit;
+class QTimer;
 class QStackedWidget;
 class QSystemTrayIcon;
 
@@ -46,7 +50,7 @@ class MainWindow : public QMainWindow {
         PageSettings,
     };
 
-    QListWidget* m_sidebar = nullptr;
+    QTreeWidget* m_sidebar = nullptr;
     QStackedWidget* m_stack = nullptr;
     QSystemTrayIcon* m_tray = nullptr;
     RefreshScheduler m_scheduler;
@@ -59,5 +63,9 @@ class MainWindow : public QMainWindow {
     SensorsPage* m_sensors = nullptr;
     DisksPage* m_disks = nullptr;
     SettingsPage* m_settings = nullptr;
-    ModuleSettings m_modules;
+    SystemCenter* m_center = nullptr;
+    CenterPage* m_searchPage = nullptr;
+    QHash<QString, QWidget*> m_pages;
+    QTimer* m_metricTimer = nullptr;
+    void navigate(const QString& module, const QString& id = {});
 };
