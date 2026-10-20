@@ -1,14 +1,18 @@
 #include "CenterPage.h"
 
+#include <QCryptographicHash>
 #include <QFileDialog>
 #include <QHeaderView>
+#include <QInputDialog>
 #include <QLabel>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QSettings>
 #include <QStyle>
 #include <QTreeWidget>
 #include <QTreeWidgetItemIterator>
+#include <QUrl>
 #include <QVBoxLayout>
 #include <algorithm>
 #include <functional>
@@ -83,6 +87,23 @@ CenterPage::CenterPage(const QString& module, SystemCenter* center, QWidget* par
     });
     connect(m_table->header(), &QHeaderView::sectionResized, this,
             [this]() { QSettings().setValue("centerTables/" + m_module, m_table->header()->saveState()); });
+    if (m_module == "servers" || m_module == "sync")
+        addActionButton(tr("Configure panel address"), [this](const CenterRecord& r) {
+            const auto key = "panels/" + QString::fromLatin1(QCryptographicHash::hash(r.id.toUtf8(), QCryptographicHash::Sha256).toHex());
+            bool ok = false;
+            const auto text =
+                QInputDialog::getText(this, tr("Panel address"), tr("HTTP(S) address without credentials or query parameters"),
+                                      QLineEdit::Normal, QSettings().value(key).toString(), &ok);
+            if (!ok)
+                return;
+            const QUrl url(text);
+            if (!text.isEmpty() && (!url.isValid() || url.host().isEmpty() || !QStringList{"http", "https"}.contains(url.scheme()) ||
+                                    !url.userInfo().isEmpty() || url.hasQuery() || url.hasFragment())) {
+                QMessageBox::warning(this, tr("Panel address"), tr("Invalid panel address"));
+                return;
+            }
+            QSettings().setValue(key, text);
+        });
     if (m_module == "snapshots") {
         auto* pick = new QPushButton(tr("Select repository configuration"));
         layout->insertWidget(1, pick);

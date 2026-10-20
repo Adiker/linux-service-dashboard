@@ -112,3 +112,7 @@ Services lists system and user scopes, including installed but not-loaded units.
 ## Backups and synchronization
 
 Backups shows detected systemd backup jobs, last execution result and next timer activation. A successful job is not a verification of backup integrity. Kopia snapshots requires selecting an existing repository configuration; reads use closed stdin, no keyring authentication and no credential persistence. Missing credentials/repositories remain unavailable. Timeshift restore stays in its own application. Synchronization reports service/mount state only and never claims that transfers completed. Mounts includes local filesystems and rclone without traversing their contents; core system mountpoints cannot be unmounted here. New profiles omit inline password options.
+
+## Network and local servers
+
+VPN lists all detected NetworkManager connections and external kernel tunnels, with the evidence source. An activated connection or tunnel does not verify reachability. Network views show addresses, routes, DNS and byte counters; firewall zones and listening sockets are read-only. Server cards reuse shared scoped service state. Configure a panel address on a selected server/synchronization row, then Open it; addresses must be HTTP(S) without credentials, query parameters or fragments. No network scanning or automatic panel discovery runs.

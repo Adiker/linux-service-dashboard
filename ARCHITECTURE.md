@@ -267,3 +267,7 @@ ServiceScope and ServiceRef distinguish the two managers. ListUnits uses asynchr
 ## Backup evidence boundaries
 
 InventoryProvider consumes shared service/timer/mount snapshots. It reads only whitelisted systemd execution properties for detected backup jobs, associating schedules by scope and activation target. Kopia is resolved from PATH or the packaged KopiaUI CLI; its config path is opt-in, and read errors preserve stale snapshots. No repository is connected, restored, initialized or verified automatically. Synchronization completion is always unknown without native transfer evidence.
+
+## Network collection
+
+NetworkProvider asynchronously reads active-connection and device properties with bounded DBus calls; escaped nmcli fields are the fallback. Kernel tunnel links are merged by interface, retaining their weaker evidence semantics. InventoryProvider reads ip JSON, DNS, firewall zones and ss output without configuration changes. Panel URLs are stored by hashed stable record ID and validated again before opening.
