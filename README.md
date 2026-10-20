@@ -116,3 +116,9 @@ Backups shows detected systemd backup jobs, last execution result and next timer
 ## Network and local servers
 
 VPN lists all detected NetworkManager connections and external kernel tunnels, with the evidence source. An activated connection or tunnel does not verify reachability. Network views show addresses, routes, DNS and byte counters; firewall zones and listening sockets are read-only. Server cards reuse shared scoped service state. Configure a panel address on a selected server/synchronization row, then Open it; addresses must be HTTP(S) without credentials, query parameters or fragments. No network scanning or automatic panel discovery runs.
+
+## Hardware and software inventories
+
+Performance reads CPU/memory/swap and available GPU/VRAM counters from procfs/sysfs. Sampling runs every two seconds only while visible. Sensor units distinguish temperature, RPM, voltage and other readings. Audio, connected Bluetooth devices, power, printing, USB and partition capacity are read-only views; optional tools report errors without installation. Specialist tools open separately.
+
+Applications follows XDG desktop IDs, user precedence, Hidden/NoDisplay, desktop visibility and TryExec; entries are grouped by category and launched through `gio launch`, never by parsing Exec. Packages includes native packages and Flatpak applications/runtimes; foreign Pacman packages are not assumed to be AUR. Catalog/VM inventories run on demand, with filesystem discovery off the UI thread. VirtualBox lists registered/running VMs; QEMU detection reports processes without claiming guest health.

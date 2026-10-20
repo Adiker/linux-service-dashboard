@@ -1,5 +1,6 @@
 #include "SystemCenter.h"
 
+#include "../services/ToolLauncher.h"
 #include "CommandRunner.h"
 
 #include <QCryptographicHash>
@@ -67,7 +68,7 @@ SystemCenter::SystemCenter(QObject* parent) : QObject(parent) {
     connect(&sensors, &SensorProvider::sensorsReady, this, [this](const auto& rows, const QString& error) {
         QVector<CenterRecord> records;
         for (const auto& r : rows)
-            records.append({r.chip + "/" + r.label, {r.label, QString::number(r.current), r.chip}, {}, {}});
+            records.append({r.chip + "/" + r.label, {r.label, QString::number(r.current) + " " + r.unit, r.chip}, {}, {}});
         publish("sensors", {tr("Sensor"), tr("Value"), tr("Device")}, records, error);
     });
     connect(&smart, &SmartProvider::disksReady, this, [this](const auto& rows, const QString& error) {
@@ -172,6 +173,14 @@ bool SystemCenter::isFavorite(const QString& module, const QString& id) const {
     return QSettings().value("favorites/ids").toStringList().contains(module + ":" + id);
 }
 void SystemCenter::open(const CenterRecord& r) {
+    if (r.meta.contains("desktop") || r.meta.contains("program")) {
+        const auto error = r.meta.contains("desktop") ? ToolLauncher::desktop(r.meta.value("desktop").toString())
+                                                      : ToolLauncher::program(r.meta.value("program").toString());
+        if (!error.isEmpty())
+            emit textReady(tr("Open tool"), error);
+        return;
+    }
+
     const auto key = "panels/" + QString::fromLatin1(QCryptographicHash::hash(r.id.toUtf8(), QCryptographicHash::Sha256).toHex());
     const QUrl panel(QSettings().value(key).toString());
     if (panel.isValid() && !panel.host().isEmpty() && QStringList{"http", "https"}.contains(panel.scheme()) && panel.userInfo().isEmpty() &&

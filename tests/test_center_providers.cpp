@@ -1,6 +1,7 @@
 #include "src/parsers/ProviderParsers.h"
 #include "src/services/InventoryProvider.h"
 #include "src/services/NetworkProvider.h"
+#include "src/services/SystemInventory.h"
 #include "src/services/SystemdServiceProvider.h"
 
 #include <QFile>
@@ -10,6 +11,45 @@
 class CenterProviderTests : public QObject {
     Q_OBJECT
   private slots:
+    void effectiveDesktopCatalog() {
+        QTemporaryDir dir;
+        const auto user = dir.filePath("user"), system = dir.filePath("system");
+        QVERIFY(QDir().mkpath(user + "/applications/nested"));
+        QVERIFY(QDir().mkpath(system + "/applications"));
+        auto write = [](const QString& path, const QByteArray& data) {
+            QFile f(path);
+            if (!f.open(QIODevice::WriteOnly))
+                return false;
+            return f.write(data) == data.size();
+        };
+        QVERIFY(write(system + "/applications/same.desktop", "[Desktop Entry]\nType=Application\nName=System\n"));
+        QVERIFY(write(user + "/applications/same.desktop", "[Desktop Entry]\nHidden=true\n"));
+        QVERIFY(write(user + "/applications/nested/editor.desktop",
+                      "[Desktop Entry]\nType=Application\nName=Editor\nName[pl]=Edytor\nCategories=Development;\nOnlyShowIn=KDE;\n"));
+        QVERIFY(write(user + "/applications/hidden.desktop", "[Desktop Entry]\nType=Application\nName=Hidden\nNoDisplay=true\n"));
+        const auto result = SystemInventory::applications({user, system}, "pl_PL", "KDE");
+        QCOMPARE(result.rows.size(), 1);
+        QCOMPARE(result.rows[0].id, "nested-editor.desktop");
+        QCOMPARE(result.rows[0].cells[0], "Edytor");
+        QVERIFY(SystemInventory::applications({user, system}, "en_US", "GNOME").rows.isEmpty());
+    }
+    void sensorUnitsAndPackageOrigins() {
+        QString error;
+        auto sensors = ProviderParsers::parseSensorsJson(R"({"chip":{"Fan":{"fan1_input":1234},"CPU":{"temp1_input":42}}})", &error);
+        QCOMPARE(sensors.size(), 2);
+        for (const auto& row : sensors) {
+            if (row.label == "Fan")
+                QCOMPARE(row.unit, "RPM");
+            else
+                QCOMPARE(row.unit, "°C");
+        }
+        auto packages = SystemInventory::parse("packages", "foreign", "custom-package 1.2.3\n", &error);
+        QCOMPARE(packages.size(), 1);
+        QVERIFY(packages[0].meta.value("foreign").toBool());
+        const auto power = SystemInventory::parse("power", "UPower", "  serial: do-not-retain\n  percentage: 90%\n", &error);
+        QCOMPARE(power.size(), 1);
+        QVERIFY(!power[0].cells.join(' ').contains("do-not-retain"));
+    }
     void composeAndInvalidJson() {
         QString error;
         auto rows = ProviderParsers::parseDockerContainerLines(

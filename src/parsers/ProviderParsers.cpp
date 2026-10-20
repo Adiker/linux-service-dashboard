@@ -196,9 +196,11 @@ QVector<SensorRow> parseSensorsJson(const QString& output, QString* error) {
             double high = 0.0;
             double critical = 0.0;
             bool hasInput = false;
+            QString inputKey;
             for (auto valueIt = feature.begin(); valueIt != feature.end(); ++valueIt) {
                 const QString key = valueIt.key();
                 if (key.endsWith(QStringLiteral("_input"))) {
+                    inputKey = key;
                     input = valueIt.value().toDouble();
                     hasInput = true;
                 } else if (key.endsWith(QStringLiteral("_max")) || key.endsWith(QStringLiteral("_high"))) {
@@ -208,7 +210,15 @@ QVector<SensorRow> parseSensorsJson(const QString& output, QString* error) {
                 }
             }
             if (hasInput) {
-                rows.append(SensorRow{chipIt.key(), featureIt.key(), input, high, critical, temperatureStatus(input, high, critical)});
+                const QString unit = inputKey.startsWith("temp")    ? "°C"
+                                     : inputKey.startsWith("fan")   ? "RPM"
+                                     : inputKey.startsWith("in")    ? "V"
+                                     : inputKey.startsWith("power") ? "W"
+                                     : inputKey.startsWith("curr")  ? "A"
+                                     : inputKey.startsWith("freq")  ? "MHz"
+                                                                    : "";
+                rows.append(SensorRow{chipIt.key(), featureIt.key(), input, high, critical,
+                                      inputKey.startsWith("temp") ? temperatureStatus(input, high, critical) : QString("Reading"), unit});
             }
         }
     }

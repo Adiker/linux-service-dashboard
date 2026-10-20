@@ -25,6 +25,7 @@ class InventoryProvider : public QObject {
 
   private:
     QVector<CenterRecord> m_services, m_timers, m_mounts;
+    qulonglong m_cpuTotal = 0, m_cpuIdle = 0;
     CommandRunner m_runner;
     QHash<QString, int> m_pending;
     QHash<QString, QVector<CenterRecord>> m_rows;

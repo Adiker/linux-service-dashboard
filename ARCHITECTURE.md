@@ -271,3 +271,7 @@ InventoryProvider consumes shared service/timer/mount snapshots. It reads only w
 ## Network collection
 
 NetworkProvider asynchronously reads active-connection and device properties with bounded DBus calls; escaped nmcli fields are the fallback. Kernel tunnel links are merged by interface, retaining their weaker evidence semantics. InventoryProvider reads ip JSON, DNS, firewall zones and ss output without configuration changes. Panel URLs are stored by hashed stable record ID and validated again before opening.
+
+## Local inventories
+
+SystemInventory supplies bounded local-file readers, XDG catalog discovery and whitelisted output parsers. QtConcurrent keeps catalog/procfs discovery off the GUI thread; each module has one in-flight collection. Native package sources and Flatpak refs preserve distinct identities. ToolLauncher only runs catalog desktop files through gio or a fixed specialist GUI allowlist. No CLI source, profile or shell command from a desktop entry is interpreted by the dashboard.

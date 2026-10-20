@@ -1,15 +1,20 @@
 #include "InventoryProvider.h"
 
+#include "SystemInventory.h"
+
 #include <QDateTime>
 #include <QDir>
 #include <QFileInfo>
+#include <QFutureWatcher>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QMap>
 #include <QRegularExpression>
 #include <QSet>
 #include <QSettings>
 #include <QStandardPaths>
+#include <QtConcurrent>
 
 InventoryProvider::InventoryProvider(QObject* parent) : QObject(parent) {
     connect(&m_runner, &CommandRunner::commandFinished, this, [this](const auto&, const CommandResult& r, const QString& context) {
@@ -32,7 +37,15 @@ InventoryProvider::InventoryProvider(QObject* parent) : QObject(parent) {
             }
         if (--m_pending[module] == 0) {
             m_pending.remove(module);
-            emit ready(module, headers(module), m_rows.take(module), m_errors.take(module).join("\n"));
+            auto collected = m_rows.take(module);
+            if (module == "packages" || module == "vms") {
+                QMap<QString, CenterRecord> unique;
+                for (const auto& row : collected)
+                    if (!unique.contains(row.id) || row.meta.value("foreign").toBool() || row.meta.value("running").toBool())
+                        unique[row.id] = row;
+                collected = unique.values().toVector();
+            }
+            emit ready(module, headers(module), collected, m_errors.take(module).join("\n"));
         }
     });
 }
@@ -51,6 +64,9 @@ void InventoryProvider::start(const QString& module, const QVector<InventoryComm
         m_runner.run(c.program, c.arguments, 15000, module + ":" + c.tag);
 }
 QStringList InventoryProvider::headers(const QString& module) {
+    if (QStringList{"apps", "packages", "metrics", "vms", "tools", "filesystems", "audio", "bluetooth", "power", "printing", "usb"}
+            .contains(module))
+        return SystemInventory::headers(module);
     if (module == "network")
         return {
             tr("Interface / destination"), tr("State / gateway"), tr("Addresses / device"), tr("Details"), tr("RX bytes"), tr("TX bytes")};
@@ -80,6 +96,8 @@ QStringList InventoryProvider::headers(const QString& module) {
     return {tr("Name"), tr("State"), tr("Details")};
 }
 QVector<CenterRecord> InventoryProvider::parse(const QString& module, const QString& tag, const QString& output, QString* error) {
+    if (QStringList{"packages", "vms", "filesystems", "audio", "bluetooth", "power", "printing", "usb"}.contains(module))
+        return SystemInventory::parse(module, tag, output, error);
     QVector<CenterRecord> rows;
     if (module == "network") {
         if (tag == "dns") {
@@ -227,6 +245,79 @@ QVector<CenterRecord> InventoryProvider::parse(const QString& module, const QStr
 void InventoryProvider::refresh(const QString& module) {
     if (m_pending.contains(module))
         return;
+    if (QStringList{"apps", "tools", "metrics", "vms"}.contains(module)) {
+        m_pending[module] = 1;
+        auto* watcher = new QFutureWatcher<CenterSnapshot>(this);
+        connect(watcher, &QFutureWatcher<CenterSnapshot>::finished, this, [this, module, watcher]() {
+            auto data = watcher->result();
+            watcher->deleteLater();
+            m_pending.remove(module);
+            if (module == "metrics" && !data.rows.isEmpty()) {
+                auto& cpu = data.rows[0];
+                const auto total = cpu.meta.value("total").toULongLong(), idle = cpu.meta.value("idle").toULongLong();
+                if (m_cpuTotal && total > m_cpuTotal && idle >= m_cpuIdle) {
+                    const double percent = qBound(0.0, 100.0 * (1.0 - double(idle - m_cpuIdle) / double(total - m_cpuTotal)), 100.0);
+                    cpu.cells[1] = QString::number(percent, 'f', 1) + "%";
+                    cpu.meta["percent"] = percent;
+                }
+                m_cpuTotal = total;
+                m_cpuIdle = idle;
+            }
+            if (module == "vms" && !QStandardPaths::findExecutable("VBoxManage").isEmpty()) {
+                start(module, {{"VBoxManage", {"list", "vms"}, "registered"}, {"VBoxManage", {"list", "runningvms"}, "running"}});
+                m_rows[module] += data.rows;
+            } else
+                emit ready(module, data.headers, data.rows, data.error);
+        });
+        watcher->setFuture(QtConcurrent::run([module]() { return SystemInventory::local(module); }));
+        return;
+    }
+    if (module == "packages") {
+        QVector<InventoryCommand> commands;
+        if (!QStandardPaths::findExecutable("pacman").isEmpty()) {
+            commands.append({"pacman", {"-Q"}, "pacman"});
+            commands.append({"pacman", {"-Qm"}, "foreign"});
+        } else if (!QStandardPaths::findExecutable("dpkg-query").isEmpty())
+            commands.append({"dpkg-query", {"-W", "-f=${Package}\t${Version}\n"}, "dpkg"});
+        else if (!QStandardPaths::findExecutable("rpm").isEmpty())
+            commands.append({"rpm", {"-qa", "--qf", "%{NAME}\t%{VERSION}-%{RELEASE}\n"}, "rpm"});
+        if (!QStandardPaths::findExecutable("flatpak").isEmpty())
+            commands.append({"flatpak", {"list", "--columns=application,name,version,installation,ref"}, "flatpak"});
+        if (commands.isEmpty()) {
+            emit ready(module, headers(module), {}, tr("No supported package manager installed"));
+            return;
+        }
+        start(module, commands);
+        return;
+    }
+    if (module == "filesystems") {
+        start(module, {{"lsblk", {"-J", "-b", "-o", "NAME,PATH,TYPE,SIZE,FSTYPE,MOUNTPOINTS,FSAVAIL,FSUSE%"}, "devices"}});
+        return;
+    }
+    if (module == "audio") {
+        start(module, {{"pw-dump", {}, "PipeWire"}});
+        return;
+    }
+    if (module == "bluetooth") {
+        start(module, {{"bluetoothctl", {"--timeout", "5", "list"}, "Controllers"},
+                       {"bluetoothctl", {"--timeout", "5", "devices", "Connected"}, "Connected devices"}});
+        return;
+    }
+    if (module == "power") {
+        QVector<InventoryCommand> commands{{"upower", {"--dump"}, "UPower"}};
+        if (!QStandardPaths::findExecutable("powerprofilesctl").isEmpty())
+            commands.append({"powerprofilesctl", {"get"}, "profile"});
+        start(module, commands);
+        return;
+    }
+    if (module == "printing") {
+        start(module, {{"lpstat", {"-p", "-d"}, "CUPS"}});
+        return;
+    }
+    if (module == "usb") {
+        start(module, {{"lsusb", {}, "USB"}});
+        return;
+    }
     if (module == "network")
         start(module, {{"ip", {"-s", "-j", "address", "show"}, "addresses"},
                        {"ip", {"-j", "route", "show"}, "IPv4 routes"},
