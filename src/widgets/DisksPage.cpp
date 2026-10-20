@@ -13,7 +13,8 @@
 #include <QTableWidget>
 #include <QVBoxLayout>
 
-DisksPage::DisksPage(QWidget* parent) : QWidget(parent), m_smartScheduler(new SmartRefreshScheduler(this)) {
+DisksPage::DisksPage(SmartProvider& provider, QWidget* parent)
+    : QWidget(parent), m_provider(provider), m_smartScheduler(new SmartRefreshScheduler(this)) {
     auto* layout = new QVBoxLayout(this);
     auto* header = new QHBoxLayout;
     auto* title = new QLabel(QStringLiteral("Disks / SMART"), this);
@@ -101,7 +102,8 @@ DisksPage::DisksPage(QWidget* parent) : QWidget(parent), m_smartScheduler(new Sm
         dialog->show();
     });
     connect(&m_provider, &SmartProvider::disksReady, this, [this](const QVector<DiskRow>& rows, const QString& error) {
-        m_model->setRows(rows);
+        if (error.isEmpty())
+            m_model->setRows(rows);
         m_status->setText(error.isEmpty() ? QStringLiteral("%1 disks").arg(rows.size()) : error);
     });
     connect(&m_provider, &SmartProvider::smartReady, this, [this](const QString& path, const DiskRow& smartRow, const QString& error) {

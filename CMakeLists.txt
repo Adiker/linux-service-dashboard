@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(linux-service-dashboard VERSION 0.1.0 LANGUAGES CXX)
+project(linux-service-dashboard VERSION 0.2.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -8,8 +8,14 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_AUTORCC ON)
 
 include(GNUInstallDirs)
+execute_process(COMMAND git rev-parse --short=12 HEAD WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    OUTPUT_VARIABLE LSD_REVISION OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+if(NOT LSD_REVISION)
+    set(LSD_REVISION "unknown")
+endif()
+configure_file(src/BuildInfo.h.in generated/BuildInfo.h @ONLY)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Test DBus)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Test DBus LinguistTools)
 
 qt_standard_project_setup()
 
@@ -47,6 +53,9 @@ endif()
 
 qt_add_executable(linux-service-dashboard
     resources/resources.qrc
+    src/core/CenterTypes.cpp
+    src/core/SystemCenter.cpp
+    src/widgets/CenterPage.cpp
     src/main.cpp
     src/AppIcon.cpp
     src/AppIcon.h
@@ -123,6 +132,9 @@ qt_add_executable(linux-service-dashboard
     src/parsers/ProviderParsers.h
 )
 
+qt_add_translations(linux-service-dashboard TS_FILES translations/dashboard_pl.ts RESOURCE_PREFIX "/i18n")
+
+target_include_directories(linux-service-dashboard PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generated)
 target_link_libraries(linux-service-dashboard PRIVATE Qt6::Widgets Qt6::DBus)
 target_compile_definitions(linux-service-dashboard PRIVATE SMART_HELPER_RELATIVE_PATH="${SMART_HELPER_RELATIVE_PATH}")
 
@@ -137,6 +149,10 @@ target_link_libraries(provider-parser-tests PRIVATE Qt6::Test Qt6::Core)
 target_include_directories(provider-parser-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_test(NAME provider-parser-tests COMMAND provider-parser-tests)
+qt_add_executable(command-runner-tests tests/test_command_runner.cpp src/core/CommandRunner.cpp)
+target_include_directories(command-runner-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(command-runner-tests PRIVATE Qt6::Test Qt6::Core)
+add_test(NAME command-runner-tests COMMAND command-runner-tests)
 
 qt_add_executable(${SMART_HELPER_TARGET}
     src/helpers/SmartHelper.cpp
