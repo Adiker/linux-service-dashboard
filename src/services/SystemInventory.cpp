@@ -44,20 +44,20 @@ QHash<QString, QString> desktopFields(const QString& path) {
 QString category(const QString& cats) {
     const auto c = cats.split(';');
     if (c.contains("Game"))
-        return t("Games");
+        return t(QT_TRANSLATE_NOOP("SystemInventory", "Games"));
     if (c.contains("Development"))
-        return t("Development");
+        return t(QT_TRANSLATE_NOOP("SystemInventory", "Development"));
     if (c.contains("AudioVideo") || c.contains("Audio") || c.contains("Video"))
-        return t("Multimedia");
+        return t(QT_TRANSLATE_NOOP("SystemInventory", "Multimedia"));
     if (c.contains("Graphics"))
-        return t("Graphics");
+        return t(QT_TRANSLATE_NOOP("SystemInventory", "Graphics"));
     if (c.contains("Office"))
-        return t("Office");
+        return t(QT_TRANSLATE_NOOP("SystemInventory", "Office"));
     if (c.contains("Network"))
-        return t("Internet and communication");
+        return t(QT_TRANSLATE_NOOP("SystemInventory", "Internet and communication"));
     if (c.contains("System") || c.contains("Utility") || c.contains("Settings"))
-        return t("System and tools");
-    return t("Other");
+        return t(QT_TRANSLATE_NOOP("SystemInventory", "System and tools"));
+    return t(QT_TRANSLATE_NOOP("SystemInventory", "Other"));
 }
 QString gib(qulonglong bytes) {
     return QString::number(double(bytes) / (1024 * 1024 * 1024), 'f', 1) + " GiB";
@@ -108,34 +108,49 @@ CenterSnapshot SystemInventory::applications(const QStringList& roots, const QSt
                 fields.value("Name[" + locale + "]", fields.value("Name[" + locale.section('_', 0, 0) + "]", fields.value("Name", id)));
             const auto group = category(fields.value("Categories"));
             const auto source = fields.contains("X-Flatpak")            ? "Flatpak"
-                                : path.startsWith(roots.value(0) + "/") ? t("User desktop entry")
-                                                                        : t("Desktop entry");
-            out.rows.append(
-                {id, {name, group, source, fields.value("Comment"), id}, {group}, {{"desktop", path}, {"icon", fields.value("Icon")}}});
+                                : path.startsWith(roots.value(0) + "/") ? t(QT_TRANSLATE_NOOP("SystemInventory", "User desktop entry"))
+                                                                        : t(QT_TRANSLATE_NOOP("SystemInventory", "Desktop entry"));
+            out.rows.append({id,
+                             {name, group, source,
+                              fields.value("Comment[" + locale + "]",
+                                           fields.value("Comment[" + locale.section('_', 0, 0) + "]", fields.value("Comment"))),
+                              id},
+                             {group},
+                             {{"desktop", path}, {"icon", fields.value("Icon")}}});
         }
     }
     return out;
 }
 QStringList SystemInventory::headers(const QString& module) {
     if (module == "apps")
-        return {t("Name"), t("Category"), t("Source"), t("Description"), t("Desktop ID")};
+        return {t(QT_TRANSLATE_NOOP("SystemInventory", "Name")), t(QT_TRANSLATE_NOOP("SystemInventory", "Category")),
+                t(QT_TRANSLATE_NOOP("SystemInventory", "Source")), t(QT_TRANSLATE_NOOP("SystemInventory", "Description")),
+                t(QT_TRANSLATE_NOOP("SystemInventory", "Desktop ID"))};
     if (module == "packages")
-        return {t("Name"), t("Version"), t("Source"), t("Kind")};
+        return {t(QT_TRANSLATE_NOOP("SystemInventory", "Name")), t(QT_TRANSLATE_NOOP("SystemInventory", "Version")),
+                t(QT_TRANSLATE_NOOP("SystemInventory", "Source")), t(QT_TRANSLATE_NOOP("SystemInventory", "Kind"))};
     if (module == "filesystems")
-        return {t("Device"), t("Type"), t("Size"), t("Filesystem"), t("Mountpoints"), t("Available"), t("Used")};
+        return {t(QT_TRANSLATE_NOOP("SystemInventory", "Device")),      t(QT_TRANSLATE_NOOP("SystemInventory", "Type")),
+                t(QT_TRANSLATE_NOOP("SystemInventory", "Size")),        t(QT_TRANSLATE_NOOP("SystemInventory", "Filesystem")),
+                t(QT_TRANSLATE_NOOP("SystemInventory", "Mountpoints")), t(QT_TRANSLATE_NOOP("SystemInventory", "Available")),
+                t(QT_TRANSLATE_NOOP("SystemInventory", "Used"))};
     if (module == "metrics")
-        return {t("Resource"), t("Value"), t("Details")};
+        return {t(QT_TRANSLATE_NOOP("SystemInventory", "Resource")), t(QT_TRANSLATE_NOOP("SystemInventory", "Value")),
+                t(QT_TRANSLATE_NOOP("SystemInventory", "Details"))};
     if (module == "vms")
-        return {t("Name / process"), t("State"), t("Backend"), t("ID")};
+        return {t(QT_TRANSLATE_NOOP("SystemInventory", "Name / process")), t(QT_TRANSLATE_NOOP("SystemInventory", "State")),
+                t(QT_TRANSLATE_NOOP("SystemInventory", "Backend")), t(QT_TRANSLATE_NOOP("SystemInventory", "ID"))};
     if (module == "audio")
-        return {t("Node"), t("Class"), t("ID")};
-    return {t("Name"), t("State / value"), t("Details")};
+        return {t(QT_TRANSLATE_NOOP("SystemInventory", "Node")), t(QT_TRANSLATE_NOOP("SystemInventory", "Class")),
+                t(QT_TRANSLATE_NOOP("SystemInventory", "ID"))};
+    return {t(QT_TRANSLATE_NOOP("SystemInventory", "Name")), t(QT_TRANSLATE_NOOP("SystemInventory", "State / value")),
+            t(QT_TRANSLATE_NOOP("SystemInventory", "Details"))};
 }
 CenterSnapshot SystemInventory::local(const QString& module) {
     CenterSnapshot out;
     out.headers = headers(module);
     if (module == "apps")
-        return applications(dataRoots(), QLocale::system().name(), qEnvironmentVariable("XDG_CURRENT_DESKTOP"));
+        return applications(dataRoots(), QLocale().name(), qEnvironmentVariable("XDG_CURRENT_DESKTOP"));
     if (module == "metrics") {
         const auto cpu = smallFile("/proc/stat").section('\n', 0, 0).simplified().split(' ');
         qulonglong total = 0, idle = 0;
@@ -144,10 +159,13 @@ CenterSnapshot SystemInventory::local(const QString& module) {
         if (cpu.size() > 5)
             idle = cpu[4].toULongLong() + cpu[5].toULongLong();
         if (total == 0) {
-            out.error = t("CPU counters unavailable");
+            out.error = t(QT_TRANSLATE_NOOP("SystemInventory", "CPU counters unavailable"));
             return out;
         }
-        out.rows.append({"cpu", {"CPU", t("Sampling…"), smallFile("/proc/loadavg")}, {}, {{"total", total}, {"idle", idle}}});
+        out.rows.append({"cpu",
+                         {"CPU", t(QT_TRANSLATE_NOOP("SystemInventory", "Sampling…")), smallFile("/proc/loadavg")},
+                         {},
+                         {{"total", total}, {"idle", idle}}});
         QHash<QString, qulonglong> memory;
         for (const auto& line : smallFile("/proc/meminfo").split('\n')) {
             const auto f = line.simplified().split(' ');
@@ -156,12 +174,13 @@ CenterSnapshot SystemInventory::local(const QString& module) {
         }
         const auto ram = memory.value("MemTotal:"), available = memory.value("MemAvailable:", memory.value("MemFree:"));
         if (!ram) {
-            out.error = t("Memory counters unavailable");
+            out.error = t(QT_TRANSLATE_NOOP("SystemInventory", "Memory counters unavailable"));
             return out;
         }
         const auto used = ram - qMin(ram, available);
         out.rows.append({"memory",
-                         {t("Memory"), gib(used) + " / " + gib(ram), t("Available: %1").arg(gib(available))},
+                         {t(QT_TRANSLATE_NOOP("SystemInventory", "Memory")), gib(used) + " / " + gib(ram),
+                          t(QT_TRANSLATE_NOOP("SystemInventory", "Available: %1")).arg(gib(available))},
                          {},
                          {{"percent", 100.0 * used / ram}}});
         out.rows.append(
@@ -176,14 +195,15 @@ CenterSnapshot SystemInventory::local(const QString& module) {
             const auto busy = smallFile(base + "gpu_busy_percent");
             const auto vramTotal = smallFile(base + "mem_info_vram_total");
             out.rows.append({"gpu:" + card,
-                             {"GPU / " + card, busy.isEmpty() ? t("Unknown") : busy + "%",
-                              vramTotal.isEmpty() ? t("VRAM unavailable")
+                             {"GPU / " + card, busy.isEmpty() ? t(QT_TRANSLATE_NOOP("SystemInventory", "Unknown")) : busy + "%",
+                              vramTotal.isEmpty() ? t(QT_TRANSLATE_NOOP("SystemInventory", "VRAM unavailable"))
                                                   : "VRAM " + gib(smallFile(base + "mem_info_vram_used").toULongLong()) + " / " +
                                                         gib(vramTotal.toULongLong())},
                              {},
                              {}});
         }
-        out.rows.append({"kernel", {t("Kernel"), smallFile("/proc/sys/kernel/osrelease"), ""}, {}, {}});
+        out.rows.append(
+            {"kernel", {t(QT_TRANSLATE_NOOP("SystemInventory", "Kernel")), smallFile("/proc/sys/kernel/osrelease"), ""}, {}, {}});
     } else if (module == "vms") {
         for (const auto& pid : QDir("/proc").entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
             bool numeric;
@@ -192,7 +212,10 @@ CenterSnapshot SystemInventory::local(const QString& module) {
                 continue;
             const auto name = smallFile("/proc/" + pid + "/comm");
             if (name.startsWith("qemu-system") || name == "qemu-kvm")
-                out.rows.append({"qemu:" + pid, {name, t("Process detected; guest state unknown"), "QEMU", pid}, {"QEMU"}, {}});
+                out.rows.append({"qemu:" + pid,
+                                 {name, t(QT_TRANSLATE_NOOP("SystemInventory", "Process detected; guest state unknown")), "QEMU", pid},
+                                 {"QEMU"},
+                                 {}});
         }
     } else if (module == "tools") {
         struct Tool {
@@ -237,17 +260,20 @@ CenterSnapshot SystemInventory::local(const QString& module) {
             if (tool.gui && !executable.isEmpty())
                 meta["program"] = tool.program;
             out.rows.append({tool.program,
-                             {tool.program, executable.isEmpty() ? t("Not installed") : t("Installed"), executable},
+                             {tool.program,
+                              executable.isEmpty() ? t(QT_TRANSLATE_NOOP("SystemInventory", "Not installed"))
+                                                   : t(QT_TRANSLATE_NOOP("SystemInventory", "Installed")),
+                              executable},
                              {t(tool.group)},
                              meta});
         }
-        const auto apps = applications(dataRoots(), QLocale::system().name(), qEnvironmentVariable("XDG_CURRENT_DESKTOP"));
+        const auto apps = applications(dataRoots(), QLocale().name(), qEnvironmentVariable("XDG_CURRENT_DESKTOP"));
         for (const auto& app : apps.rows)
             if (app.id == "kopia-ui.desktop" || app.id.contains("bottles", Qt::CaseInsensitive) ||
                 app.id.contains("defguard", Qt::CaseInsensitive) || app.id.contains("proton.vpn", Qt::CaseInsensitive)) {
                 auto r = app;
-                r.cells = {app.cells.value(0), t("Installed"), app.id};
-                r.groups = {t("Specialist tools")};
+                r.cells = {app.cells.value(0), t(QT_TRANSLATE_NOOP("SystemInventory", "Installed")), app.id};
+                r.groups = {t(QT_TRANSLATE_NOOP("SystemInventory", "Specialist tools"))};
                 out.rows.append(r);
             }
     }
@@ -260,23 +286,33 @@ QVector<CenterRecord> SystemInventory::parse(const QString& module, const QStrin
             if (tag == "flatpak") {
                 const auto f = line.split('\t');
                 if (f.size() < 4) {
-                    *error = t("Invalid Flatpak listing");
+                    *error = t(QT_TRANSLATE_NOOP("SystemInventory", "Invalid Flatpak listing"));
                     continue;
                 }
                 const auto id = "flatpak:" + f[0] + ":" + f[3] + ":" + f.value(4);
                 rows.append({id, {f[1] + " (" + f[0] + ")", f[2], "Flatpak / " + f[3], f.value(4)}, {"Flatpak"}, {}});
             } else {
-                const auto f = tag == "dpkg" || tag == "rpm" ? line.split('\t') : line.simplified().split(' ');
+                auto f = tag == "dpkg" || tag == "rpm" ? line.split('\t') : line.simplified().split(' ');
+                if (tag == "dpkg") {
+                    if (f.size() < 3) {
+                        *error = t(QT_TRANSLATE_NOOP("SystemInventory", "Invalid package listing"));
+                        continue;
+                    }
+                    if (f[0] != "installed")
+                        continue;
+                    f.removeFirst();
+                }
                 if (f.size() < 2) {
-                    *error = t("Invalid package listing");
+                    *error = t(QT_TRANSLATE_NOOP("SystemInventory", "Invalid package listing"));
                     continue;
                 }
-                rows.append({"package:" + f[0],
-                             {f[0], f[1],
-                              tag == "foreign"  ? t("Pacman (foreign)")
+                const auto identity = tag == "rpm" ? f[0] + ":" + f[1] + ":" + f.value(2) : f[0];
+                rows.append({"package:" + identity,
+                             {f[0] + (tag == "rpm" && f.size() > 2 ? "." + f[2] : ""), f[1],
+                              tag == "foreign"  ? t(QT_TRANSLATE_NOOP("SystemInventory", "Pacman (foreign)"))
                               : tag == "pacman" ? "Pacman"
                                                 : tag,
-                              t("Package")},
+                              t(QT_TRANSLATE_NOOP("SystemInventory", "Package"))},
                              {tag == "foreign" ? "Pacman" : tag},
                              {{"foreign", tag == "foreign"}}});
             }
@@ -285,7 +321,7 @@ QVector<CenterRecord> SystemInventory::parse(const QString& module, const QStrin
         QJsonParseError e;
         const auto doc = QJsonDocument::fromJson(output.toUtf8(), &e);
         if (!doc.isObject() || !doc.object()["blockdevices"].isArray()) {
-            *error = t("Invalid block device JSON");
+            *error = t(QT_TRANSLATE_NOOP("SystemInventory", "Invalid block device JSON"));
             return {};
         }
         std::function<void(QJsonArray, QString)> visit = [&](QJsonArray devices, const QString& parent) {
@@ -310,7 +346,7 @@ QVector<CenterRecord> SystemInventory::parse(const QString& module, const QStrin
         QJsonParseError e;
         const auto doc = QJsonDocument::fromJson(output.toUtf8(), &e);
         if (!doc.isArray()) {
-            *error = t("Invalid PipeWire JSON");
+            *error = t(QT_TRANSLATE_NOOP("SystemInventory", "Invalid PipeWire JSON"));
             return {};
         }
         for (const auto& v : doc.array()) {
@@ -327,11 +363,14 @@ QVector<CenterRecord> SystemInventory::parse(const QString& module, const QStrin
         for (const auto& line : output.split('\n', Qt::SkipEmptyParts)) {
             const auto match = pattern.match(line);
             if (!match.hasMatch()) {
-                *error = t("Invalid VirtualBox listing");
+                *error = t(QT_TRANSLATE_NOOP("SystemInventory", "Invalid VirtualBox listing"));
                 continue;
             }
             rows.append({match.captured(2),
-                         {match.captured(1), tag == "running" ? t("Running") : t("Registered"), "VirtualBox", match.captured(2)},
+                         {match.captured(1),
+                          tag == "running" ? t(QT_TRANSLATE_NOOP("SystemInventory", "Running"))
+                                           : t(QT_TRANSLATE_NOOP("SystemInventory", "Registered")),
+                          "VirtualBox", match.captured(2)},
                          {"VirtualBox"},
                          {{"running", tag == "running"}}});
         }
@@ -339,7 +378,8 @@ QVector<CenterRecord> SystemInventory::parse(const QString& module, const QStrin
         const QStringList allowed{"model",   "state",         "percentage",   "capacity",      "energy", "energy-full", "energy-rate",
                                   "voltage", "time to empty", "time to full", "warning-level", "type",   "on-battery"};
         if (tag == "profile")
-            rows.append({"profile", {t("Power profile"), output.trimmed(), "power-profiles-daemon"}, {}, {}});
+            rows.append(
+                {"profile", {t(QT_TRANSLATE_NOOP("SystemInventory", "Power profile")), output.trimmed(), "power-profiles-daemon"}, {}, {}});
         else
             for (const auto& line : output.split('\n', Qt::SkipEmptyParts)) {
                 const auto key = line.trimmed().section(':', 0, 0);
@@ -348,7 +388,10 @@ QVector<CenterRecord> SystemInventory::parse(const QString& module, const QStrin
             }
     } else {
         for (const auto& line : output.split('\n', Qt::SkipEmptyParts))
-            rows.append({tag + ":" + QString::number(rows.size()), {line.trimmed(), tag, t("Read-only")}, {tag}, {}});
+            rows.append({tag + ":" + QString::number(rows.size()),
+                         {line.trimmed(), tag, t(QT_TRANSLATE_NOOP("SystemInventory", "Read-only"))},
+                         {tag},
+                         {}});
     }
     return rows;
 }

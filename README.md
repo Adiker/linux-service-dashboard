@@ -1,124 +1,114 @@
 # Linux Service Dashboard
 
-Linux Service Dashboard is a local Qt 6 Widgets desktop application for monitoring common Linux services and system components from one place. It is written in C++20 and targets modern Linux desktops, including KDE Plasma on Wayland.
+A local C++20 / Qt 6 Widgets system center for Linux desktops, including KDE Plasma on Wayland and X11. The interface supports English and Polish, grouped navigation, shared status data and optional modules.
 
-## Features
+## What is included
 
-- Overview cards for Docker, systemd, VPN, mounts, sensors, and disk health.
-- systemd service table with filtering, refresh, start, stop, restart, and journal viewing.
-- Docker container table using the Docker CLI, with start, stop, restart, logs, and inspect JSON actions.
-- NetworkManager VPN/tunnel status via its DBus interface (asynchronous, with a short timeout), falling back to `nmcli` when the system bus is unavailable; external `tun` links such as OpenConnect are included.
-- CIFS/NFS/sshfs mount listing with file manager open and confirmed unmount.
-- Network shares from `/etc/fstab` and saved mount profiles are shown alongside live mounts; unmount is limited to currently mounted entries.
-- Temperature/sensor display using `sensors -j` with a text fallback.
-- Disk inventory via `lsblk -J` and manual SMART checks via `smartctl -j`, with an installed polkit helper for permission-gated SMART reads.
-- QSettings-backed refresh interval, watched services, user-defined systemd service groups, module toggles, and theme preference.
-- Light, Dark, and OLED themes with system-theme auto mode.
-- System tray menu with Show Dashboard, Refresh Now, and Quit.
-- Embedded application icon plus installable desktop entry for KDE Plasma Wayland/X11 taskbar matching.
+| Area | Views |
+|---|---|
+| Dashboard | Overview cards, pinned items, items requiring attention and active collections |
+| Services and tasks | System/user services, installed unloaded units, groups, timers, sockets, autostart and journal |
+| Containers | Compose project → service → container hierarchy, health, ports, visible-page CPU/memory, logs and inspect; read-only images/volumes |
+| Network and access | Interfaces, addresses, routes, DNS, transfer counters, all detected VPN/tunnels, read-only firewall zones and listening ports |
+| Data and disks | Disk/partition inventory, capacity, local/network/rclone mounts, manual SMART, history and opt-in scheduling |
+| Backups and synchronization | Backup job outcomes and schedules, existing-repository Kopia snapshots, Syncthing/rclone service and mount state |
+| Hardware and session | CPU/RAM/swap/GPU/VRAM, short metric history, sensor units, audio, Bluetooth, power, printing and USB |
+| Servers and sharing | Shared systemd/container status and user-configured panel links |
+| Software and environments | Categorized XDG application catalog, native packages, Flatpak apps/runtimes, VM and tool inventories |
+| Diagnostics and settings | Bounded local events, diagnostic report preview/export, module toggles, language, themes and refresh settings |
 
-Podman, remote monitoring, web servers, authentication, and cloud sync are intentionally out of scope for this MVP.
+Ctrl+K searches pages and indexed entities. Searching at least two characters also initializes the application/package catalogs when needed. Catalogs otherwise load on entering their page or on explicit refresh. Select a row to see its fields; tables support filtering and sorting. New tree tables also allow column visibility from the header context menu.
 
-## Dependencies
+Pin an item from its page or search results to keep it on the dashboard. Service groups and a scope selector allow personal views without restricting the shared service inventory.
 
-Arch Linux:
+## Status and actions
 
-```bash
-sudo pacman -S qt6-base cmake gcc docker networkmanager util-linux lm_sensors smartmontools polkit
-```
+Installed tools, configured entries, running processes and successful operations are separate observations:
 
-Debian/Ubuntu-like systems:
+- Stopped unused services/containers are not automatically alarms. A running container with an unhealthy check is flagged.
+- A tunnel or NetworkManager activation does not prove reachability.
+- A successful backup job does not verify backup integrity. Snapshot listing is not verification either.
+- A running synchronization daemon or mounted cloud drive does not prove transfer completion.
+- QEMU process detection does not prove guest health.
+- A failed refresh retains the previous data with an unavailable/stale indication and its last successful read time.
 
-```bash
-sudo apt install qt6-base-dev cmake g++ docker-cli network-manager util-linux lm-sensors smartmontools policykit-1
-```
+Service/container start, stop and restart and mount unmount keep confirmation dialogs. Critical session services and core system mountpoints are read-only. There are no bulk removals, package updates, volume pruning, backup restores, firewall/VPN edits, hardware tuning, remote monitoring server or dashboard login system.
 
-Some commands may require the current user to have permissions, for example access to the Docker socket. SMART checks first try the user's session and, when installed, fall back to a small `pkexec`/polkit helper that runs the SMART read batch after one administrator authentication.
+Open specialist tools for configuration. Applications launch through their desktop entries using `gio`; the dashboard does not interpret desktop `Exec` commands. Local server/synchronization panel addresses are explicitly configured per selected item and must be HTTP(S) without credentials or query parameters.
 
 ## Build
 
+Arch/EndeavourOS build dependencies:
+
 ```bash
-mkdir -p build
-cd build
-cmake ..
-cmake --build . -j$(nproc)
-./linux-service-dashboard
+sudo pacman -S qt6-base qt6-tools cmake gcc
 ```
 
-## Install
+Debian/Ubuntu build dependencies:
+
+```bash
+sudo apt install qt6-base-dev qt6-base-dev-tools qt6-tools-dev qt6-tools-dev-tools cmake g++
+```
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc)
-cmake --install build --prefix /usr/local
+ctest --test-dir build --output-on-failure
+build/linux-service-dashboard
 ```
 
-The install step places the main binary, SMART helper, polkit policy, `.desktop` entry, and hicolor PNG/SVG icons under the chosen prefix. The desktop id is `io.github.Adiker.LinuxServiceDashboard`; KDE Plasma Wayland uses it to match the taskbar icon to the same icon used by the tray.
+`linux-service-dashboard --version` prints the version and configured Git revision without needing a display. Dirty builds are identified. About is available in the tray menu.
 
-For SMART checks that require elevated disk access, install the project into a system prefix so polkit can find the helper policy:
+## Optional runtime tools
+
+Missing tools, inaccessible daemons and permission failures are reported in the relevant view. The dashboard never installs tools automatically.
+
+| Integration | Tools |
+|---|---|
+| Services/tasks | systemd DBus, `systemctl`, `journalctl`; structured task views require systemctl JSON support |
+| Containers | `docker` with a usable local/user-configured context; Compose metadata comes from labels |
+| Network | NetworkManager DBus / `nmcli`, `ip`, `ss`, `firewall-cmd` |
+| Disks/mounts/sensors | `lsblk`, `findmnt`, `umount`, `smartctl`, `sensors` |
+| Backups | Existing systemd jobs; `kopia` or the CLI bundled with KopiaUI |
+| Session hardware | `pw-dump`, `bluetoothctl`, `upower`, optional `powerprofilesctl`, `lpstat`, `lsusb` |
+| Packages/VMs | Pacman, dpkg-query or RPM; optional Flatpak and VBoxManage; QEMU process inventory |
+| GUI launch | `gio` (`glib2` on Arch; `libglib2.0-bin` on Debian), installed specialist applications |
+
+Kopia snapshots requires selecting an existing repository configuration. Reads close stdin, avoid keyring authentication and do not persist credentials. An inaccessible repository stays unknown/unavailable. Creating/connecting/restoring repositories is left to KopiaUI. Timeshift restore stays in Timeshift.
+
+## Install and desktop integration
+
+Before replacing an existing installation, retain its binary/install prefix and QSettings file for rollback. Build and test the candidate first.
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DLSD_INSTALL_POLKIT_POLICY_SYSTEM=ON
+cmake --build build -j$(nproc)
 sudo cmake --install build --prefix /usr/local
 ```
 
-When the app lives under `/usr/local`, polkit still loads action files from `/usr/share/polkit-1/actions`, so pass `-DLSD_INSTALL_POLKIT_POLICY_SYSTEM=ON` for that layout. By default the policy installs under the chosen prefix (`share/polkit-1/actions`), which keeps staged or relocatable installs working.
+The install includes the binary, narrow SMART helper, polkit policy, desktop entry and hicolor icons. The desktop id is `io.github.Adiker.LinuxServiceDashboard`. Window/tray icons are embedded PNGs, so an uninstalled build also has an icon.
 
-If you use a different install prefix, pass the same `--prefix` to `cmake --install` so the generated polkit policy points at the final helper path. The app resolves the helper relative to its own install location at runtime.
+For `/usr/local`, polkit loads policies from `/usr/share/polkit-1/actions`; enable `LSD_INSTALL_POLKIT_POLICY_SYSTEM` as above. For staged/relocatable installs, leave it off to place policy files under the chosen prefix. The policy is generated at install time for that prefix, and the helper path resolves relative to the application.
 
-The helper is installed as `libexec/linux-service-dashboard-smart-helper` and is only invoked through `pkexec` for SMART reads. When several disks need elevated access, the app batches them into one helper invocation so polkit should ask once for that manual check.
+SMART first uses the user's permissions, then the installed narrow `pkexec` helper when required. Manual batches share one authorization request. The helper only accepts validated disk paths and SMART read operations. The application does not request or store sudo passwords.
 
-## Themes
+## Settings and privacy
 
-Settings → Theme supports:
+Settings retain the `LocalTools` / `Linux Service Dashboard` QSettings identity. Migration is additive: service groups, mount profiles, table layouts, SMART history and theme remain. Theme values are `System`, `Light`, `Dark`, `OLED`; language selection takes effect after restart.
 
-- `System`
-- `Light`
-- `Dark`
-- `OLED`
+Regular enabled-module status refresh defaults to 30 seconds. Performance and container resource sampling run every two seconds only on their visible page. SMART is manual unless its minimum-five-minute opt-in schedule is enabled. Disabling a module skips its collection; derived service views indicate unavailable sources rather than claiming cached state is fresh.
 
-OLED uses a black-first palette with brighter contrast for OLED displays and dark desktop setups.
+Desktop notifications are off by default. When enabled, attention increases are deduplicated and rate limited. Local events retain at most 1000 standardized entries and never store raw command arguments/output. Diagnostic export has a preview and only includes version/platform metadata, module availability/counts/timestamps and error flags. It excludes settings values, raw logs, paths, account names, device identities and network addresses. Newly saved mount profiles omit inline password options; existing profiles are not rewritten.
 
-## Known Limitations
+## Validation and limits
 
-- systemd listing uses the systemd1 DBus interface with a `systemctl list-units --plain` fallback; service control actions still run through `systemctl`.
-- SMART checks are manual by default and cached by the UI. An opt-in scheduled refresh (Settings > SMART scheduling, minimum 5-minute interval) can re-run checks automatically; it is skipped while a check is already in progress. The polkit helper covers normal installed use, but unusual USB bridges may still require bridge-specific `smartctl -d` options.
-- Mount profiles and fstab entries are read-only here: the app lists them and can save profiles, but does not mount them or edit `/etc/fstab`.
-- VPN detection queries NetworkManager over DBus (with an `nmcli` fallback) and treats VPN-like tunnel types such as `vpn`, `tun`, `wireguard`, and `ppp` as connected.
-- Module toggles hide a page from the sidebar and skip its scheduled refresh; the Overview and Settings pages are always available.
-- Provider parsers have unit tests (`ctest --test-dir build`); UI behavior and provider command execution are still validated by manual build and smoke tests.
+CTest covers parsers, command timeouts/output limits, scoped fallbacks, backup evidence, XDG precedence, sorted selection, settings migration, safe reports and navigation in both languages. UI tests use temporary settings and never invoke destructive actions or automatic SMART checks.
 
-## Screenshots
+```bash
+QT_QPA_PLATFORM=offscreen timeout 3s build/linux-service-dashboard
+QT_QPA_PLATFORM=minimal timeout 3s build/linux-service-dashboard
+```
 
-Screenshots will be added once the UI stabilizes:
+Exit 124 from these commands means the app remained alive until timeout. Also smoke-test a normal Wayland session and `QT_QPA_PLATFORM=xcb` when available. The application never forces a platform plugin or layer-shell.
 
-- Overview page
-- systemd services page
-- Docker containers page
-- Sensors and SMART pages
-
-## Build identity
-
-Run `linux-service-dashboard --version` without a display to print the version and build revision. The tray menu also provides About.
-
-## System center navigation
-
-The grouped sidebar and Ctrl+K search share the same provider snapshots. Pin items from search or module views to show them on the dashboard. A failed refresh retains the last successful snapshot, marked stale. Settings adds module toggles and System/Polish/English language selection (takes effect after restarting). Install Qt Linguist tools (`qt6-tools` on Arch; `qt6-tools-dev` and `qt6-tools-dev-tools` on Debian) to build translations. New integration pages are filled in subsequent increments.
-
-## Services and containers
-
-Services lists system and user scopes, including installed but not-loaded units. Filter locally by scope or existing service groups; group entries may use `user:unit.service` or `system:unit.service` to disambiguate. Critical session services are read-only. Timers and sockets show their scope and activation target; autostart lists the effective user/system desktop entries. Compose containers are grouped by project and service, with standalone containers separate. Images and volumes are read-only inventories; CPU/memory sampling occurs only while the container page is visible.
-
-## Backups and synchronization
-
-Backups shows detected systemd backup jobs, last execution result and next timer activation. A successful job is not a verification of backup integrity. Kopia snapshots requires selecting an existing repository configuration; reads use closed stdin, no keyring authentication and no credential persistence. Missing credentials/repositories remain unavailable. Timeshift restore stays in its own application. Synchronization reports service/mount state only and never claims that transfers completed. Mounts includes local filesystems and rclone without traversing their contents; core system mountpoints cannot be unmounted here. New profiles omit inline password options.
-
-## Network and local servers
-
-VPN lists all detected NetworkManager connections and external kernel tunnels, with the evidence source. An activated connection or tunnel does not verify reachability. Network views show addresses, routes, DNS and byte counters; firewall zones and listening sockets are read-only. Server cards reuse shared scoped service state. Configure a panel address on a selected server/synchronization row, then Open it; addresses must be HTTP(S) without credentials, query parameters or fragments. No network scanning or automatic panel discovery runs.
-
-## Hardware and software inventories
-
-Performance reads CPU/memory/swap and available GPU/VRAM counters from procfs/sysfs. Sampling runs every two seconds only while visible. Sensor units distinguish temperature, RPM, voltage and other readings. Audio, connected Bluetooth devices, power, printing, USB and partition capacity are read-only views; optional tools report errors without installation. Specialist tools open separately.
-
-Applications follows XDG desktop IDs, user precedence, Hidden/NoDisplay, desktop visibility and TryExec; entries are grouped by category and launched through `gio launch`, never by parsing Exec. Packages includes native packages and Flatpak applications/runtimes; foreign Pacman packages are not assumed to be AUR. Catalog/VM inventories run on demand, with filesystem discovery off the UI thread. VirtualBox lists registered/running VMs; QEMU detection reports processes without claiming guest health.
+Optional daemon/API configuration, synchronization progress, backup verification and advanced GPU controls remain in their native tools. USB bridge SMART transports may need device-specific support. See [ARCHITECTURE.md](ARCHITECTURE.md) for internal contracts and [ROADMAP.md](ROADMAP.md) for delivery status.

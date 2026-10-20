@@ -10,6 +10,11 @@ set(CMAKE_AUTORCC ON)
 include(GNUInstallDirs)
 execute_process(COMMAND git rev-parse --short=12 HEAD WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     OUTPUT_VARIABLE LSD_REVISION OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+execute_process(COMMAND git diff --quiet HEAD WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    RESULT_VARIABLE LSD_DIRTY ERROR_QUIET)
+if(LSD_REVISION AND LSD_DIRTY EQUAL 1)
+    string(APPEND LSD_REVISION "-dirty")
+endif()
 if(NOT LSD_REVISION)
     set(LSD_REVISION "unknown")
 endif()
@@ -51,15 +56,17 @@ else()
         "Directory where polkit loads action policy files (relative paths are rooted at the install prefix)" FORCE)
 endif()
 
-qt_add_executable(linux-service-dashboard
+add_library(dashboard-core OBJECT
     resources/resources.qrc
     src/services/SystemInventory.cpp
     src/services/ToolLauncher.cpp
     src/services/InventoryProvider.cpp
+    src/utils/TableTools.cpp
+    src/core/EventStore.cpp
+    src/widgets/MetricChart.cpp
     src/core/CenterTypes.cpp
     src/core/SystemCenter.cpp
     src/widgets/CenterPage.cpp
-    src/main.cpp
     src/AppIcon.cpp
     src/AppIcon.h
     src/MainWindow.cpp
@@ -135,6 +142,12 @@ qt_add_executable(linux-service-dashboard
     src/parsers/ProviderParsers.h
 )
 
+target_include_directories(dashboard-core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_BINARY_DIR}/generated)
+target_link_libraries(dashboard-core PUBLIC Qt6::Widgets Qt6::DBus Qt6::Concurrent)
+target_compile_definitions(dashboard-core PRIVATE SMART_HELPER_RELATIVE_PATH="${SMART_HELPER_RELATIVE_PATH}")
+qt_add_executable(linux-service-dashboard src/main.cpp)
+target_link_libraries(linux-service-dashboard PRIVATE dashboard-core)
+
 qt_add_translations(linux-service-dashboard TS_FILES translations/dashboard_pl.ts RESOURCE_PREFIX "/i18n")
 
 target_include_directories(linux-service-dashboard PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generated)
@@ -156,12 +169,18 @@ qt_add_executable(command-runner-tests tests/test_command_runner.cpp src/core/Co
 target_include_directories(command-runner-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(command-runner-tests PRIVATE Qt6::Test Qt6::Core)
 add_test(NAME command-runner-tests COMMAND command-runner-tests)
-qt_add_executable(center-provider-tests src/services/SystemInventory.cpp src/services/NetworkProvider.cpp tests/test_center_providers.cpp src/services/InventoryProvider.cpp
+qt_add_executable(center-provider-tests src/services/ToolLauncher.cpp src/core/CenterTypes.cpp src/services/SystemInventory.cpp src/services/NetworkProvider.cpp tests/test_center_providers.cpp src/services/InventoryProvider.cpp
     src/services/SystemdServiceProvider.cpp src/core/CommandRunner.cpp src/parsers/ProviderParsers.cpp
     src/utils/JsonUtils.cpp src/utils/StatusUtils.cpp src/utils/TimeUtils.cpp)
 target_include_directories(center-provider-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(center-provider-tests PRIVATE Qt6::Test Qt6::Core Qt6::DBus Qt6::Concurrent)
 add_test(NAME center-provider-tests COMMAND center-provider-tests)
+qt_add_executable(center-ui-tests tests/test_center_ui.cpp)
+target_include_directories(center-ui-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(center-ui-tests PRIVATE dashboard-core Qt6::Test)
+target_compile_definitions(center-ui-tests PRIVATE LSD_TEST_QM_PATH="${CMAKE_CURRENT_BINARY_DIR}/dashboard_pl.qm")
+add_test(NAME center-ui-tests COMMAND center-ui-tests)
+set_tests_properties(center-ui-tests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 90)
 
 qt_add_executable(${SMART_HELPER_TARGET}
     src/helpers/SmartHelper.cpp

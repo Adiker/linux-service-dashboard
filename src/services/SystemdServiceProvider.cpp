@@ -58,8 +58,9 @@ SystemdServiceProvider::SystemdServiceProvider(QObject* parent) : QObject(parent
             }
             finishScope(scope);
         } else if (context.startsWith("logs:"))
-            emit logsReady(context.mid(5), r.ok() ? r.standardOutput : r.standardError);
+            emit logsReady(context.mid(5), r.standardOutput + "\n" + r.standardError);
         else if (context.startsWith("action:")) {
+            emit actionCompleted(r.ok());
             emit actionFinished(r.ok() ? tr("Action completed") : tr("Action failed"), r.ok() ? r.standardOutput : r.standardError);
             refreshServices({});
         }

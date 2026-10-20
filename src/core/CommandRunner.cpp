@@ -9,6 +9,7 @@
 CommandRunner::CommandRunner(QObject* parent) : QObject(parent) {}
 CommandRunner::~CommandRunner() {
     for (auto* process : findChildren<QProcess*>()) {
+        process->disconnect();
         process->kill();
         process->waitForFinished(100);
     }

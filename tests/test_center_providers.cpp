@@ -50,6 +50,16 @@ class CenterProviderTests : public QObject {
         QCOMPARE(power.size(), 1);
         QVERIFY(!power[0].cells.join(' ').contains("do-not-retain"));
     }
+    void nativePackageIdentities() {
+        QString error;
+        const auto deb = SystemInventory::parse(
+            "packages", "dpkg", "installed\tlib:amd64\t1.0\ninstalled\tlib:i386\t1.0\nconfig-files\tremoved\t1.0\n", &error);
+        QCOMPARE(deb.size(), 2);
+        QVERIFY(deb[0].id != deb[1].id);
+        const auto rpm = SystemInventory::parse("packages", "rpm", "kernel\t1.0\tx86_64\nkernel\t2.0\tx86_64\n", &error);
+        QCOMPARE(rpm.size(), 2);
+        QVERIFY(rpm[0].id != rpm[1].id);
+    }
     void composeAndInvalidJson() {
         QString error;
         auto rows = ProviderParsers::parseDockerContainerLines(
@@ -59,6 +69,13 @@ class CenterProviderTests : public QObject {
         QCOMPARE(rows[0].project, "project");
         QCOMPARE(rows[0].composeService, "web");
         QCOMPARE(rows[0].health, "unhealthy");
+        const auto projected = ProviderParsers::parseDockerContainerLines(
+            R"json({"ID":"abc","Names":"example","ComposeProject":"project","ComposeService":"web","State":"running","Status":"Up (healthy)"})json",
+            &error);
+        QCOMPARE(projected.size(), 1);
+        QCOMPARE(projected[0].project, "project");
+        QCOMPARE(projected[0].composeService, "web");
+        QCOMPARE(projected[0].health, "healthy");
         ProviderParsers::parseDockerContainerLines("broken", &error);
         QVERIFY(!error.isEmpty());
     }

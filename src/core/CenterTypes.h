@@ -1,5 +1,6 @@
 #pragma once
 #include <QDateTime>
+#include <QMetaType>
 #include <QStringList>
 #include <QVariantMap>
 #include <QVector>
@@ -24,3 +25,7 @@ struct ModuleDescriptor {
 QVector<ModuleDescriptor> centerModules();
 QString centerTitle(const QString& id);
 bool centerModuleEnabled(const QString& id);
+
+Q_DECLARE_METATYPE(QVector<CenterRecord>)
+
+bool centerModuleToolAvailable(const ModuleDescriptor& module);

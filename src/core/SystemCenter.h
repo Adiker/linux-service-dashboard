@@ -7,8 +7,11 @@
 #include "../services/SmartProvider.h"
 #include "../services/SystemdServiceProvider.h"
 #include "CenterTypes.h"
+#include "EventStore.h"
 
 #include <QHash>
+#include <QJsonDocument>
+#include <QSet>
 
 class SystemCenter : public QObject {
     Q_OBJECT
@@ -26,6 +29,9 @@ class SystemCenter : public QObject {
     void refresh(const QString& id);
     void refreshScheduled();
     CenterSnapshot search(const QString& text) const;
+    CenterSnapshot overview() const;
+    QJsonDocument diagnosticReport() const;
+    int activeCollections() const { return m_refreshing.size(); }
     void toggleFavorite(const QString& module, const QString& id);
     bool isFavorite(const QString& module, const QString& id) const;
     void open(const CenterRecord& record);
@@ -38,4 +44,10 @@ class SystemCenter : public QObject {
 
   private:
     QHash<QString, CenterSnapshot> m_snapshots;
+    QSet<QString> m_refreshing;
+    QSet<QString> m_favorites;
+    QHash<QString, QString> m_diskIdentity;
+    EventStore m_events;
+    QHash<QString, DiskRow> m_smartHealth;
+    void updateEvents();
 };

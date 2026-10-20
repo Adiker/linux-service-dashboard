@@ -7,15 +7,13 @@
 #include <QFileInfo>
 #include <QProcess>
 #include <QStandardPaths>
-QString ToolLauncher::desktop(const QString& file) {
+QString ToolLauncher::desktopError(const QString& file) {
     bool trusted = false;
     for (const auto& root : SystemInventory::dataRoots())
         if (QDir::cleanPath(file).startsWith(QDir::cleanPath(root) + "/applications/"))
             trusted = true;
     if (!trusted || !QFileInfo(file).isFile() || !file.endsWith(".desktop"))
         return QCoreApplication::translate("ToolLauncher", "Desktop entry is outside the application catalog");
-    if (!QProcess::startDetached("gio", {"launch", file}))
-        return QCoreApplication::translate("ToolLauncher", "Could not launch desktop entry; check gio availability");
     return {};
 }
 QString ToolLauncher::program(const QString& name) {
