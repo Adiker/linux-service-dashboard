@@ -61,6 +61,8 @@ add_library(dashboard-core OBJECT
     src/services/SystemInventory.cpp
     src/services/ToolLauncher.cpp
     src/services/InventoryProvider.cpp
+    src/services/FirewallProvider.cpp
+    src/services/FirewallProvider.h
     src/utils/TableTools.cpp
     src/core/EventStore.cpp
     src/widgets/MetricChart.cpp
@@ -169,7 +171,7 @@ qt_add_executable(command-runner-tests tests/test_command_runner.cpp src/core/Co
 target_include_directories(command-runner-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(command-runner-tests PRIVATE Qt6::Test Qt6::Core)
 add_test(NAME command-runner-tests COMMAND command-runner-tests)
-qt_add_executable(center-provider-tests src/services/ToolLauncher.cpp src/core/CenterTypes.cpp src/services/SystemInventory.cpp src/services/NetworkProvider.cpp tests/test_center_providers.cpp src/services/InventoryProvider.cpp
+qt_add_executable(center-provider-tests src/services/ToolLauncher.cpp src/core/CenterTypes.cpp src/services/SystemInventory.cpp src/services/NetworkProvider.cpp src/services/FirewallProvider.cpp tests/test_center_providers.cpp src/services/InventoryProvider.cpp
     src/services/SystemdServiceProvider.cpp src/core/CommandRunner.cpp src/parsers/ProviderParsers.cpp
     src/utils/JsonUtils.cpp src/utils/StatusUtils.cpp src/utils/TimeUtils.cpp)
 target_include_directories(center-provider-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -230,3 +232,9 @@ foreach(icon_size 16 22 24 32 48 64 128 256)
         RENAME io.github.Adiker.LinuxServiceDashboard.png
     )
 endforeach()
+
+qt_add_executable(firewall-provider-tests tests/test_firewall_provider.cpp src/services/FirewallProvider.cpp)
+target_include_directories(firewall-provider-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(firewall-provider-tests PRIVATE Qt6::Test Qt6::DBus)
+add_test(NAME firewall-provider-tests COMMAND firewall-provider-tests)
+set_tests_properties(firewall-provider-tests PROPERTIES TIMEOUT 30)

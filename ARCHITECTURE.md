@@ -45,7 +45,7 @@ Docker ps uses an explicit JSON projection, avoiding full-format fields such as 
 
 NetworkManager active-connection and device properties use asynchronous bounded DBus calls. An escaping-aware nmcli fallback handles names containing colons. Kernel links provide external tunnel presence and merge by interface. Neither source verifies connectivity. The legacy single-VPN parser type remains for source/parser compatibility; UI consumes a collection.
 
-Read-only ip JSON, DNS, firewall-zone and ss collections do not edit configuration or scan the network. Panel URLs are user-configured, indexed by hashed entity ID, and validated both on save and open. Credentials, query parameters and fragments are rejected.
+Read-only ip JSON, DNS, firewall-zone and ss collections do not edit configuration or scan the network. Firewall inspection uses asynchronous DBus reads with a noninteractive polkit permission check for the same bus sender before each protected request. Missing authorization is reported in the view; open `firewall-config` explicitly to authenticate. Background refresh does not invoke `firewall-cmd`. Panel URLs are user-configured, indexed by hashed entity ID, and validated both on save and open. Credentials, query parameters and fragments are rejected.
 
 ### Storage, SMART and backups
 
@@ -112,6 +112,7 @@ CTest targets:
 - `provider-parser-tests`: baseline parsing fixtures.
 - `command-runner-tests`: missing programs, timeout, request coalescing and output bounds.
 - `center-provider-tests`: scopes/unloaded units, Compose, schedules/outcomes, escaped names, XDG masks/localization, units and package projections.
+- `firewall-provider-tests`: private DBus fixtures check denied/allowed inspection, exact sender identity, noninteractive authorization flags, request coalescing and nested port data.
 - `center-ui-tests`: temporary settings, migration/report privacy, evidence boundaries, sorted action identities, stable theme/language values, all pages in both languages and responsive asynchronous inventories. It does not execute destructive actions, launch real applications or run SMART checks.
 
 Use offscreen/minimal startup checks and normal Wayland/XWayland sessions when available. UI test `LSD_CAPTURE_DIR` writes local review PNGs; `QT_SCALE_FACTOR` supports per-process scaling checks without changing desktop settings. Do not publish host-data screenshots without reviewing them.

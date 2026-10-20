@@ -2186,4 +2186,10 @@ Lokalne centrum systemu, zbudowane z Qt %2.</translation>
       <translation>Narzędzie jest niedostępne lub nie udało się go otworzyć</translation>
     </message>
   </context>
+<context>
+    <name>FirewallProvider</name>
+    <message><source>Firewall inspection requires authorization; open firewall-config explicitly.</source><translation>Podgląd zapory wymaga uprawnień; otwórz samodzielnie firewall-config.</translation></message>
+    <message><source>Firewall zone data exceeds the display limit</source><translation>Dane stref zapory przekraczają limit wyświetlania</translation></message>
+    <message><source>Read-only</source><translation>Tylko odczyt</translation></message>
+</context>
 </TS>

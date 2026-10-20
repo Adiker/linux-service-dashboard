@@ -112,3 +112,5 @@ QT_QPA_PLATFORM=minimal timeout 3s build/linux-service-dashboard
 Exit 124 from these commands means the app remained alive until timeout. Also smoke-test a normal Wayland session and `QT_QPA_PLATFORM=xcb` when available. The application never forces a platform plugin or layer-shell.
 
 Optional daemon/API configuration, synchronization progress, backup verification and advanced GPU controls remain in their native tools. USB bridge SMART transports may need device-specific support. See [ARCHITECTURE.md](ARCHITECTURE.md) for internal contracts and [ROADMAP.md](ROADMAP.md) for delivery status.
+
+Firewall inspection uses asynchronous DBus reads with a noninteractive polkit permission check for the same bus sender before each protected request. Missing authorization is reported in the view; open `firewall-config` explicitly to authenticate. Background refresh does not invoke `firewall-cmd`.
