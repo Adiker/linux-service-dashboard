@@ -57,6 +57,11 @@ The application is a regular Qt Widgets desktop app and should stay compositor-n
 ## Provider Boundaries
 
 - Providers in `src/services/` should own shell command execution and parsing.
+- `SystemCenter` owns shared providers/snapshots; do not add separate overview or search collectors.
+- Keep system/user scope in every service identity, action and log request. Map sorted/filtered selections to source rows before acting.
+- A running daemon, listed snapshot or tunnel is not evidence of completed sync, verified backup or reachable VPN.
+- Keep diagnostic export as a whitelist projection; never serialize settings, entity records or raw command output.
+- Tree table header persistence must ignore automatic changes before the first real data/header restoration.
 - UI pages should not shell out directly; call provider methods and handle provider signals.
 - The app intentionally does not ask for sudo passwords. Permission errors must be surfaced as status text/dialog details.
 - SMART checks are manual from the disks page; avoid frequent automatic SMART polling.
@@ -72,11 +77,12 @@ The runtime icon is embedded as PNG files through `resources/resources.qrc`; ins
 
 ## Tests
 
-There is no dedicated unit-test target yet. For code changes, run:
+Parser, runner, provider and UI regressions have CTest targets. For code changes, run:
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc)
+ctest --test-dir build --output-on-failure
 ```
 
 For desktop integration changes, also smoke-test startup with available Qt platform plugins, for example:

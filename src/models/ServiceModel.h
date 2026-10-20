@@ -1,7 +1,14 @@
 #pragma once
 
 #include <QAbstractTableModel>
+#include <QMetaType>
 #include <QVector>
+
+enum class ServiceScope { System, User };
+struct ServiceRef {
+    ServiceScope scope = ServiceScope::System;
+    QString unit;
+};
 
 struct ServiceRow {
     QString unit;
@@ -10,20 +17,24 @@ struct ServiceRow {
     QString subState;
     QString description;
     QString lastRefresh;
+    ServiceScope scope = ServiceScope::System;
+    QString unitFileState;
 };
 
 class ServiceModel : public QAbstractTableModel {
     Q_OBJECT
 
-public:
-    explicit ServiceModel(QObject *parent = nullptr);
-    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
-    int columnCount(const QModelIndex &parent = QModelIndex()) const override;
-    QVariant data(const QModelIndex &index, int role) const override;
+  public:
+    explicit ServiceModel(QObject* parent = nullptr);
+    int rowCount(const QModelIndex& parent = QModelIndex()) const override;
+    int columnCount(const QModelIndex& parent = QModelIndex()) const override;
+    QVariant data(const QModelIndex& index, int role) const override;
     QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
-    void setRows(const QVector<ServiceRow> &rows);
+    void setRows(const QVector<ServiceRow>& rows);
     ServiceRow rowAt(int row) const;
 
-private:
+  private:
     QVector<ServiceRow> m_rows;
 };
+
+Q_DECLARE_METATYPE(QVector<ServiceRow>)

@@ -20,6 +20,9 @@ class SettingsPage : public QWidget {
     void settingsChanged();
 
   private:
+    QHash<QString, QCheckBox*> m_extraModules;
+    QComboBox* m_language = nullptr;
+    QCheckBox* m_notifications = nullptr;
     void load();
     void save();
     void reloadGroups();

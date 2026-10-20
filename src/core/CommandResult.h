@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QMetaType>
 #include <QString>
 #include <QStringList>
 
@@ -12,16 +13,15 @@ struct CommandResult {
     int exitCode = -1;
     bool timedOut = false;
     bool startFailed = false;
+    bool outputTruncated = false;
 
-    [[nodiscard]] bool ok() const
-    {
-        return !timedOut && !startFailed && exitCode == 0;
-    }
+    [[nodiscard]] bool ok() const { return !timedOut && !startFailed && !outputTruncated && exitCode == 0; }
 
-    [[nodiscard]] QString commandLine() const
-    {
+    [[nodiscard]] QString commandLine() const {
         QStringList parts{program};
         parts.append(arguments);
         return parts.join(' ');
     }
 };
+
+Q_DECLARE_METATYPE(CommandResult)
