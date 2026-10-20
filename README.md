@@ -104,3 +104,7 @@ Run `linux-service-dashboard --version` without a display to print the version a
 ## System center navigation
 
 The grouped sidebar and Ctrl+K search share the same provider snapshots. Pin items from search or module views to show them on the dashboard. A failed refresh retains the last successful snapshot, marked stale. Settings adds module toggles and System/Polish/English language selection (takes effect after restarting). Install Qt Linguist tools (`qt6-tools` on Arch; `qt6-tools-dev` and `qt6-tools-dev-tools` on Debian) to build translations. New integration pages are filled in subsequent increments.
+
+## Services and containers
+
+Services lists system and user scopes, including installed but not-loaded units. Filter locally by scope or existing service groups; group entries may use `user:unit.service` or `system:unit.service` to disambiguate. Critical session services are read-only. Timers and sockets show their scope and activation target; autostart lists the effective user/system desktop entries. Compose containers are grouped by project and service, with standalone containers separate. Images and volumes are read-only inventories; CPU/memory sampling occurs only while the container page is visible.

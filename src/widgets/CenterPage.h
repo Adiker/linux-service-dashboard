@@ -2,6 +2,8 @@
 #include "../core/SystemCenter.h"
 
 #include <QWidget>
+#include <functional>
+class QHBoxLayout;
 class QTreeWidget;
 class QLineEdit;
 class QLabel;
@@ -16,7 +18,12 @@ class CenterPage : public QWidget {
   signals:
     void navigate(const QString& module, const QString& id);
 
+  protected:
+    void addActionButton(const QString& label, std::function<void(const CenterRecord&)> action);
+    CenterRecord selected() const;
+
   private:
+    QHBoxLayout* m_actions = nullptr;
     QString m_module;
     SystemCenter* m_center;
     QTreeWidget* m_table;
@@ -24,6 +31,5 @@ class CenterPage : public QWidget {
     QLabel* m_status;
     QLabel* m_details;
     CenterSnapshot m_data;
-    CenterRecord selected() const;
     void filter();
 };

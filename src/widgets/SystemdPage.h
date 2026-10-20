@@ -30,6 +30,9 @@ class SystemdPage : public QWidget {
     QSortFilterProxyModel* m_proxy = nullptr;
     QTableView* m_table = nullptr;
     QLineEdit* m_filter = nullptr;
+    QComboBox* m_scopeSelector = nullptr;
+    QVector<ServiceRow> m_rows;
+    void applyFilters();
     QComboBox* m_groupSelector = nullptr;
     QLabel* m_status = nullptr;
     SystemdServiceProvider& m_provider;

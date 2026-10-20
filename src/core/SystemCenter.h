@@ -1,5 +1,6 @@
 #pragma once
 #include "../services/DockerProvider.h"
+#include "../services/InventoryProvider.h"
 #include "../services/MountProvider.h"
 #include "../services/NetworkProvider.h"
 #include "../services/SensorProvider.h"
@@ -13,6 +14,7 @@ class SystemCenter : public QObject {
     Q_OBJECT
   public:
     explicit SystemCenter(QObject* parent = nullptr);
+    InventoryProvider inventory;
     DockerProvider docker;
     MountProvider mounts;
     NetworkProvider network;

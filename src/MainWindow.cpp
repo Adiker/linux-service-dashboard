@@ -59,7 +59,7 @@ void MainWindow::buildUi() {
     layout->addWidget(m_stack, 1);
     m_overview = new OverviewPage(m_center, m_stack);
     m_systemd = new SystemdPage(m_center->systemd, m_stack);
-    m_docker = new DockerPage(m_center->docker, m_stack);
+    m_docker = new DockerPage(m_center, m_stack);
     m_vpn = new VpnPage(m_center->network, m_stack);
     m_mounts = new MountsPage(m_center->mounts, m_stack);
     m_sensors = new SensorsPage(m_center->sensors, m_stack);
@@ -122,6 +122,8 @@ void MainWindow::buildUi() {
     connect(m_metricTimer, &QTimer::timeout, this, [this]() {
         if (isVisible() && m_stack->currentWidget() == m_pages.value("metrics"))
             m_center->refresh("metrics");
+        if (isVisible() && m_stack->currentWidget() == m_pages.value("docker") && centerModuleEnabled("docker"))
+            m_center->inventory.refresh("dockerStats");
     });
     m_metricTimer->start();
     setCentralWidget(central);

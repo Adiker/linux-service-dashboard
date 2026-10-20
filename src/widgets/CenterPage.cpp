@@ -40,6 +40,7 @@ CenterPage::CenterPage(const QString& module, SystemCenter* center, QWidget* par
     m_details->setTextInteractionFlags(Qt::TextSelectableByMouse);
     layout->addWidget(m_details);
     auto* actions = new QHBoxLayout;
+    m_actions = actions;
     for (const auto& label : {tr("Pin / unpin"), tr("Open"), tr("View logs")}) {
         auto* b = new QPushButton(label);
         actions->addWidget(b);
@@ -168,4 +169,14 @@ void CenterPage::selectRecord(const QString& id) {
         }
         ++it;
     }
+}
+
+void CenterPage::addActionButton(const QString& label, std::function<void(const CenterRecord&)> action) {
+    auto* button = new QPushButton(label);
+    m_actions->insertWidget(0, button);
+    connect(button, &QPushButton::clicked, this, [this, action]() {
+        const auto r = selected();
+        if (!r.id.isEmpty())
+            action(r);
+    });
 }
