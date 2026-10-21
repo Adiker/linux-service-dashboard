@@ -1,5 +1,6 @@
 #include "SettingsPage.h"
 
+#include "../core/CenterTypes.h"
 #include "../core/ServiceGroupSettings.h"
 
 #include <QCheckBox>
@@ -15,16 +16,17 @@
 #include <QPushButton>
 #include <QSettings>
 #include <QSpinBox>
+#include <QStandardPaths>
 #include <QVBoxLayout>
 
 SettingsPage::SettingsPage(QWidget* parent) : QWidget(parent) {
     auto* layout = new QVBoxLayout(this);
     layout->setSpacing(10);
-    auto* title = new QLabel(QStringLiteral("Settings"), this);
+    auto* title = new QLabel(tr("Settings"), this);
     title->setObjectName(QStringLiteral("pageTitle"));
     layout->addWidget(title);
 
-    auto* generalTitle = new QLabel(QStringLiteral("Refresh"), this);
+    auto* generalTitle = new QLabel(tr("Refresh"), this);
     generalTitle->setObjectName(QStringLiteral("sectionTitle"));
     layout->addWidget(generalTitle);
     auto* general = new QFrame(this);
@@ -32,11 +34,13 @@ SettingsPage::SettingsPage(QWidget* parent) : QWidget(parent) {
     auto* form = new QFormLayout(general);
     m_refreshInterval = new QSpinBox(general);
     m_refreshInterval->setRange(5, 3600);
-    m_refreshInterval->setSuffix(QStringLiteral(" seconds"));
-    form->addRow(QStringLiteral("Refresh interval"), m_refreshInterval);
+    m_refreshInterval->setSuffix(tr(" seconds"));
+    form->addRow(tr("Refresh interval"), m_refreshInterval);
+    m_notifications = new QCheckBox(tr("Enable desktop notifications"), general);
+    form->addRow(m_notifications);
     layout->addWidget(general);
 
-    auto* servicesTitle = new QLabel(QStringLiteral("Watched systemd services"), this);
+    auto* servicesTitle = new QLabel(tr("Watched systemd services"), this);
     servicesTitle->setObjectName(QStringLiteral("sectionTitle"));
     layout->addWidget(servicesTitle);
     auto* servicesGroup = new QFrame(this);
@@ -44,20 +48,20 @@ SettingsPage::SettingsPage(QWidget* parent) : QWidget(parent) {
     auto* servicesLayout = new QVBoxLayout(servicesGroup);
     auto* groupRow = new QHBoxLayout;
     m_serviceGroup = new QComboBox(servicesGroup);
-    auto* addGroupButton = new QPushButton(QStringLiteral("Add group"), servicesGroup);
-    auto* renameGroupButton = new QPushButton(QStringLiteral("Rename"), servicesGroup);
-    groupRow->addWidget(new QLabel(QStringLiteral("Group"), servicesGroup));
+    auto* addGroupButton = new QPushButton(tr("Add group"), servicesGroup);
+    auto* renameGroupButton = new QPushButton(tr("Rename"), servicesGroup);
+    groupRow->addWidget(new QLabel(tr("Group"), servicesGroup));
     groupRow->addWidget(m_serviceGroup, 1);
     groupRow->addWidget(addGroupButton);
     groupRow->addWidget(renameGroupButton);
     servicesLayout->addLayout(groupRow);
     m_services = new QPlainTextEdit(servicesGroup);
     m_services->setMinimumHeight(128);
-    m_services->setPlaceholderText(QStringLiteral("One unit per line"));
+    m_services->setPlaceholderText(tr("One unit per line"));
     servicesLayout->addWidget(m_services);
     layout->addWidget(servicesGroup);
 
-    auto* modulesTitle = new QLabel(QStringLiteral("Modules"), this);
+    auto* modulesTitle = new QLabel(tr("Modules"), this);
     modulesTitle->setObjectName(QStringLiteral("sectionTitle"));
     layout->addWidget(modulesTitle);
     auto* modules = new QFrame(this);
@@ -66,40 +70,59 @@ SettingsPage::SettingsPage(QWidget* parent) : QWidget(parent) {
     m_systemd = new QCheckBox(QStringLiteral("Systemd"), modules);
     m_docker = new QCheckBox(QStringLiteral("Docker"), modules);
     m_vpn = new QCheckBox(QStringLiteral("VPN"), modules);
-    m_mounts = new QCheckBox(QStringLiteral("Mounts"), modules);
-    m_sensors = new QCheckBox(QStringLiteral("Sensors"), modules);
+    m_mounts = new QCheckBox(tr("Mounts"), modules);
+    m_sensors = new QCheckBox(tr("Sensors"), modules);
     m_smart = new QCheckBox(QStringLiteral("SMART"), modules);
     for (QCheckBox* box : {m_systemd, m_docker, m_vpn, m_mounts, m_sensors, m_smart}) {
         modulesLayout->addWidget(box);
     }
+    const QStringList existing{"overview", "settings", "systemd", "docker", "vpn", "mounts", "sensors", "smart"};
+    for (const auto& module : centerModules()) {
+        if (existing.contains(module.id))
+            continue;
+        auto* box = new QCheckBox(module.title, modules);
+        const bool installed = centerModuleToolAvailable(module);
+        box->setToolTip(installed ? tr("Available; configuration and running state are detected separately.")
+                                  : tr("Tool not installed: %1").arg(module.tool));
+        m_extraModules[module.id] = box;
+        modulesLayout->addWidget(box);
+    }
     layout->addWidget(modules);
 
-    auto* smartTitle = new QLabel(QStringLiteral("SMART scheduling"), this);
+    auto* smartTitle = new QLabel(tr("SMART scheduling"), this);
     smartTitle->setObjectName(QStringLiteral("sectionTitle"));
     layout->addWidget(smartTitle);
     auto* smartGroup = new QFrame(this);
     smartGroup->setObjectName(QStringLiteral("settingsSection"));
     auto* smartLayout = new QFormLayout(smartGroup);
-    m_smartScheduled = new QCheckBox(QStringLiteral("Enable scheduled SMART refresh"), smartGroup);
+    m_smartScheduled = new QCheckBox(tr("Enable scheduled SMART refresh"), smartGroup);
     smartLayout->addRow(m_smartScheduled);
     m_smartIntervalMinutes = new QSpinBox(smartGroup);
     m_smartIntervalMinutes->setRange(5, 1440);
-    m_smartIntervalMinutes->setSuffix(QStringLiteral(" minutes"));
-    smartLayout->addRow(QStringLiteral("SMART interval"), m_smartIntervalMinutes);
+    m_smartIntervalMinutes->setSuffix(tr(" minutes"));
+    smartLayout->addRow(tr("SMART interval"), m_smartIntervalMinutes);
     layout->addWidget(smartGroup);
 
-    auto* themeTitle = new QLabel(QStringLiteral("Theme"), this);
+    auto* themeTitle = new QLabel(tr("Theme"), this);
     themeTitle->setObjectName(QStringLiteral("sectionTitle"));
     layout->addWidget(themeTitle);
     auto* themeGroup = new QFrame(this);
     themeGroup->setObjectName(QStringLiteral("settingsSection"));
     auto* themeLayout = new QFormLayout(themeGroup);
     m_theme = new QComboBox(themeGroup);
-    m_theme->addItems({QStringLiteral("System"), QStringLiteral("Light"), QStringLiteral("Dark"), QStringLiteral("OLED")});
-    themeLayout->addRow(QStringLiteral("Preference"), m_theme);
+    m_theme->addItem(tr("System"), "System");
+    m_theme->addItem(tr("Light"), "Light");
+    m_theme->addItem(tr("Dark"), "Dark");
+    m_theme->addItem(tr("OLED"), "OLED");
+    themeLayout->addRow(tr("Preference"), m_theme);
+    m_language = new QComboBox(themeGroup);
+    m_language->addItem(tr("System"), "System");
+    m_language->addItem("Polski", "pl");
+    m_language->addItem("English", "en");
+    themeLayout->addRow(tr("Language (restart required)"), m_language);
     layout->addWidget(themeGroup);
 
-    auto* saveButton = new QPushButton(QIcon::fromTheme(QStringLiteral("document-save")), QStringLiteral("Save"), this);
+    auto* saveButton = new QPushButton(QIcon::fromTheme(QStringLiteral("document-save")), tr("Save"), this);
     layout->addWidget(saveButton, 0, Qt::AlignRight);
     layout->addStretch();
 
@@ -156,15 +179,14 @@ void SettingsPage::loadGroupServices() {
 void SettingsPage::addGroup() {
     bool ok = false;
     const QString name =
-        QInputDialog::getText(this, QStringLiteral("Add service group"), QStringLiteral("Group name"), QLineEdit::Normal, QString(), &ok)
-            .trimmed();
+        QInputDialog::getText(this, tr("Add service group"), tr("Group name"), QLineEdit::Normal, QString(), &ok).trimmed();
     if (!ok || name.isEmpty()) {
         return;
     }
     if (ServiceGroupSettings::groupNames().contains(name)) {
         // Writing an empty group here would clobber the existing one's unit list
         // (an empty watched list means "show all"). Just select the existing group.
-        QMessageBox::warning(this, QStringLiteral("Add service group"), QStringLiteral("A group named \"%1\" already exists.").arg(name));
+        QMessageBox::warning(this, tr("Add service group"), tr("A group named \"%1\" already exists.").arg(name));
         reloadGroups();
         m_serviceGroup->setCurrentText(name);
         loadGroupServices();
@@ -182,17 +204,15 @@ void SettingsPage::renameGroup() {
         return;
     }
     bool ok = false;
-    const QString name =
-        QInputDialog::getText(this, QStringLiteral("Rename service group"), QStringLiteral("New name"), QLineEdit::Normal, current, &ok)
-            .trimmed();
+    const QString name = QInputDialog::getText(this, tr("Rename service group"), tr("New name"), QLineEdit::Normal, current, &ok).trimmed();
     if (!ok || name.isEmpty() || name == current) {
         return;
     }
     if (ServiceGroupSettings::groupNames().contains(name)) {
         // Renaming onto an existing group would overwrite its unit list and leave
         // a duplicate entry in the selector. Require a free name instead.
-        QMessageBox::warning(this, QStringLiteral("Rename service group"),
-                             QStringLiteral("A group named \"%1\" already exists. Choose a different name.").arg(name));
+        QMessageBox::warning(this, tr("Rename service group"),
+                             tr("A group named \"%1\" already exists. Choose a different name.").arg(name));
         return;
     }
     ServiceGroupSettings::renameGroup(current, name);
@@ -208,6 +228,10 @@ void SettingsPage::renameGroup() {
 
 void SettingsPage::load() {
     QSettings settings;
+    m_notifications->setChecked(settings.value("notifications/enabled", false).toBool());
+    for (auto it = m_extraModules.cbegin(); it != m_extraModules.cend(); ++it)
+        it.value()->setChecked(settings.value("modules/" + it.key(), true).toBool());
+    m_language->setCurrentIndex(qMax(0, m_language->findData(settings.value("ui/language", "System"))));
     m_refreshInterval->setValue(settings.value(QStringLiteral("refresh/intervalSeconds"), 30).toInt());
     reloadGroups();
     loadGroupServices();
@@ -219,11 +243,12 @@ void SettingsPage::load() {
     m_smart->setChecked(settings.value(QStringLiteral("modules/smart"), true).toBool());
     m_smartScheduled->setChecked(settings.value(QStringLiteral("smart/scheduledRefreshEnabled"), false).toBool());
     m_smartIntervalMinutes->setValue(settings.value(QStringLiteral("smart/scheduledRefreshMinutes"), 30).toInt());
-    m_theme->setCurrentText(settings.value(QStringLiteral("theme/preference"), QStringLiteral("System")).toString());
+    m_theme->setCurrentIndex(qMax(0, m_theme->findData(settings.value("theme/preference", "System"))));
 }
 
 void SettingsPage::save() {
     QSettings settings;
+    settings.setValue("notifications/enabled", m_notifications->isChecked());
     settings.setValue(QStringLiteral("refresh/intervalSeconds"), m_refreshInterval->value());
     // Flush every staged group edit now that the user committed with Save. Write the
     // currently selected group last so its list also lands in the legacy mirror.
@@ -245,6 +270,9 @@ void SettingsPage::save() {
     settings.setValue(QStringLiteral("modules/smart"), m_smart->isChecked());
     settings.setValue(QStringLiteral("smart/scheduledRefreshEnabled"), m_smartScheduled->isChecked());
     settings.setValue(QStringLiteral("smart/scheduledRefreshMinutes"), m_smartIntervalMinutes->value());
-    settings.setValue(QStringLiteral("theme/preference"), m_theme->currentText());
+    settings.setValue(QStringLiteral("theme/preference"), m_theme->currentData());
+    for (auto it = m_extraModules.cbegin(); it != m_extraModules.cend(); ++it)
+        settings.setValue("modules/" + it.key(), it.value()->isChecked());
+    settings.setValue("ui/language", m_language->currentData());
     emit settingsChanged();
 }

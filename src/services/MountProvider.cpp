@@ -5,6 +5,7 @@
 #include "../utils/FstabParser.h"
 #include "../utils/JsonUtils.h"
 
+#include <QDir>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QSet>
@@ -70,6 +71,7 @@ MountProvider::MountProvider(QObject* parent) : QObject(parent) {
             }
             emit mountsReady(rows, error);
         } else if (context.startsWith(QStringLiteral("mount-unmount:"))) {
+            emit actionCompleted(result.ok());
             const QString target = context.mid(QStringLiteral("mount-unmount:").size());
             emit actionFinished(result.ok() ? QStringLiteral("Unmounted %1.").arg(target)
                                             : QStringLiteral("Could not unmount %1.").arg(target),
@@ -84,5 +86,12 @@ void MountProvider::refreshMounts(bool includeConfigured) {
 }
 
 void MountProvider::unmount(const QString& target) {
-    m_runner.run(QStringLiteral("umount"), {target}, 30000, QStringLiteral("mount-unmount:%1").arg(target));
+    const QString clean = QDir::cleanPath(target);
+    const QStringList protectedPaths{"/",    "/home", QDir::homePath(), "/boot", "/boot/efi", "/usr",
+                                     "/var", "/run",  "/tmp",           "/dev",  "/proc",     "/sys"};
+    if (!QDir::isAbsolutePath(target) || protectedPaths.contains(clean)) {
+        emit actionFinished(tr("Read-only system mount"), target);
+        return;
+    }
+    m_runner.run(QStringLiteral("umount"), {"--", target}, 30000, QStringLiteral("mount-unmount:%1").arg(target));
 }

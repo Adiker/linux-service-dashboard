@@ -1,226 +1,103 @@
-# ARCHITECTURE.md — linux-service-dashboard
+# Architecture — Linux Service Dashboard
 
-This is the full technical reference for the project: structure, module behavior, runtime flows, settings, platform integration, packaging, and checks.
+The application is a single local C++20 / Qt 6 Widgets process. It adds no network listener, account system or background daemon. `AGENTS.md` defines repository workflow and operational guardrails.
 
-For mandatory agent workflow rules, branch policy, and sharp implementation guardrails, read `AGENTS.md`. For Claude-specific quick-start context, read `CLAUDE.md`.
+## Structure and data flow
 
----
+- `src/core/`: shared snapshots, module descriptors, refresh coordination, settings/profile/history stores, bounded events and command execution.
+- `src/services/`: native DBus/CLI providers, structured inventories, bounded local-file discovery and specialist tool launching.
+- `src/models/`: existing table models and stable row identities.
+- `src/widgets/`: grouped navigation content, common tree-table pages, metric chart, existing disk/service/mount pages and dialogs.
+- `src/utils/`: parsing helpers, table persistence and filter/detail/selection utilities.
+- `translations/`: Qt Linguist Polish catalog; English is the source language.
+- `tests/`: parser, runner, provider and UI/evidence regression targets.
 
-## Project Context
+`MainWindow` owns one `SystemCenter`. It builds pages from stable module IDs and a grouped sidebar. Existing pages borrow shared providers; overview/search use their published snapshots. There are no separate overview collectors.
 
-**linux-service-dashboard** is a local Qt6 Widgets desktop application for monitoring and controlling common Linux services from one place. It focuses on a single-user desktop workflow: systemd units, Docker containers, VPN status, network mounts, sensors, and disk/SMART information.
+1. A page or scheduler requests a module refresh.
+2. Providers collect asynchronously with one in-flight request per context/module.
+3. `SystemCenter::publish` stores successful rows and their timestamp. Failure retains previous rows/time and marks them stale; partial initial data carries an error rather than a successful timestamp.
+4. Visible pages render cached data. Hidden tree pages defer rendering until navigation, avoiding repeated catalog rebuilds.
+5. Shared service/timer/mount/container data supplies backup, synchronization and server views. Source failures remain failures in derived views.
+6. Explicit actions go through confirmations and provider validation. Typed outcomes produce standardized local events.
 
-**Stack:** C++20, Qt6 Widgets
-**Build system:** CMake 3.21+
-**Platform:** Linux desktop, with KDE Plasma Wayland and X11/XWayland as explicit targets
-**Persistence:** `QSettings`
+`CenterRecord` carries a stable ID, display cells, optional hierarchy, narrow action metadata and an attention flag. `CenterSnapshot` carries headers, rows, last successful read time and error. Search preserves destination module and entity identity. Favorites are cached in memory and persisted only on changes.
 
----
+## Module registry and scheduling
 
-## Project Structure
+`centerModules()` supplies IDs, translated titles/groups, required tool hints and on-demand flags. Tool availability does not imply configuration or a running service. Optional capabilities remain visible in settings. Tool checks include the packaged KopiaUI CLI.
 
-```text
-linux-service-dashboard/
-├── CMakeLists.txt
-├── resources/
-│   ├── io.github.Adiker.LinuxServiceDashboard.desktop
-│   ├── io.github.Adiker.LinuxServiceDashboard.smart-helper.policy.in
-│   ├── icons/
-│   │   └── linux-service-dashboard-*.png
-│   ├── linux-service-dashboard.svg
-│   └── resources.qrc
-├── src/
-│   ├── main.cpp
-│   ├── MainWindow.h/cpp
-│   ├── helpers/
-│   │   └── SmartHelper.cpp
-│   ├── core/
-│   │   ├── CommandResult.h
-│   │   ├── CommandRunner.h/cpp
-│   │   └── RefreshScheduler.h/cpp
-│   ├── models/
-│   │   ├── ServiceModel.h/cpp
-│   │   ├── DockerContainerModel.h/cpp
-│   │   ├── MountModel.h/cpp
-│   │   ├── SensorModel.h/cpp
-│   │   └── DiskModel.h/cpp
-│   ├── services/
-│   │   ├── SystemdServiceProvider.h/cpp
-│   │   ├── DockerProvider.h/cpp
-│   │   ├── NetworkProvider.h/cpp
-│   │   ├── MountProvider.h/cpp
-│   │   ├── SensorProvider.h/cpp
-│   │   └── SmartProvider.h/cpp
-│   ├── widgets/
-│   │   ├── OverviewPage.h/cpp
-│   │   ├── SystemdPage.h/cpp
-│   │   ├── DockerPage.h/cpp
-│   │   ├── VpnPage.h/cpp
-│   │   ├── MountsPage.h/cpp
-│   │   ├── SensorsPage.h/cpp
-│   │   ├── DisksPage.h/cpp
-│   │   ├── SettingsPage.h/cpp
-│   │   ├── ConfirmActionDialog.h/cpp
-│   │   └── LogViewerDialog.h/cpp
-│   └── utils/
-│       ├── JsonUtils.h/cpp
-│       ├── StatusUtils.h/cpp
-│       └── TimeUtils.h/cpp
-├── AGENTS.md
-├── CLAUDE.md
-├── GEMINI.md
-├── ROADMAP.md
-├── README.md
-└── TODO.md
-```
+Regular enabled-module refresh defaults to 30 seconds. App/package/autostart/VM/tool and image/volume/snapshot inventories are on demand. Global searches of at least two characters initialize uncached app/package catalogs. Metrics and Docker stats sample every two seconds only while their page/window is visible. Disabling a module prevents new collection. Derived pages do not enable disabled source collectors.
 
----
+`CommandRunner` uses QProcess with closed stdin, stable command locale, timeout and bounded output. It deduplicates active contexts, caps each output stream at 2 MiB and retains at most 100 failure summaries without arguments/output. Truncated structured output is a failure. Logs can show retained stdout/stderr and the truncation marker. Shutdown disconnects completion callbacks before terminating owned collector processes; separately launched applications are not owned collectors.
 
-## Runtime Flow
+## Providers and identities
 
-1. `main.cpp` creates `QApplication`, sets organization/application metadata, sets the KDE/Wayland desktop file name, applies Fusion style, and sets the application icon.
-2. `MainWindow` builds the sidebar/stack UI and the system tray icon/menu.
-3. `SettingsPage::settingsChanged` triggers `MainWindow::reloadSettings()`.
-4. `RefreshScheduler` emits periodic refresh requests based on `refresh/intervalSeconds`.
-5. `MainWindow::refreshAll()` fans out to all pages.
-6. Pages call providers in `src/services/`.
-7. Providers run system commands through `CommandRunner` and emit parsed rows/status back to the UI.
+### Services and containers
 
----
+`ServiceScope` / `ServiceRef` separate system and user managers. Service rows retain scope throughout filtering, search, journal and control. Asynchronous bounded `ListUnits` calls use the appropriate DBus connection; asynchronous systemctl fallback and unit-file enumeration include unloaded installed services. Groups filter locally and preserve missing watched-unit placeholders. An unqualified legacy group entry may match either scope; `user:` / `system:` disambiguates it.
 
-## Settings Schema
+Control verbs and unit names are validated. Critical session units are read-only. Tables use single-row selection; sorting/filtering map back to source identity before any action.
 
-Settings use Qt `QSettings` under organization `LocalTools` and application `Linux Service Dashboard`.
+Docker ps uses an explicit JSON projection, avoiding full-format fields such as sizes and unrelated labels. It supplies Compose project/service labels, health, images and ports without reading container environments. Hierarchy is project → service → container, with a standalone group. Only running unhealthy containers are attention items. Stats are separate visible-page reads. Images/volumes are inventory only; actions remain per container and require confirmation.
 
-Known keys:
+### Network
 
-| Key | Type | Default | Purpose |
-|---|---:|---:|---|
-| `refresh/intervalSeconds` | int | `30` | Periodic refresh interval |
-| `systemd/watchedServices` | string list | Docker, NetworkManager, sshd, PostgreSQL, Redis | Units for the active group (legacy/compatibility mirror of the active group's list) |
-| `systemd/groups` | string list | `Default` | Names of user-defined service groups |
-| `systemd/group/<name>` | string list | Default service set | Watched units for a specific group |
-| `systemd/activeGroup` | string | `Default` | Group currently selected on the systemd page |
-| `modules/systemd` | bool | `true` | Show the systemd page and include it in refresh scheduling |
-| `modules/docker` | bool | `true` | Show the Docker page and include it in refresh scheduling |
-| `modules/vpn` | bool | `true` | Show the VPN page and include it in refresh scheduling |
-| `modules/mounts` | bool | `true` | Show the Mounts page and include it in refresh scheduling |
-| `modules/sensors` | bool | `true` | Show the Sensors page and include it in refresh scheduling |
-| `modules/smart` | bool | `true` | Show the Disks/SMART page and include it in refresh scheduling |
-| `mounts/profileNames` | string list | – | Names of saved mount profiles |
-| `mounts/profiles/<name>/{source,target,filesystemType,options}` | string | – | Saved mount profile fields |
-| `smart/scheduledRefreshEnabled` | bool | `false` | Enable the opt-in scheduled SMART refresh |
-| `smart/scheduledRefreshMinutes` | int | `30` | Scheduled SMART refresh interval in minutes (minimum 5) |
-| `smart/history/serial/*`, `smart/history/path/*` | string list | – | Per-disk SMART history entries (keyed by serial, else device path) |
-| `theme/preference` | string | `System` | `System`, `Light`, `Dark`, or `OLED` |
-| `tables/<page>/headerState` | byte array | – | Saved column sizes/order per table (`systemd`, `docker`, `mounts`, `sensors`, `disks`); sort order is persisted only for the proxy-backed systemd table |
+NetworkManager active-connection and device properties use asynchronous bounded DBus calls. An escaping-aware nmcli fallback handles names containing colons. Kernel links provide external tunnel presence and merge by interface. Neither source verifies connectivity. The legacy single-VPN parser type remains for source/parser compatibility; UI consumes a collection.
 
-Module toggles drive sidebar visibility and refresh scheduling: `MainWindow::applyModuleVisibility()` hides disabled pages and `refreshAll()` skips their providers, while the Overview page hides the matching cards. The Overview and Settings pages are always shown.
+Read-only ip JSON, DNS, firewall-zone and ss collections do not edit configuration or scan the network. Firewall inspection uses asynchronous DBus reads with a noninteractive polkit permission check for the same bus sender before each protected request. Missing authorization is reported in the view; open `firewall-config` explicitly to authenticate. Background refresh does not invoke `firewall-cmd`. Panel URLs are user-configured, indexed by hashed entity ID, and validated both on save and open. Credentials, query parameters and fragments are rejected.
 
----
+### Storage, SMART and backups
 
-## Desktop Integration
+Mount discovery lists relevant local/network filesystems and rclone without traversing their contents or triggering automount paths. Configured fstab/profile entries remain distinct from mounted entries; all occupied targets prevent an unrelated configured row from becoming an unmount action. Core system mountpoints and non-absolute targets are rejected. New profiles omit inline password options; existing settings are preserved.
 
-The app uses a single icon identity for taskbar, tray, and packaging:
+Disk inventory uses lsblk. Manual SMART first tries user access, then a narrow installed helper through pkexec. A batch shares authorization. The helper accepts validated disk paths/transports and only SMART read operations; it cannot execute arbitrary shell, mount or write commands. Policy generation honors the install prefix, while the application resolves the helper relative to bindir.
 
-- Desktop file id: `io.github.Adiker.LinuxServiceDashboard`
-- Desktop file: `resources/io.github.Adiker.LinuxServiceDashboard.desktop`
-- Runtime icon helper: `serviceDashboardIcon()`
-- Runtime resources: `:/icons/linux-service-dashboard-*.png`
-- Installed hicolor icons: `share/icons/hicolor/*/apps/io.github.Adiker.LinuxServiceDashboard.png`
-- Installed scalable source icon: `share/icons/hicolor/scalable/apps/io.github.Adiker.LinuxServiceDashboard.svg`
+The existing opt-in SMART schedule keeps its minimum five-minute interval and busy guard. History uses a unique serial when available, otherwise path. Shared overview SMART state is invalidated when the disk identity at a path changes. Unread disks start as `Not checked`; only completed reads populate health. Access/authorization/unavailable errors retain provider status and per-disk tooltip details, distinct from a reported disk failure. Inventory merges require matching identity and never transfer SMART data to a replacement at the same path.
 
-`QGuiApplication::setDesktopFileName("io.github.Adiker.LinuxServiceDashboard")` is required before showing windows so KDE Plasma Wayland can match the app window to the desktop file when the desktop entry is installed. `serviceDashboardIcon()` loads embedded PNG resources directly, so the tray and window icon do not require any desktop/icon installation.
+Backup jobs read only whitelisted systemd outcome/exit/finish properties. Schedules match scope and timer activation target. A successful job or listed snapshot is never marked verified. Kopia only lists snapshots from an explicit existing config with closed stdin, keyring authentication disabled and credential persistence disabled. No repository is connected, initialized, restored or verified. Sync views report daemon/mount state, not completed transfers.
 
-The app does not force Wayland or X11. Qt chooses the platform plugin from the user's session or `QT_QPA_PLATFORM`.
+### Local inventories and launch
 
----
+`SystemInventory` discovers XDG application IDs with user precedence, Hidden/NoDisplay masks, desktop visibility, TryExec and localized names/comments. Effective desktop entries are grouped by category. Native package inventories support Pacman, dpkg-query and RPM; Flatpak installation/ref identities remain distinct. Foreign Pacman packages are not assumed to be AUR.
 
-## Theme System
+Qt Concurrent performs bounded catalog/procfs/sysfs discovery outside the GUI thread. Metrics use CPU deltas, memory availability and available GPU counters; chart history is in-memory and bounded to 450 visible samples. Frequency sensor JSON values and their limits are normalized from Hz to MHz, consistent with the [upstream sensors frequency implementation](https://github.com/lm-sensors/lm-sensors/blob/master/prog/sensors/chips.c). Audio/node output and power metadata are projected through whitelists. VM views list VirtualBox registrations/running machines and QEMU process presence without reading process command lines or claiming guest health.
 
-`MainWindow::applyTheme()` owns the central stylesheet.
+Catalog launches validate desktop paths and run `gio launch` asynchronously so errors are surfaced. A fixed allowlist opens specialist GUIs separately. No desktop Exec, profile, arbitrary user shell command or credentials are interpreted by the dashboard.
 
-Supported preferences:
+## Settings, events and diagnostics
 
-- `System`: Light or Dark based on the current palette
-- `Light`: explicit light theme
-- `Dark`: explicit dark theme
-- `OLED`: black-first high-contrast dark theme
+Organization/application identity stays `LocalTools` / `Linux Service Dashboard`.
 
-Pages should use shared object names instead of local styles:
+| Key family | Contract |
+|---|---|
+| `schema/version` | Additive schema version 2; future versions are not downgraded |
+| `refresh/intervalSeconds` | Default 30, minimum 5 |
+| `modules/<id>` | Default enabled; overview/settings remain available |
+| `systemd/groups`, `systemd/group/*`, `activeGroup`, `watchedServices` | Preserve legacy groups/mirror; `systemd/showAll` distinguishes the all-services view |
+| `mounts/*` | Existing saved profiles preserved |
+| `smart/*` | Existing schedule/history preserved |
+| `theme/preference` | Stable `System`, `Light`, `Dark`, `OLED` values independent of translated labels |
+| `ui/language` | `System`, `pl`, `en`; restart to apply |
+| `favorites/ids` | Stable module/entity pairs |
+| `notifications/enabled` | Default false; attention increases rate limited to one notification per minute |
+| `panels/<hash>` | Validated user-approved panel address |
+| `tables/*`, `centerTables/*` | Existing layouts and new tree header states; ignore automatic pre-data header changes |
+| `backups/kopiaConfig` | Explicit path to an existing repository configuration; never copied into diagnostics |
 
-- `pageTitle` for page headings
-- `card` for overview/VPN panels
-- `cardValue` for overview card values
+`EventStore` retains at most 1000 standardized records in application-local `events.json`, written atomically with owner-only file permissions. Records contain time/module/code, not command arguments, output or raw error text.
 
----
+Diagnostic export is an explicit projection: app/Qt/kernel/platform version, generation time, schema version and module ID/enabled/tool availability/count/last-success/error flags. It never serializes records, QSettings values, logs, paths, account names, device identities or network addresses. Preview precedes saving; output is owner-readable/writable.
 
-## Providers
+## Theme and desktop integration
 
-Providers own command execution and parsing:
+`MainWindow::applyTheme` owns the application palette and stylesheet, including custom-painter colors. It retains the initial system palette for System mode. No page applies a private palette. Tables convey textual status; attention icons supplement it. The sidebar is grouped/collapsible and search navigates by identity.
 
-- `SystemdServiceProvider`: systemd1 DBus (`ListUnits`/`ListUnitsFiltered`, bounded timeout) for listing with a `systemctl` fallback; `journalctl` for logs; start/stop/restart actions still use `systemctl`
-- `DockerProvider`: `docker ps`, `docker start/stop/restart/logs/inspect`
-- `NetworkProvider`: NetworkManager DBus (`org.freedesktop.NetworkManager`) for active VPN-like connections (`vpn`, `tun`, `wireguard`, `ppp`), with an `nmcli` fallback when the system bus is unavailable. The `ActiveConnections` query is asynchronous; per-connection property reads use a bounded (5s) timeout.
-- `MountProvider`: mount listing and unmount commands
-- `SensorProvider`: `sensors -j` with text fallback
-- `SmartProvider`: `lsblk -J`, `smartctl -j`, and `pkexec` fallback to the installed SMART helper
+Keep desktop id `io.github.Adiker.LinuxServiceDashboard` before showing windows. Runtime window/tray icons use embedded PNG resources via `serviceDashboardIcon()`; the tray attention badge starts with that same icon. Installed desktop and hicolor names stay unchanged. Qt chooses the compositor backend; code never forces QT_QPA_PLATFORM or layer-shell.
 
-UI pages should stay thin: trigger provider methods, update models/status labels, and show confirmations/dialogs.
+## Build, install and validation
 
-### SMART / polkit helper
-
-SMART inventory is split into two privilege levels:
-
-- The Disks page exposes two manual actions: `Check SMART` probes only the selected disk, while `Check All SMART` queues every listed disk so a multi-disk batch shares a single authorization prompt.
-- `SmartProvider` runs `lsblk -J` and first attempts `smartctl -j -H -A` from the user's session.
-- If `smartctl` reports a permission error, `SmartProvider` batches the active disk plus the remaining manual SMART queue into one `pkexec linux-service-dashboard-smart-helper` invocation.
-- `linux-service-dashboard-smart-helper` validates narrow `/dev/...` disk paths and optional transports, then runs only the corresponding `smartctl` read commands.
-- The helper does not expose mount, write, shell, or arbitrary command execution.
-
-The helper policy source is `resources/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy.in`. CMake generates the installed policy at `cmake --install` time from the install prefix, and the app resolves the helper through a configure-time relative path from `bindir` to `libexecdir` at runtime.
-
-SMART checks are manual by default. An opt-in scheduled refresh (`SmartRefreshScheduler`, minimum 5-minute interval) re-runs `Check All` automatically; it is gated by `SmartProvider::isSmartCheckBusy()` so it never enqueues a second batch while one is in flight. Each successful check is appended to `SmartHistoryStore`, keyed by the disk's serial when available and otherwise by device path, and surfaced through the Disks page History dialog. Any change to automatic SMART cadence must preserve this rate limiting and explicit user opt-in.
-
----
-
-## Build, Run, Install
-
-Build:
-
-```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j$(nproc)
-```
-
-Run:
-
-```bash
-build/linux-service-dashboard
-```
-
-Install to a prefix:
-
-```bash
-cmake --install build --prefix /usr/local
-```
-
-For `/usr/local` installs that need working SMART authorization, configure with `-DLSD_INSTALL_POLKIT_POLICY_SYSTEM=ON` so the policy lands in `/usr/share/polkit-1/actions`.
-
-This installs:
-
-- `bin/linux-service-dashboard`
-- `${CMAKE_INSTALL_LIBEXECDIR}/linux-service-dashboard-smart-helper`
-- `share/applications/io.github.Adiker.LinuxServiceDashboard.desktop`
-- `share/icons/hicolor/*/apps/io.github.Adiker.LinuxServiceDashboard.png`
-- `share/icons/hicolor/scalable/apps/io.github.Adiker.LinuxServiceDashboard.svg`
-- `${LSD_POLKIT_POLICY_DIR}/io.github.Adiker.LinuxServiceDashboard.smart-helper.policy` (defaults to `share/polkit-1/actions` under the install prefix; use `LSD_INSTALL_POLKIT_POLICY_SYSTEM=ON` for the system polkit directory)
-
----
-
-## Checks
-
-Provider parsers are covered by a CTest target (`provider-parser-tests`, built from `tests/test_provider_parsers.cpp`). For code changes, build and run the tests:
+CMake requires Qt Core/Widgets/DBus/Concurrent/Test/LinguistTools. `dashboard-core` is an object library shared by the application and UI tests. Translations are embedded in the executable. Build identity records version/revision and dirty state; source archives without Git metadata report unknown revision. `--version` exits before QApplication.
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
@@ -228,26 +105,19 @@ cmake --build build -j$(nproc)
 ctest --test-dir build --output-on-failure
 ```
 
-For platform smoke tests where no display interaction is needed:
+Repeat with Debug for release validation. Existing install rules place the binary, SMART helper, generated policy, desktop entry and icons under the selected prefix. `/usr/local` needs `LSD_INSTALL_POLKIT_POLICY_SYSTEM=ON` to put policy in the system actions directory. Test relocatable installs using DESTDIR before system installation; preserve the existing install/settings for rollback.
 
-```bash
-QT_QPA_PLATFORM=offscreen timeout 3s build/linux-service-dashboard
-QT_QPA_PLATFORM=minimal timeout 3s build/linux-service-dashboard
-```
+CTest targets:
 
-When a real desktop session is available, also test:
+- `provider-parser-tests`: baseline parsing fixtures.
+- `command-runner-tests`: missing programs, timeout, request coalescing and output bounds.
+- `center-provider-tests`: scopes/unloaded units, Compose, schedules/outcomes, escaped names, XDG masks/localization, units and package projections.
+- `firewall-provider-tests`: private DBus fixtures check denied/allowed inspection, exact sender identity, noninteractive authorization flags, request coalescing and nested port data.
+- `smart-provider-tests`: controlled CLI responses cover health booleans, missing/null results, malformed JSON and USB attribute-only status. No hardware access or real authorization.
+- `center-ui-tests`: temporary settings, migration/report privacy, evidence boundaries, sorted action identities, stable theme/language values, all pages in both languages and responsive asynchronous inventories. It does not execute destructive actions, launch real applications or run SMART checks.
 
-```bash
-QT_QPA_PLATFORM=wayland build/linux-service-dashboard
-QT_QPA_PLATFORM=xcb build/linux-service-dashboard
-```
+Use offscreen/minimal startup checks and normal Wayland/XWayland sessions when available. UI test `LSD_CAPTURE_DIR` writes local review PNGs; `QT_SCALE_FACTOR` supports per-process scaling checks without changing desktop settings. Do not publish host-data screenshots without reviewing them.
 
----
+## Limits
 
-## Known Limitations
-
-- systemd listing uses the systemd1 DBus interface (linking `Qt6::DBus`) with a `systemctl` fallback; service control (start/stop/restart) still uses `systemctl`. The DBus list calls are synchronous with a bounded timeout.
-- VPN status uses the NetworkManager DBus interface (linking `Qt6::DBus`), with an `nmcli` fallback when the system bus is unavailable. Active VPN-like tunnel types (`vpn`, `tun`, `wireguard`, `ppp`) are treated as connected so externally created tunnels such as OpenConnect are visible.
-- SMART checks are manual by default (with an opt-in scheduled refresh, minimum 5 minutes) and permission-dependent; installed builds use the polkit helper for authorized read-only SMART access.
-- Disabling a module hides its page and skips its scheduled refresh, but the underlying provider classes are still constructed.
-- Automated coverage is limited to the provider parser unit tests (`provider-parser-tests`); UI and provider command execution are still validated manually.
+Structured task views require a systemctl version with JSON output; older versions report unavailable. Optional tools/permissions/daemons may limit data. Backups/sync/GPU configuration remain in their native tools; synchronization progress, repository verification and cloud account credentials are not implemented. Raw command/tool output remains in its original language. Destructive operations are intentionally excluded from automated live-system tests.
