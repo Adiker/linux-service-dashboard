@@ -238,3 +238,10 @@ target_include_directories(firewall-provider-tests PRIVATE ${CMAKE_CURRENT_SOURC
 target_link_libraries(firewall-provider-tests PRIVATE Qt6::Test Qt6::DBus)
 add_test(NAME firewall-provider-tests COMMAND firewall-provider-tests)
 set_tests_properties(firewall-provider-tests PROPERTIES TIMEOUT 30)
+
+qt_add_executable(smart-provider-tests tests/test_smart_provider.cpp src/services/SmartProvider.cpp
+    src/models/DiskModel.cpp src/core/CommandRunner.cpp src/utils/JsonUtils.cpp src/utils/TimeUtils.cpp)
+target_include_directories(smart-provider-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(smart-provider-tests PRIVATE Qt6::Test Qt6::Widgets)
+add_test(NAME smart-provider-tests COMMAND smart-provider-tests)
+set_tests_properties(smart-provider-tests PROPERTIES TIMEOUT 30)

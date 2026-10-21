@@ -90,6 +90,8 @@ The install includes the binary, narrow SMART helper, polkit policy, desktop ent
 
 For `/usr/local`, polkit loads policies from `/usr/share/polkit-1/actions`; enable `LSD_INSTALL_POLKIT_POLICY_SYSTEM` as above. For staged/relocatable installs, leave it off to place policy files under the chosen prefix. The policy is generated at install time for that prefix, and the helper path resolves relative to the application.
 
+Before the first SMART read, disks show **Not checked**. Use **Check SMART** for the selected disk or **Check All SMART** for all listed disks; **Refresh** updates inventory only. The initial state returns after an application restart unless a manual or opted-in scheduled read runs. Health read errors remain distinct (permission denied, authorization failed, unavailable or check failed), with per-disk details on the health tooltip. History is retained.
+
 SMART first uses the user's permissions, then the installed narrow `pkexec` helper when required. Manual batches share one authorization request. The helper only accepts validated disk paths and SMART read operations. The application does not request or store sudo passwords.
 
 ## Settings and privacy

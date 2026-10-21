@@ -219,7 +219,15 @@
       <source>Last check</source>
       <translation>Ostatnie sprawdzenie</translation>
     </message>
-  </context>
+      <message><source>Not checked</source><translation>Nie sprawdzono</translation></message>
+    <message><source>Unknown</source><translation>Nieznany</translation></message>
+    <message><source>Permission denied</source><translation>Brak uprawnień</translation></message>
+    <message><source>Authorization failed</source><translation>Autoryzacja nieudana</translation></message>
+    <message><source>Check failed</source><translation>Odczyt nieudany</translation></message>
+    <message><source>Health unavailable</source><translation>Stan SMART niedostępny</translation></message>
+    <message><source>Never</source><translation>Nigdy</translation></message>
+    <message><source>Use Check SMART or Check All SMART to read disk health.</source><translation>Użyj Sprawdź SMART lub Sprawdź SMART wszystkich dysków, aby odczytać stan dysku.</translation></message>
+</context>
   <context>
     <name>DisksPage</name>
     <message>
@@ -318,7 +326,8 @@
       <source>Refreshing...</source>
       <translation>Odświeżanie…</translation>
     </message>
-  </context>
+      <message><source>SMART is read manually. Use Check SMART or Check All SMART; Refresh only updates the disk list.</source><translation>SMART jest odczytywany ręcznie. Użyj Sprawdź SMART lub Sprawdź SMART wszystkich dysków; Odśwież aktualizuje tylko listę dysków.</translation></message>
+</context>
   <context>
     <name>DockerContainerModel</name>
     <message>
@@ -2191,5 +2200,12 @@ Lokalne centrum systemu, zbudowane z Qt %2.</translation>
     <message><source>Firewall inspection requires authorization; open firewall-config explicitly.</source><translation>Podgląd zapory wymaga uprawnień; otwórz samodzielnie firewall-config.</translation></message>
     <message><source>Firewall zone data exceeds the display limit</source><translation>Dane stref zapory przekraczają limit wyświetlania</translation></message>
     <message><source>Read-only</source><translation>Tylko odczyt</translation></message>
+</context>
+<context>
+<name>SmartProvider</name>
+    <message><source>smartctl did not report a SMART health result.</source><translation>smartctl nie zwrócił wyniku oceny stanu SMART.</translation></message>
+    <message><source>SMART helper returned no usable result.</source><translation>Moduł odczytu SMART nie zwrócił poprawnego wyniku.</translation></message>
+    <message><source>SMART read timed out.</source><translation>Przekroczono czas odczytu SMART.</translation></message>
+    <message><source>SMART output exceeded the size limit.</source><translation>Wynik odczytu SMART przekroczył limit rozmiaru.</translation></message>
 </context>
 </TS>

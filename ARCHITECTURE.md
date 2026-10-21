@@ -53,7 +53,7 @@ Mount discovery lists relevant local/network filesystems and rclone without trav
 
 Disk inventory uses lsblk. Manual SMART first tries user access, then a narrow installed helper through pkexec. A batch shares authorization. The helper accepts validated disk paths/transports and only SMART read operations; it cannot execute arbitrary shell, mount or write commands. Policy generation honors the install prefix, while the application resolves the helper relative to bindir.
 
-The existing opt-in SMART schedule keeps its minimum five-minute interval and busy guard. History uses a unique serial when available, otherwise path. Shared overview SMART state is invalidated when the disk identity at a path changes. Access failures stay unknown, distinct from reported disk failure.
+The existing opt-in SMART schedule keeps its minimum five-minute interval and busy guard. History uses a unique serial when available, otherwise path. Shared overview SMART state is invalidated when the disk identity at a path changes. Unread disks start as `Not checked`; only completed reads populate health. Access/authorization/unavailable errors retain provider status and per-disk tooltip details, distinct from a reported disk failure. Inventory merges require matching identity and never transfer SMART data to a replacement at the same path.
 
 Backup jobs read only whitelisted systemd outcome/exit/finish properties. Schedules match scope and timer activation target. A successful job or listed snapshot is never marked verified. Kopia only lists snapshots from an explicit existing config with closed stdin, keyring authentication disabled and credential persistence disabled. No repository is connected, initialized, restored or verified. Sync views report daemon/mount state, not completed transfers.
 
@@ -113,6 +113,7 @@ CTest targets:
 - `command-runner-tests`: missing programs, timeout, request coalescing and output bounds.
 - `center-provider-tests`: scopes/unloaded units, Compose, schedules/outcomes, escaped names, XDG masks/localization, units and package projections.
 - `firewall-provider-tests`: private DBus fixtures check denied/allowed inspection, exact sender identity, noninteractive authorization flags, request coalescing and nested port data.
+- `smart-provider-tests`: controlled CLI responses cover health booleans, missing/null results, malformed JSON and USB attribute-only status. No hardware access or real authorization.
 - `center-ui-tests`: temporary settings, migration/report privacy, evidence boundaries, sorted action identities, stable theme/language values, all pages in both languages and responsive asynchronous inventories. It does not execute destructive actions, launch real applications or run SMART checks.
 
 Use offscreen/minimal startup checks and normal Wayland/XWayland sessions when available. UI test `LSD_CAPTURE_DIR` writes local review PNGs; `QT_SCALE_FACTOR` supports per-process scaling checks without changing desktop settings. Do not publish host-data screenshots without reviewing them.

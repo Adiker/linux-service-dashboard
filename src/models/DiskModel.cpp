@@ -18,6 +18,9 @@ QVariant DiskModel::data(const QModelIndex& index, int role) const {
         return {};
     }
     const auto& row = m_rows.at(index.row());
+    if (role == Qt::ToolTipRole && index.column() == 5)
+        return row.smartDetail.isEmpty() && row.smartHealth == "Not checked" ? tr("Use Check SMART or Check All SMART to read disk health.")
+                                                                             : row.smartDetail;
     if (role == Qt::UserRole)
         return row.path;
     if (role == Qt::DisplayRole) {
@@ -33,6 +36,18 @@ QVariant DiskModel::data(const QModelIndex& index, int role) const {
         case 4:
             return row.transport;
         case 5:
+            if (row.smartHealth == "Not checked")
+                return tr("Not checked");
+            if (row.smartHealth == "Unknown")
+                return tr("Unknown");
+            if (row.smartHealth == "Permission denied")
+                return tr("Permission denied");
+            if (row.smartHealth == "Authorization failed")
+                return tr("Authorization failed");
+            if (row.smartHealth == "Check failed")
+                return tr("Check failed");
+            if (row.smartHealth == "Health unavailable")
+                return tr("Health unavailable");
             return row.smartHealth;
         case 6:
             return row.temperature;
@@ -41,7 +56,7 @@ QVariant DiskModel::data(const QModelIndex& index, int role) const {
         case 8:
             return row.pending;
         case 9:
-            return row.lastCheck;
+            return row.lastCheck == "Never" ? tr("Never") : row.lastCheck;
         default:
             return {};
         }
@@ -67,8 +82,8 @@ void DiskModel::setRows(const QVector<DiskRow>& rows) {
     // previously fetched SMART values over to disks that are still present so a
     // refresh does not blank the table and force the user to re-authenticate.
     //
-    // Match by device path first, since the path uniquely identifies a row in a
-    // single lsblk snapshot. Only fall back to the serial when it is non-empty
+    // Match by device path only while serial/model/transport still identify the
+    // same disk. Only fall back to the serial when it is non-empty
     // and unique in both the old and new inventories; disks that report a shared
     // or duplicated serial must never inherit another device's SMART data.
     const auto serialOccurrences = [](const QVector<DiskRow>& list, const QString& serial) {
@@ -85,14 +100,15 @@ void DiskModel::setRows(const QVector<DiskRow>& rows) {
     for (DiskRow& row : merged) {
         const DiskRow* match = nullptr;
         for (const DiskRow& previous : std::as_const(m_rows)) {
-            if (row.path == previous.path) {
+            if (row.path == previous.path && row.serial == previous.serial && row.model == previous.model &&
+                row.transport == previous.transport) {
                 match = &previous;
                 break;
             }
         }
         if (!match && !row.serial.isEmpty() && serialOccurrences(merged, row.serial) == 1 && serialOccurrences(m_rows, row.serial) == 1) {
             for (const DiskRow& previous : std::as_const(m_rows)) {
-                if (row.serial == previous.serial) {
+                if (row.serial == previous.serial && row.model == previous.model && row.transport == previous.transport) {
                     match = &previous;
                     break;
                 }
@@ -104,6 +120,7 @@ void DiskModel::setRows(const QVector<DiskRow>& rows) {
             row.reallocated = match->reallocated;
             row.pending = match->pending;
             row.lastCheck = match->lastCheck;
+            row.smartDetail = match->smartDetail;
         }
     }
     m_rows = merged;
@@ -118,6 +135,7 @@ void DiskModel::updateSmart(const QString& path, const DiskRow& smartRow) {
             m_rows[i].reallocated = smartRow.reallocated;
             m_rows[i].pending = smartRow.pending;
             m_rows[i].lastCheck = smartRow.lastCheck;
+            m_rows[i].smartDetail = smartRow.smartDetail;
             emit dataChanged(index(i, 5), index(i, 9));
             return;
         }

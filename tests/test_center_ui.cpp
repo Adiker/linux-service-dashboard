@@ -9,6 +9,7 @@
 #include <QDir>
 #include <QFile>
 #include <QJsonObject>
+#include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
 #include <QSettings>
@@ -139,6 +140,43 @@ class CenterUiTests : public QObject {
         inventory.launchDesktop("/outside-catalog.desktop");
         QCOMPARE(launch.size(), 1);
     }
+    void unreadAndFailedSmartStates() {
+        DiskRow disk;
+        disk.path = "/dev/example";
+        disk.serial = "A";
+        disk.model = "Disk A";
+        disk.transport = "sata";
+        DiskModel model;
+        model.setRows({disk});
+        QCOMPARE(model.data(model.index(0, 5), Qt::DisplayRole).toString(), "Not checked");
+        QVERIFY(model.data(model.index(0, 5), Qt::ToolTipRole).toString().contains("Check SMART"));
+        auto failed = disk;
+        failed.smartHealth = "Permission denied";
+        failed.smartDetail = "Cannot read this device without authorization";
+        failed.lastCheck = "2026-10-21T10:00:00";
+        model.updateSmart(disk.path, failed);
+        model.setRows({disk});
+        QCOMPARE(model.data(model.index(0, 5), Qt::DisplayRole).toString(), "Permission denied");
+        QCOMPARE(model.data(model.index(0, 5), Qt::ToolTipRole).toString(), failed.smartDetail);
+        auto replacement = disk;
+        replacement.serial = "B";
+        model.setRows({replacement});
+        QCOMPARE(model.data(model.index(0, 5), Qt::DisplayRole).toString(), "Not checked");
+        QCOMPARE(model.rowAt(0).lastCheck, "Never");
+        QSettings settings;
+        settings.clear();
+        for (const auto& module : centerModules())
+            settings.setValue("modules/" + module.id, false);
+        SystemCenter center;
+        center.smart.disksReady({disk}, {});
+        center.smart.smartReady(disk.path, failed, failed.smartDetail);
+        const auto snapshot = center.snapshot("smart");
+        QCOMPARE(snapshot.rows[0].cells[3], "Permission denied");
+        QVERIFY(snapshot.rows[0].attention);
+        QCOMPARE(snapshot.rows[0].meta.value("smartDetail").toString(), failed.smartDetail);
+        center.smart.disksReady({disk}, {});
+        QVERIFY(center.snapshot("smart").rows[0].attention);
+    }
     void sortedSelectionAndEventProjection() {
         QWidget owner;
         auto* layout = new QVBoxLayout(&owner);
@@ -189,6 +227,9 @@ class CenterUiTests : public QObject {
             QLocale::setDefault(QLocale::English);
         const auto originalPalette = qApp->palette();
         MainWindow window;
+        auto* smartHint = window.findChild<QLabel*>("smartHint");
+        QVERIFY(smartHint);
+        QVERIFY(smartHint->text().contains(language == "pl" ? "odczytywany ręcznie" : "read manually"));
         window.show();
         auto* center = window.findChild<SystemCenter*>();
         QVERIFY(center);
