@@ -1,6 +1,7 @@
 #include "MountsPage.h"
 
 #include "../core/MountProfileStore.h"
+#include "../ui/StatusBadgeDelegate.h"
 #include "../utils/TableLayoutPersistence.h"
 #include "../utils/TableTools.h"
 #include "ConfirmActionDialog.h"
@@ -35,6 +36,7 @@ MountsPage::MountsPage(MountProvider& provider, QWidget* parent) : QWidget(paren
     m_table->horizontalHeader()->setStretchLastSection(true);
     m_table->verticalHeader()->hide();
     m_table->setColumnWidth(0, 250);
+    m_table->setItemDelegateForColumn(4, new StatusBadgeDelegate(m_table));
     TableLayoutPersistence::bind(m_table, QStringLiteral("tables/mounts/headerState"));
     layout->addWidget(m_table, 1);
 
@@ -42,9 +44,11 @@ MountsPage::MountsPage(MountProvider& provider, QWidget* parent) : QWidget(paren
     auto* openButton = new QPushButton(QIcon::fromTheme(QStringLiteral("folder-open")), tr("Open path"), this);
     auto* unmountButton = new QPushButton(tr("Unmount"), this);
     auto* saveProfileButton = new QPushButton(tr("Save profile"), this);
+    auto* removeProfileButton = new QPushButton(tr("Remove profile"), this);
     actions->addWidget(openButton);
     actions->addWidget(unmountButton);
     actions->addWidget(saveProfileButton);
+    actions->addWidget(removeProfileButton);
     actions->addStretch();
     m_status = new QLabel(this);
     m_status->setTextFormat(Qt::PlainText);
@@ -89,6 +93,20 @@ MountsPage::MountsPage(MountProvider& provider, QWidget* parent) : QWidget(paren
         MountProfileStore::saveProfile(row, name);
         m_status->setText(tr("Saved profile %1.").arg(name));
         refresh();
+    });
+    connect(removeProfileButton, &QPushButton::clicked, this, [this]() {
+        const MountRow row = selectedRow();
+        const QString prefix = QStringLiteral("Profile: ");
+        if (!row.status.startsWith(prefix)) {
+            m_status->setText(tr("Select a saved profile to remove."));
+            return;
+        }
+        const QString profileName = row.status.mid(prefix.size());
+        if (ConfirmActionDialog::confirm(this, tr("Remove mount profile"), tr("Remove saved mount profile \"%1\"?").arg(profileName))) {
+            MountProfileStore::removeProfile(profileName);
+            m_status->setText(tr("Removed profile %1.").arg(profileName));
+            refresh();
+        }
     });
     connect(&m_provider, &MountProvider::mountsReady, this, [this](const QVector<MountRow>& rows, const QString& error) {
         if (error.isEmpty())

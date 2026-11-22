@@ -2,6 +2,7 @@
 
 #include "../core/CenterTypes.h"
 #include "../core/ServiceGroupSettings.h"
+#include "ConfirmActionDialog.h"
 
 #include <QCheckBox>
 #include <QComboBox>
@@ -38,6 +39,10 @@ SettingsPage::SettingsPage(QWidget* parent) : QWidget(parent) {
     form->addRow(tr("Refresh interval"), m_refreshInterval);
     m_notifications = new QCheckBox(tr("Enable desktop notifications"), general);
     form->addRow(m_notifications);
+    m_closeToTray = new QCheckBox(tr("Close window to system tray instead of quitting"), general);
+    form->addRow(m_closeToTray);
+    m_startMinimizedToTray = new QCheckBox(tr("Start minimized to system tray"), general);
+    form->addRow(m_startMinimizedToTray);
     layout->addWidget(general);
 
     auto* servicesTitle = new QLabel(tr("Watched systemd services"), this);
@@ -50,10 +55,12 @@ SettingsPage::SettingsPage(QWidget* parent) : QWidget(parent) {
     m_serviceGroup = new QComboBox(servicesGroup);
     auto* addGroupButton = new QPushButton(tr("Add group"), servicesGroup);
     auto* renameGroupButton = new QPushButton(tr("Rename"), servicesGroup);
+    m_deleteGroupButton = new QPushButton(tr("Delete"), servicesGroup);
     groupRow->addWidget(new QLabel(tr("Group"), servicesGroup));
     groupRow->addWidget(m_serviceGroup, 1);
     groupRow->addWidget(addGroupButton);
     groupRow->addWidget(renameGroupButton);
+    groupRow->addWidget(m_deleteGroupButton);
     servicesLayout->addLayout(groupRow);
     m_services = new QPlainTextEdit(servicesGroup);
     m_services->setMinimumHeight(128);
@@ -130,6 +137,7 @@ SettingsPage::SettingsPage(QWidget* parent) : QWidget(parent) {
     connect(m_serviceGroup, &QComboBox::currentTextChanged, this, &SettingsPage::loadGroupServices);
     connect(addGroupButton, &QPushButton::clicked, this, &SettingsPage::addGroup);
     connect(renameGroupButton, &QPushButton::clicked, this, &SettingsPage::renameGroup);
+    connect(m_deleteGroupButton, &QPushButton::clicked, this, &SettingsPage::deleteGroup);
     load();
 }
 
@@ -137,12 +145,16 @@ void SettingsPage::reloadGroups() {
     const QString current = m_serviceGroup->currentText();
     m_serviceGroup->blockSignals(true);
     m_serviceGroup->clear();
-    for (const QString& group : ServiceGroupSettings::groupNames()) {
+    const QStringList groups = ServiceGroupSettings::groupNames();
+    for (const QString& group : groups) {
         m_serviceGroup->addItem(group);
     }
     const int index = m_serviceGroup->findText(current);
     m_serviceGroup->setCurrentIndex(index >= 0 ? index : 0);
     m_serviceGroup->blockSignals(false);
+    if (m_deleteGroupButton) {
+        m_deleteGroupButton->setEnabled(groups.size() > 1);
+    }
 }
 
 QStringList SettingsPage::editorServices() const {
@@ -226,9 +238,28 @@ void SettingsPage::renameGroup() {
     m_serviceGroup->setCurrentText(name);
 }
 
+void SettingsPage::deleteGroup() {
+    const QString current = m_serviceGroup->currentText();
+    if (current.isEmpty() || ServiceGroupSettings::groupNames().size() <= 1) {
+        return;
+    }
+    if (!ConfirmActionDialog::confirm(this, tr("Delete service group"), tr("Delete systemd service group \"%1\"?").arg(current))) {
+        return;
+    }
+    if (ServiceGroupSettings::deleteGroup(current)) {
+        m_stagedGroupEdits.remove(current);
+        m_loadedGroup.clear();
+        reloadGroups();
+        loadGroupServices();
+        emit settingsChanged();
+    }
+}
+
 void SettingsPage::load() {
     QSettings settings;
     m_notifications->setChecked(settings.value("notifications/enabled", false).toBool());
+    m_closeToTray->setChecked(settings.value(QStringLiteral("window/closeToTray"), true).toBool());
+    m_startMinimizedToTray->setChecked(settings.value(QStringLiteral("window/startMinimizedToTray"), false).toBool());
     for (auto it = m_extraModules.cbegin(); it != m_extraModules.cend(); ++it)
         it.value()->setChecked(settings.value("modules/" + it.key(), true).toBool());
     m_language->setCurrentIndex(qMax(0, m_language->findData(settings.value("ui/language", "System"))));
@@ -249,6 +280,8 @@ void SettingsPage::load() {
 void SettingsPage::save() {
     QSettings settings;
     settings.setValue("notifications/enabled", m_notifications->isChecked());
+    settings.setValue(QStringLiteral("window/closeToTray"), m_closeToTray->isChecked());
+    settings.setValue(QStringLiteral("window/startMinimizedToTray"), m_startMinimizedToTray->isChecked());
     settings.setValue(QStringLiteral("refresh/intervalSeconds"), m_refreshInterval->value());
     // Flush every staged group edit now that the user committed with Save. Write the
     // currently selected group last so its list also lands in the legacy mirror.

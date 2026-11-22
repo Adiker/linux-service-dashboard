@@ -267,4 +267,64 @@ QVector<FstabEntry> parseFstab(const QString& content, QString* error) {
     return entries;
 }
 
+QVector<SensorRow> parseSensorsText(const QString& output, QString* error) {
+    QVector<SensorRow> rows;
+    if (error) {
+        error->clear();
+    }
+
+    static const QRegularExpression readingRe(
+        QStringLiteral(R"(^([^:]+):\s*([+-]?\d+(?:\.\d+)?)\s*(°C|C|RPM|MHz|kHz|Hz|mV|V|mW|W|mA|A|%)(.*)$)"));
+    static const QRegularExpression highRe(QStringLiteral(R"(\b(?:high|max)\s*=\s*([+-]?\d+(?:\.\d+)?))"));
+    static const QRegularExpression critRe(QStringLiteral(R"(\bcrit\s*=\s*([+-]?\d+(?:\.\d+)?))"));
+
+    QString currentChip;
+    const QStringList lines = output.split(QLatin1Char('\n'));
+    for (const QString& rawLine : lines) {
+        const QString line = rawLine.trimmed();
+        if (line.isEmpty()) {
+            currentChip.clear();
+            continue;
+        }
+        if (line.startsWith(QStringLiteral("Adapter:"))) {
+            continue;
+        }
+        if (!line.contains(QLatin1Char(':'))) {
+            currentChip = line;
+            continue;
+        }
+        const QRegularExpressionMatch match = readingRe.match(line);
+        if (!match.hasMatch()) {
+            continue;
+        }
+        const QString label = match.captured(1).trimmed();
+        const double input = match.captured(2).toDouble();
+        QString unit = match.captured(3);
+        if (unit == QStringLiteral("C")) {
+            unit = QStringLiteral("°C");
+        }
+        const QString tail = match.captured(4);
+        double high = 0.0;
+        double critical = 0.0;
+        const QRegularExpressionMatch highMatch = highRe.match(tail);
+        if (highMatch.hasMatch()) {
+            high = highMatch.captured(1).toDouble();
+        }
+        const QRegularExpressionMatch critMatch = critRe.match(tail);
+        if (critMatch.hasMatch()) {
+            critical = critMatch.captured(1).toDouble();
+        }
+        rows.append(SensorRow{
+            currentChip.isEmpty() ? QStringLiteral("unknown") : currentChip,
+            label,
+            input,
+            high,
+            critical,
+            temperatureStatus(input, high, critical),
+            unit,
+        });
+    }
+    return rows;
+}
+
 } // namespace ProviderParsers

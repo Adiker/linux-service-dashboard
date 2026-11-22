@@ -42,7 +42,9 @@ int main(int argc, char* argv[]) {
             app.installTranslator(&qtTranslator);
     }
     MainWindow window;
-    window.show();
+    if (!window.shouldStartMinimized()) {
+        window.show();
+    }
 
     return app.exec();
 }

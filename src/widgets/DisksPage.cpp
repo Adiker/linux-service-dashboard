@@ -2,16 +2,16 @@
 
 #include "../core/SmartHistoryStore.h"
 #include "../core/SmartRefreshScheduler.h"
+#include "../ui/StatusBadgeDelegate.h"
 #include "../utils/TableLayoutPersistence.h"
 #include "../utils/TableTools.h"
 #include "../utils/TimeUtils.h"
+#include "SmartHistoryDialog.h"
 
-#include <QDialog>
 #include <QHeaderView>
 #include <QLabel>
 #include <QPushButton>
 #include <QTableView>
-#include <QTableWidget>
 #include <QVBoxLayout>
 
 DisksPage::DisksPage(SmartProvider& provider, QWidget* parent)
@@ -41,6 +41,7 @@ DisksPage::DisksPage(SmartProvider& provider, QWidget* parent)
     m_table->verticalHeader()->hide();
     m_table->setSortingEnabled(true);
     m_table->setColumnWidth(0, 250);
+    m_table->setItemDelegateForColumn(5, new StatusBadgeDelegate(m_table));
     TableLayoutPersistence::bind(m_table, QStringLiteral("tables/disks/headerState"));
     layout->addWidget(m_table, 1);
 
@@ -84,29 +85,7 @@ DisksPage::DisksPage(SmartProvider& provider, QWidget* parent)
             m_status->setText(tr("Select a disk to view SMART history."));
             return;
         }
-        auto* dialog = new QDialog(this);
-        dialog->setWindowTitle(tr("SMART history - %1").arg(row.path));
-        dialog->resize(720, 420);
-        auto* dialogLayout = new QVBoxLayout(dialog);
-        auto* table = new QTableWidget(dialog);
-        table->setColumnCount(5);
-        table->setHorizontalHeaderLabels({tr("Time"), tr("Health"), tr("Temp"), tr("Reallocated"), tr("Pending")});
-        table->horizontalHeader()->setStretchLastSection(true);
-        table->setSelectionBehavior(QAbstractItemView::SelectRows);
-        table->setSelectionMode(QAbstractItemView::SingleSelection);
-        table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-        table->verticalHeader()->hide();
-        const QVector<SmartHistoryEntry> entries = SmartHistoryStore::entriesForDisk(historyKeySerial(row.serial), row.path);
-        table->setRowCount(entries.size());
-        for (int i = 0; i < entries.size(); ++i) {
-            const SmartHistoryEntry& entry = entries.at(i);
-            table->setItem(i, 0, new QTableWidgetItem(entry.timestamp));
-            table->setItem(i, 1, new QTableWidgetItem(entry.health));
-            table->setItem(i, 2, new QTableWidgetItem(entry.temperature));
-            table->setItem(i, 3, new QTableWidgetItem(entry.reallocated));
-            table->setItem(i, 4, new QTableWidgetItem(entry.pending));
-        }
-        dialogLayout->addWidget(table);
+        auto* dialog = new SmartHistoryDialog(historyKeySerial(row.serial), row.path, this);
         dialog->setAttribute(Qt::WA_DeleteOnClose);
         dialog->show();
     });

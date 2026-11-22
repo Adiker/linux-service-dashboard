@@ -1,14 +1,22 @@
 #include "MountProfileStore.h"
 
-#include <QRegularExpression>
 #include <QSettings>
+#include <QUrl>
 
 namespace MountProfileStore {
 
 namespace {
 
-MountRow profileToRow(const QSettings& settings, const QString& name) {
-    const QString prefix = QStringLiteral("mounts/profiles/%1/").arg(name);
+QString encodedProfileGroup(const QString& name) {
+    return QStringLiteral("mounts/profiles/%1").arg(QString::fromUtf8(QUrl::toPercentEncoding(name)));
+}
+
+QString legacyProfileGroup(const QString& name) {
+    return QStringLiteral("mounts/profiles/%1").arg(name);
+}
+
+MountRow readProfileWithPrefix(const QSettings& settings, const QString& groupPrefix, const QString& name) {
+    const QString prefix = groupPrefix + QLatin1Char('/');
     MountRow row;
     row.source = settings.value(prefix + QStringLiteral("source")).toString();
     row.target = settings.value(prefix + QStringLiteral("target")).toString();
@@ -16,6 +24,14 @@ MountRow profileToRow(const QSettings& settings, const QString& name) {
     row.options = settings.value(prefix + QStringLiteral("options")).toString();
     row.status = QStringLiteral("Profile: %1").arg(name);
     return row;
+}
+
+MountRow profileToRow(const QSettings& settings, const QString& name) {
+    const QString encoded = encodedProfileGroup(name);
+    if (settings.contains(encoded + QStringLiteral("/target")) || settings.contains(encoded + QStringLiteral("/source"))) {
+        return readProfileWithPrefix(settings, encoded, name);
+    }
+    return readProfileWithPrefix(settings, legacyProfileGroup(name), name);
 }
 
 } // namespace
@@ -41,15 +57,22 @@ void saveProfile(const MountRow& row, const QString& name) {
         names.append(name);
         settings.setValue(QStringLiteral("mounts/profileNames"), names);
     }
-    const QString prefix = QStringLiteral("mounts/profiles/%1/").arg(name);
+    const QString encoded = encodedProfileGroup(name);
+    const QString legacy = legacyProfileGroup(name);
+    if (legacy != encoded) {
+        settings.remove(legacy);
+    }
+    const QString prefix = encoded + QLatin1Char('/');
     settings.setValue(prefix + QStringLiteral("source"), row.source);
     settings.setValue(prefix + QStringLiteral("target"), row.target);
     settings.setValue(prefix + QStringLiteral("filesystemType"), row.filesystemType);
     QStringList options;
-    for (const auto& option : row.options.split(','))
+    for (const auto& option : row.options.split(',')) {
         if (!option.startsWith("password=", Qt::CaseInsensitive) && !option.startsWith("pass=", Qt::CaseInsensitive) &&
-            !option.startsWith("passwd=", Qt::CaseInsensitive))
+            !option.startsWith("passwd=", Qt::CaseInsensitive)) {
             options.append(option);
+        }
+    }
     settings.setValue(prefix + QStringLiteral("options"), options.join(','));
 }
 
@@ -58,7 +81,12 @@ void removeProfile(const QString& name) {
     QStringList names = settings.value(QStringLiteral("mounts/profileNames")).toStringList();
     names.removeAll(name);
     settings.setValue(QStringLiteral("mounts/profileNames"), names);
-    settings.remove(QStringLiteral("mounts/profiles/%1").arg(name));
+    const QString encoded = encodedProfileGroup(name);
+    settings.remove(encoded);
+    const QString legacy = legacyProfileGroup(name);
+    if (legacy != encoded) {
+        settings.remove(legacy);
+    }
 }
 
 } // namespace MountProfileStore

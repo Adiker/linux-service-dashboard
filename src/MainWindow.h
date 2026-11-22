@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/AlertMonitor.h"
 #include "core/RefreshScheduler.h"
 #include "core/SystemCenter.h"
 #include "widgets/DisksPage.h"
@@ -25,6 +26,7 @@ class MainWindow : public QMainWindow {
 
   public:
     explicit MainWindow(QWidget* parent = nullptr);
+    [[nodiscard]] bool shouldStartMinimized() const;
 
   public slots:
     void refreshAll();
@@ -68,6 +70,10 @@ class MainWindow : public QMainWindow {
     QHash<QString, QWidget*> m_pages;
     QTimer* m_metricTimer = nullptr;
     void navigate(const QString& module, const QString& id = {});
+    void saveWindowGeometry();
+    void restoreWindowGeometry();
+    AlertMonitor* m_alertMonitor = nullptr;
+    bool m_closeToTray = true;
     int m_lastAttention = 0;
     qint64 m_lastNotification = 0;
     QPalette m_systemPalette;

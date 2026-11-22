@@ -73,6 +73,8 @@ add_library(dashboard-core OBJECT
     src/AppIcon.h
     src/MainWindow.cpp
     src/MainWindow.h
+    src/core/AlertMonitor.cpp
+    src/core/AlertMonitor.h
     src/core/CommandResult.h
     src/core/CommandRunner.cpp
     src/core/CommandRunner.h
@@ -128,8 +130,14 @@ add_library(dashboard-core OBJECT
     src/widgets/SettingsPage.h
     src/widgets/LogViewerDialog.cpp
     src/widgets/LogViewerDialog.h
+    src/widgets/SmartHistoryDialog.cpp
+    src/widgets/SmartHistoryDialog.h
     src/widgets/ConfirmActionDialog.cpp
     src/widgets/ConfirmActionDialog.h
+    src/ui/StatusBadgeDelegate.cpp
+    src/ui/StatusBadgeDelegate.h
+    src/ui/ThemeManager.cpp
+    src/ui/ThemeManager.h
     src/utils/JsonUtils.cpp
     src/utils/JsonUtils.h
     src/utils/TimeUtils.cpp
@@ -159,6 +167,9 @@ target_compile_definitions(linux-service-dashboard PRIVATE SMART_HELPER_RELATIVE
 qt_add_executable(provider-parser-tests
     tests/test_provider_parsers.cpp
     src/parsers/ProviderParsers.cpp
+    src/core/AlertMonitor.cpp
+    src/core/MountProfileStore.cpp
+    src/core/ServiceGroupSettings.cpp
     src/utils/JsonUtils.cpp
     src/utils/StatusUtils.cpp
 )

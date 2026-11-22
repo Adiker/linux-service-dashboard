@@ -124,13 +124,11 @@ For `/usr/local`, polkit loads policies from `/usr/share/polkit-1/actions`; enab
 sudo apt install dpkg-dev file
 ```
 
-For `/usr/local`, polkit loads policies from `/usr/share/polkit-1/actions`; enable `LSD_INSTALL_POLKIT_POLICY_SYSTEM` as above. For staged/relocatable installs, leave it off to place policy files under the chosen prefix. The policy is generated at install time for that prefix, and the helper path resolves relative to the application.
-
-SMART first uses the user's permissions, then the installed narrow `pkexec` helper when required. Manual batches share one authorization request. The helper only accepts validated disk paths and SMART read operations. The application does not request or store sudo passwords.
+SMART first uses the user's permissions, then the installed narrow `pkexec` helper when required. Manual batches share one authorization request. The helper only accepts validated disk paths and SMART read operations, supporting both ATA attributes and NVMe health logs, with CSV export and history clearing in the SMART history dialog. The application does not request or store sudo passwords.
 
 ## Settings and privacy
 
-Settings retain the `LocalTools` / `Linux Service Dashboard` QSettings identity. Migration is additive: service groups, mount profiles, table layouts, SMART history and theme remain. Theme values are `System`, `Light`, `Dark`, `OLED`; language selection takes effect after restart.
+Settings retain the `LocalTools` / `Linux Service Dashboard` QSettings identity. Migration is additive: service groups (add/rename/delete), mount profiles (save/remove, percent-encoded keys), table layouts, SMART history, window geometry, close-to-tray / start-minimized-to-tray options, and theme remain. Theme values are `System`, `Light`, `Dark`, `OLED` with theme-aware status badges; language selection takes effect after restart. Log viewing supports `Ctrl+F` search, monospace display, word-wrap toggle, copy, and save to file.
 
 Regular enabled-module status refresh defaults to 30 seconds. Performance and container resource sampling run every two seconds only on their visible page. SMART is manual unless its minimum-five-minute opt-in schedule is enabled. Disabling a module skips its collection; derived service views indicate unavailable sources rather than claiming cached state is fresh.
 

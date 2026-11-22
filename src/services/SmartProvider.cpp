@@ -1,5 +1,6 @@
 #include "SmartProvider.h"
 
+#include "../helpers/SmartDeviceRules.h"
 #include "../utils/JsonUtils.h"
 #include "../utils/TimeUtils.h"
 
@@ -8,7 +9,6 @@
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonObject>
-#include <QRegularExpression>
 #include <utility>
 
 namespace {
@@ -55,27 +55,6 @@ QString smartHealthFromError(const QString& message) {
     return QStringLiteral("Check failed");
 }
 
-QString nvmeControllerPath(const QString& devicePath) {
-    static const QRegularExpression namespacePath(QStringLiteral(R"(^(/dev/nvme\d+)n\d+$)"));
-    const QRegularExpressionMatch match = namespacePath.match(devicePath);
-    return match.hasMatch() ? match.captured(1) : devicePath;
-}
-
-QStringList smartctlArgumentsForRow(const DiskRow& row) {
-    QString devicePath = row.path;
-    QStringList arguments{QStringLiteral("-j"), QStringLiteral("-H"), QStringLiteral("-A")};
-
-    if (row.transport == QStringLiteral("nvme")) {
-        devicePath = nvmeControllerPath(devicePath);
-        arguments.append({QStringLiteral("-d"), QStringLiteral("nvme")});
-    } else if (row.transport == QStringLiteral("usb")) {
-        arguments.append({QStringLiteral("-d"), QStringLiteral("sat")});
-    }
-
-    arguments.append(devicePath);
-    return arguments;
-}
-
 QString smartCheckContext(const QString& mode, const QString& devicePath) {
     return QStringLiteral("smart-check:%1:%2").arg(mode, devicePath);
 }
@@ -99,26 +78,8 @@ QString smartHelperBatchContext() {
     return QStringLiteral("smart-helper-batch");
 }
 
-bool isHelperSupportedDevicePath(const QString& devicePath) {
-    static const QRegularExpression pattern(QStringLiteral(R"(^/dev/(sd[a-z]+|hd[a-z]+|vd[a-z]+|xvd[a-z]+|nvme\d+(n\d+)?|mmcblk\d+)$)"));
-    return pattern.match(devicePath).hasMatch();
-}
-
-bool isHelperSupportedTransport(const QString& transport) {
-    static const QStringList transports{
-        QString(),
-        QStringLiteral("ata"),
-        QStringLiteral("sata"),
-        QStringLiteral("sas"),
-        QStringLiteral("scsi"),
-        QStringLiteral("usb"),
-        QStringLiteral("nvme"),
-    };
-    return transports.contains(transport);
-}
-
 bool isHelperSupportedRow(const DiskRow& row) {
-    return isHelperSupportedDevicePath(row.path) && isHelperSupportedTransport(row.transport);
+    return SmartDeviceRules::isSupportedDevicePath(row.path) && SmartDeviceRules::isSupportedTransport(row.transport);
 }
 
 constexpr int smartCheckPerDiskTimeoutMs = 30000;
@@ -214,6 +175,21 @@ SmartParseResult parseSmartResult(const CommandResult& result) {
                 parsed.row.reallocated = raw;
             } else if (name == QStringLiteral("Current_Pending_Sector")) {
                 parsed.row.pending = raw;
+            }
+        }
+        const QJsonObject nvmeLog = root.value(QStringLiteral("nvme_smart_health_information_log")).toObject();
+        if (!nvmeLog.isEmpty()) {
+            if (parsed.row.temperature == QStringLiteral("-") && nvmeLog.contains(QStringLiteral("temperature"))) {
+                parsed.row.temperature = QStringLiteral("%1 C").arg(nvmeLog.value(QStringLiteral("temperature")).toInt());
+            }
+            if (nvmeLog.contains(QStringLiteral("percentage_used"))) {
+                parsed.row.reallocated = QStringLiteral("%1% wear").arg(nvmeLog.value(QStringLiteral("percentage_used")).toInt());
+            }
+            if (nvmeLog.contains(QStringLiteral("media_errors"))) {
+                parsed.row.pending = QStringLiteral("%1 err").arg(nvmeLog.value(QStringLiteral("media_errors")).toVariant().toLongLong());
+            }
+            if (nvmeLog.value(QStringLiteral("critical_warning")).toInt(0) != 0) {
+                parsed.row.smartHealth = QStringLiteral("FAILED/Warning");
             }
         }
         if (!parseError.isEmpty()) {
@@ -379,7 +355,8 @@ void SmartProvider::startNextSmartCheck() {
 }
 
 void SmartProvider::runDirectSmartCheck(const DiskRow& row) {
-    m_runner.run(QStringLiteral("smartctl"), smartctlArgumentsForRow(row), 30000, smartCheckContext(QStringLiteral("direct"), row.path));
+    m_runner.run(QStringLiteral("smartctl"), SmartDeviceRules::smartctlArguments(row.path, row.transport), 30000,
+                 smartCheckContext(QStringLiteral("direct"), row.path));
 }
 
 bool SmartProvider::runPrivilegedSmartChecks(const DiskRow& firstRow) {

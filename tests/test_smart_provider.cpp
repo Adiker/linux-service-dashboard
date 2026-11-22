@@ -60,6 +60,36 @@ class SmartProviderTests : public QObject {
         QVERIFY(row.lastCheck != "Never");
         QVERIFY(!provider.isSmartCheckBusy());
     }
+
+    void nvmeHealthLog_parsesTemperatureWearMediaErrorsAndCriticalWarning() {
+        QTemporaryDir dir;
+        QFile script(dir.filePath("smartctl"));
+        QVERIFY(script.open(QIODevice::WriteOnly));
+        script.write(
+            "#!/bin/sh\nprintf '%s\\n' "
+            "'{\"smart_status\":{\"passed\":true},\"nvme_smart_health_information_log\":{\"critical_warning\":0,\"temperature\":38,"
+            "\"percentage_used\":4,\"media_errors\":0}}'\nexit 0\n");
+        script.close();
+        QVERIFY(script.setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner));
+        const auto originalPath = qgetenv("PATH");
+        const auto restore = qScopeGuard([originalPath]() { qputenv("PATH", originalPath); });
+        qputenv("PATH", dir.path().toUtf8());
+
+        SmartProvider provider;
+        QSignalSpy spy(&provider, &SmartProvider::smartReady);
+        DiskRow disk;
+        disk.path = QStringLiteral("/dev/nvme0n1");
+        disk.transport = QStringLiteral("nvme");
+        provider.checkSmart(disk);
+        QTRY_COMPARE_WITH_TIMEOUT(spy.size(), 1, 2000);
+        const auto result = spy.takeFirst();
+        const auto row = qvariant_cast<DiskRow>(result[1]);
+        QCOMPARE(row.smartHealth, QStringLiteral("PASSED"));
+        QCOMPARE(row.temperature, QStringLiteral("38 C"));
+        QCOMPARE(row.reallocated, QStringLiteral("4% wear"));
+        QCOMPARE(row.pending, QStringLiteral("0 err"));
+        QVERIFY(result[2].toString().isEmpty());
+    }
 };
 QTEST_GUILESS_MAIN(SmartProviderTests)
 #include "test_smart_provider.moc"

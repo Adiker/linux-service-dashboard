@@ -1,6 +1,7 @@
 #include "SystemdPage.h"
 
 #include "../core/ServiceGroupSettings.h"
+#include "../ui/StatusBadgeDelegate.h"
 #include "../utils/TableLayoutPersistence.h"
 #include "../utils/TableTools.h"
 #include "ConfirmActionDialog.h"
@@ -58,6 +59,7 @@ SystemdPage::SystemdPage(SystemdServiceProvider& provider, QWidget* parent) : QW
     m_table->verticalHeader()->hide();
     m_table->setSortingEnabled(true);
     m_table->setColumnWidth(0, 250);
+    m_table->setItemDelegateForColumn(2, new StatusBadgeDelegate(m_table));
     TableLayoutPersistence::bind(m_table, QStringLiteral("tables/systemd/headerState"), /*persistSortOrder=*/true);
     layout->addWidget(m_table, 1);
 

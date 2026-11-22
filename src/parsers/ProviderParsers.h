@@ -12,20 +12,19 @@
 
 namespace ProviderParsers {
 
-QVector<ServiceRow> parseSystemdListUnits(const QString &output,
-                                            const QStringList &watchedServices,
-                                            const QString &timestamp,
-                                            QString *error);
+QVector<ServiceRow> parseSystemdListUnits(const QString& output, const QStringList& watchedServices, const QString& timestamp,
+                                          QString* error);
 
-int parseSystemdFailedCount(const QString &output, QString *error);
+int parseSystemdFailedCount(const QString& output, QString* error);
 
-QVector<DockerContainerRow> parseDockerContainerLines(const QString &output, QString *error);
+QVector<DockerContainerRow> parseDockerContainerLines(const QString& output, QString* error);
 
-VpnStatus parseNmcliActiveVpnConnections(const QString &output, const QString &timestamp, QString *error);
+VpnStatus parseNmcliActiveVpnConnections(const QString& output, const QString& timestamp, QString* error);
 
-QVector<MountRow> parseFindmntJson(const QString &output, QString *error);
+QVector<MountRow> parseFindmntJson(const QString& output, QString* error);
 
-QVector<SensorRow> parseSensorsJson(const QString &output, QString *error);
+QVector<SensorRow> parseSensorsJson(const QString& output, QString* error);
+QVector<SensorRow> parseSensorsText(const QString& output, QString* error);
 
 struct FstabEntry {
     QString device;
@@ -36,6 +35,6 @@ struct FstabEntry {
     int pass = 0;
 };
 
-QVector<FstabEntry> parseFstab(const QString &content, QString *error);
+QVector<FstabEntry> parseFstab(const QString& content, QString* error);
 
 } // namespace ProviderParsers

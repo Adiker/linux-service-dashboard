@@ -17,5 +17,6 @@ namespace SmartHistoryStore {
 
 void appendEntry(const SmartHistoryEntry& entry);
 QVector<SmartHistoryEntry> entriesForDisk(const QString& serial, const QString& path, int maxEntries = 100);
+void clearEntriesForDisk(const QString& serial, const QString& path);
 
 } // namespace SmartHistoryStore

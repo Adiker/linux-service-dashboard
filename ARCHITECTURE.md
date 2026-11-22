@@ -91,7 +91,9 @@ Diagnostic export is an explicit projection: app/Qt/kernel/platform version, gen
 
 ## Theme and desktop integration
 
-`MainWindow::applyTheme` owns the application palette and stylesheet, including custom-painter colors. It retains the initial system palette for System mode. No page applies a private palette. Tables convey textual status; attention icons supplement it. The sidebar is grouped/collapsible and search navigates by identity.
+`MainWindow::applyTheme` delegates application palette and stylesheet generation to `ThemeManager` (`src/ui/ThemeManager.h/cpp`), retaining the initial system palette for `System` mode and providing high-contrast semantic status tones across `System`, `Light`, `Dark`, and `OLED`. `StatusBadgeDelegate` renders theme-aware status pills in table status columns. No page applies a private palette. The sidebar is grouped/collapsible and search navigates by identity.
+
+`MainWindow` persists `window/geometry`, honors `window/closeToTray` and `window/startMinimizedToTray`, and connects `AlertMonitor` (`src/core/AlertMonitor.h/cpp`) for edge-triggered desktop notifications when `notifications/enabled` is active. `SmartProvider` and `SmartHelper` share device/transport validation rules via `src/helpers/SmartDeviceRules.h`, `SmartProvider` parses NVMe health logs alongside ATA attributes, `SmartHistoryDialog` provides CSV export and history clearing, `LogViewerDialog` supports `Ctrl+F` search/copy/save/monospace display, `SensorProvider` falls back to plain-text `sensors` output, `MountProfileStore` percent-encodes profile keys while stripping inline passwords, and `ServiceGroupSettings` supports deleting non-final groups.
 
 Keep desktop id `io.github.Adiker.LinuxServiceDashboard` before showing windows. Runtime window/tray icons use embedded PNG resources via `serviceDashboardIcon()`; the tray attention badge starts with that same icon. Installed desktop and hicolor names stay unchanged. Qt chooses the compositor backend; code never forces QT_QPA_PLATFORM or layer-shell.
 
@@ -109,11 +111,11 @@ Repeat with Debug for release validation. Existing install rules place the binar
 
 CTest targets:
 
-- `provider-parser-tests`: baseline parsing fixtures.
+- `provider-parser-tests`: baseline parsing fixtures, plain-text `sensors` fallback, `SmartDeviceRules`, `MountProfileStore`, `ServiceGroupSettings::deleteGroup`, and edge-triggered `AlertMonitor`.
 - `command-runner-tests`: missing programs, timeout, request coalescing and output bounds.
 - `center-provider-tests`: scopes/unloaded units, Compose, schedules/outcomes, escaped names, XDG masks/localization, units and package projections.
 - `firewall-provider-tests`: private DBus fixtures check denied/allowed inspection, exact sender identity, noninteractive authorization flags, request coalescing and nested port data.
-- `smart-provider-tests`: controlled CLI responses cover health booleans, missing/null results, malformed JSON and USB attribute-only status. No hardware access or real authorization.
+- `smart-provider-tests`: controlled CLI responses cover health booleans, NVMe health logs, missing/null results, malformed JSON and USB attribute-only status. No hardware access or real authorization.
 - `center-ui-tests`: temporary settings, migration/report privacy, evidence boundaries, sorted action identities, stable theme/language values, all pages in both languages and responsive asynchronous inventories. It does not execute destructive actions, launch real applications or run SMART checks.
 
 Use offscreen/minimal startup checks and normal Wayland/XWayland sessions when available. UI test `LSD_CAPTURE_DIR` writes local review PNGs; `QT_SCALE_FACTOR` supports per-process scaling checks without changing desktop settings. Do not publish host-data screenshots without reviewing them.

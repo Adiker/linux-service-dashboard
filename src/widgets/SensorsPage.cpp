@@ -1,5 +1,6 @@
 #include "SensorsPage.h"
 
+#include "../ui/StatusBadgeDelegate.h"
 #include "../utils/TableLayoutPersistence.h"
 #include "../utils/TableTools.h"
 
@@ -28,6 +29,7 @@ SensorsPage::SensorsPage(SensorProvider& provider, QWidget* parent) : QWidget(pa
     m_table->verticalHeader()->hide();
     m_table->setSortingEnabled(true);
     m_table->setColumnWidth(0, 250);
+    m_table->setItemDelegateForColumn(5, new StatusBadgeDelegate(m_table));
     TableLayoutPersistence::bind(m_table, QStringLiteral("tables/sensors/headerState"));
     layout->addWidget(m_table, 1);
 

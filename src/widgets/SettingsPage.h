@@ -8,6 +8,7 @@
 class QCheckBox;
 class QComboBox;
 class QPlainTextEdit;
+class QPushButton;
 class QSpinBox;
 
 class SettingsPage : public QWidget {
@@ -23,12 +24,16 @@ class SettingsPage : public QWidget {
     QHash<QString, QCheckBox*> m_extraModules;
     QComboBox* m_language = nullptr;
     QCheckBox* m_notifications = nullptr;
+    QCheckBox* m_closeToTray = nullptr;
+    QCheckBox* m_startMinimizedToTray = nullptr;
+    QPushButton* m_deleteGroupButton = nullptr;
     void load();
     void save();
     void reloadGroups();
     void loadGroupServices();
     void addGroup();
     void renameGroup();
+    void deleteGroup();
     QStringList editorServices() const;
     void stageCurrentEditor();
 
