@@ -88,6 +88,7 @@ sudo cmake --install build --prefix /usr/local
 
 The install includes the binary, narrow SMART helper, polkit policy, desktop entry and hicolor icons. The desktop id is `io.github.Adiker.LinuxServiceDashboard`. Window/tray icons are embedded PNGs, so an uninstalled build also has an icon.
 
+
 For `/usr/local`, polkit loads policies from `/usr/share/polkit-1/actions`; enable `LSD_INSTALL_POLKIT_POLICY_SYSTEM` as above. For staged/relocatable installs, leave it off to place policy files under the chosen prefix. The policy is generated at install time for that prefix, and the helper path resolves relative to the application.
 
 ### Distro packages
@@ -99,7 +100,7 @@ For `/usr/local`, polkit loads policies from `/usr/share/polkit-1/actions`; enab
 sudo apt install dpkg-dev file
 ```
 
-If you use a different install prefix, pass the same `--prefix` to `cmake --install` so the generated polkit policy points at the final helper path. The app resolves the helper relative to its own install location at runtime.
+For `/usr/local`, polkit loads policies from `/usr/share/polkit-1/actions`; enable `LSD_INSTALL_POLKIT_POLICY_SYSTEM` as above. For staged/relocatable installs, leave it off to place policy files under the chosen prefix. The policy is generated at install time for that prefix, and the helper path resolves relative to the application.
 
 SMART first uses the user's permissions, then the installed narrow `pkexec` helper when required. Manual batches share one authorization request. The helper only accepts validated disk paths and SMART read operations. The application does not request or store sudo passwords.
 
@@ -123,3 +124,5 @@ QT_QPA_PLATFORM=minimal timeout 3s build/linux-service-dashboard
 Exit 124 from these commands means the app remained alive until timeout. Also smoke-test a normal Wayland session and `QT_QPA_PLATFORM=xcb` when available. The application never forces a platform plugin or layer-shell.
 
 Optional daemon/API configuration, synchronization progress, backup verification and advanced GPU controls remain in their native tools. USB bridge SMART transports may need device-specific support. See [ARCHITECTURE.md](ARCHITECTURE.md) for internal contracts and [ROADMAP.md](ROADMAP.md) for delivery status.
+
+Firewall inspection uses asynchronous DBus reads with a noninteractive polkit permission check for the same bus sender before each protected request. Missing authorization is reported in the view; open `firewall-config` explicitly to authenticate. Background refresh does not invoke `firewall-cmd`.

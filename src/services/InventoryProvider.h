@@ -1,6 +1,7 @@
 #pragma once
 #include "../core/CenterTypes.h"
 #include "../core/CommandRunner.h"
+#include "FirewallProvider.h"
 
 #include <QHash>
 #include <QSet>
@@ -40,6 +41,7 @@ class InventoryProvider : public QObject {
     bool m_serviceRead = false;
     qulonglong m_cpuTotal = 0, m_cpuIdle = 0;
     CommandRunner m_runner;
+    FirewallProvider m_firewall;
     QHash<QString, int> m_pending;
     QHash<QString, QVector<CenterRecord>> m_rows;
     QHash<QString, QStringList> m_errors;

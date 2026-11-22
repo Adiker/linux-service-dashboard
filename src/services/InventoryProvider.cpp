@@ -18,6 +18,8 @@
 #include <QtConcurrent>
 
 InventoryProvider::InventoryProvider(QObject* parent) : QObject(parent) {
+    connect(&m_firewall, &FirewallProvider::ready, this,
+            [this](const auto& rows, const auto& error) { emit ready("firewall", headers("firewall"), rows, error); });
     connect(&m_runner, &CommandRunner::commandFinished, this, [this](const auto&, const CommandResult& r, const QString& context) {
         if (context.startsWith("desktop-launch:")) {
             emit launchCompleted(r.ok());
@@ -335,7 +337,7 @@ void InventoryProvider::refresh(const QString& module) {
     else if (module == "ports")
         start(module, {{"ss", {"-H", "-lntup"}, "ports"}});
     else if (module == "firewall")
-        start(module, {{"firewall-cmd", {"--list-all-zones"}, "zones"}});
+        m_firewall.refresh();
     else if (module == "servers") {
         QVector<CenterRecord> rows;
         for (const auto& service : m_services) {
