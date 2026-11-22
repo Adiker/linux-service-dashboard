@@ -15,7 +15,7 @@ if(NOT LSD_REVISION)
 endif()
 configure_file(src/BuildInfo.h.in generated/BuildInfo.h @ONLY)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Test DBus LinguistTools)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Test DBus Concurrent LinguistTools)
 
 qt_standard_project_setup()
 
@@ -53,6 +53,8 @@ endif()
 
 qt_add_executable(linux-service-dashboard
     resources/resources.qrc
+    src/services/SystemInventory.cpp
+    src/services/ToolLauncher.cpp
     src/services/InventoryProvider.cpp
     src/core/CenterTypes.cpp
     src/core/SystemCenter.cpp
@@ -136,7 +138,7 @@ qt_add_executable(linux-service-dashboard
 qt_add_translations(linux-service-dashboard TS_FILES translations/dashboard_pl.ts RESOURCE_PREFIX "/i18n")
 
 target_include_directories(linux-service-dashboard PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generated)
-target_link_libraries(linux-service-dashboard PRIVATE Qt6::Widgets Qt6::DBus)
+target_link_libraries(linux-service-dashboard PRIVATE Qt6::Widgets Qt6::DBus Qt6::Concurrent)
 target_compile_definitions(linux-service-dashboard PRIVATE SMART_HELPER_RELATIVE_PATH="${SMART_HELPER_RELATIVE_PATH}")
 
 qt_add_executable(provider-parser-tests
@@ -154,11 +156,11 @@ qt_add_executable(command-runner-tests tests/test_command_runner.cpp src/core/Co
 target_include_directories(command-runner-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(command-runner-tests PRIVATE Qt6::Test Qt6::Core)
 add_test(NAME command-runner-tests COMMAND command-runner-tests)
-qt_add_executable(center-provider-tests src/services/NetworkProvider.cpp tests/test_center_providers.cpp src/services/InventoryProvider.cpp
+qt_add_executable(center-provider-tests src/services/SystemInventory.cpp src/services/NetworkProvider.cpp tests/test_center_providers.cpp src/services/InventoryProvider.cpp
     src/services/SystemdServiceProvider.cpp src/core/CommandRunner.cpp src/parsers/ProviderParsers.cpp
     src/utils/JsonUtils.cpp src/utils/StatusUtils.cpp src/utils/TimeUtils.cpp)
 target_include_directories(center-provider-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(center-provider-tests PRIVATE Qt6::Test Qt6::Core Qt6::DBus)
+target_link_libraries(center-provider-tests PRIVATE Qt6::Test Qt6::Core Qt6::DBus Qt6::Concurrent)
 add_test(NAME center-provider-tests COMMAND center-provider-tests)
 
 qt_add_executable(${SMART_HELPER_TARGET}
