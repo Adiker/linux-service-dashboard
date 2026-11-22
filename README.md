@@ -30,7 +30,7 @@ sudo pacman -S qt6-base cmake gcc docker networkmanager util-linux lm_sensors sm
 Debian/Ubuntu-like systems:
 
 ```bash
-sudo apt install qt6-base-dev cmake g++ docker-cli network-manager util-linux lm-sensors smartmontools policykit-1
+sudo apt install qt6-base-dev cmake g++ docker-cli network-manager util-linux lm-sensors smartmontools polkitd pkexec
 ```
 
 Some commands may require the current user to have permissions, for example access to the Docker socket. SMART checks first try the user's session and, when installed, fall back to a small `pkexec`/polkit helper that runs the SMART read batch after one administrator authentication.
@@ -63,6 +63,15 @@ sudo cmake --install build --prefix /usr/local
 ```
 
 When the app lives under `/usr/local`, polkit still loads action files from `/usr/share/polkit-1/actions`, so pass `-DLSD_INSTALL_POLKIT_POLICY_SYSTEM=ON` for that layout. By default the policy installs under the chosen prefix (`share/polkit-1/actions`), which keeps staged or relocatable installs working.
+
+### Distro packages
+
+- Arch Linux: build with `packaging/PKGBUILD`. It downloads a pinned GitHub archive and checks that file's SHA-256. There is no `v0.1.0` release tag yet. When one is published, point `source` at `refs/tags/v$pkgver.tar.gz` and replace `sha256sums` (`updpkgsums` or `makepkg -g`).
+- Debian/RPM: configure a Release build, then run `cpack -G DEB` or `cpack -G RPM` from the build directory. `cpack -G DEB` fills Qt library dependencies with `dpkg-shlibdeps`, which needs the `dpkg-dev` and `file` packages. `cpack -G RPM` needs `rpmbuild` from the `rpm` package.
+
+```bash
+sudo apt install dpkg-dev file
+```
 
 If you use a different install prefix, pass the same `--prefix` to `cmake --install` so the generated polkit policy points at the final helper path. The app resolves the helper relative to its own install location at runtime.
 
