@@ -90,6 +90,17 @@ The install includes the binary, narrow SMART helper, polkit policy, desktop ent
 
 For `/usr/local`, polkit loads policies from `/usr/share/polkit-1/actions`; enable `LSD_INSTALL_POLKIT_POLICY_SYSTEM` as above. For staged/relocatable installs, leave it off to place policy files under the chosen prefix. The policy is generated at install time for that prefix, and the helper path resolves relative to the application.
 
+### Distro packages
+
+- Arch Linux: build with `packaging/PKGBUILD`. It downloads a pinned GitHub archive and checks that file's SHA-256. There is no `v0.1.0` release tag yet. When one is published, point `source` at `refs/tags/v$pkgver.tar.gz` and replace `sha256sums` (`updpkgsums` or `makepkg -g`).
+- Debian/RPM: configure a Release build, then run `cpack -G DEB` or `cpack -G RPM` from the build directory. `cpack -G DEB` fills Qt library dependencies with `dpkg-shlibdeps`, which needs the `dpkg-dev` and `file` packages. `cpack -G RPM` needs `rpmbuild` from the `rpm` package.
+
+```bash
+sudo apt install dpkg-dev file
+```
+
+If you use a different install prefix, pass the same `--prefix` to `cmake --install` so the generated polkit policy points at the final helper path. The app resolves the helper relative to its own install location at runtime.
+
 SMART first uses the user's permissions, then the installed narrow `pkexec` helper when required. Manual batches share one authorization request. The helper only accepts validated disk paths and SMART read operations. The application does not request or store sudo passwords.
 
 ## Settings and privacy
