@@ -154,7 +154,7 @@ qt_add_executable(command-runner-tests tests/test_command_runner.cpp src/core/Co
 target_include_directories(command-runner-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(command-runner-tests PRIVATE Qt6::Test Qt6::Core)
 add_test(NAME command-runner-tests COMMAND command-runner-tests)
-qt_add_executable(center-provider-tests tests/test_center_providers.cpp src/services/InventoryProvider.cpp
+qt_add_executable(center-provider-tests src/services/NetworkProvider.cpp tests/test_center_providers.cpp src/services/InventoryProvider.cpp
     src/services/SystemdServiceProvider.cpp src/core/CommandRunner.cpp src/parsers/ProviderParsers.cpp
     src/utils/JsonUtils.cpp src/utils/StatusUtils.cpp src/utils/TimeUtils.cpp)
 target_include_directories(center-provider-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

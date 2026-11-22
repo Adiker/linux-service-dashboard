@@ -51,6 +51,15 @@ void InventoryProvider::start(const QString& module, const QVector<InventoryComm
         m_runner.run(c.program, c.arguments, 15000, module + ":" + c.tag);
 }
 QStringList InventoryProvider::headers(const QString& module) {
+    if (module == "network")
+        return {
+            tr("Interface / destination"), tr("State / gateway"), tr("Addresses / device"), tr("Details"), tr("RX bytes"), tr("TX bytes")};
+    if (module == "ports")
+        return {tr("Protocol"), tr("State"), tr("Local address"), tr("Peer"), tr("Process (if permitted)")};
+    if (module == "firewall")
+        return {tr("Zone / property"), tr("Value"), tr("Details")};
+    if (module == "servers")
+        return {tr("Name"), tr("State"), tr("Scope"), tr("Description")};
     if (module == "backups")
         return {tr("Task"),      tr("Scope"),    tr("State"),    tr("Last result"),
                 tr("Exit code"), tr("Finished"), tr("Next run"), tr("Backup integrity")};
@@ -72,7 +81,64 @@ QStringList InventoryProvider::headers(const QString& module) {
 }
 QVector<CenterRecord> InventoryProvider::parse(const QString& module, const QString& tag, const QString& output, QString* error) {
     QVector<CenterRecord> rows;
-    if (module == "backups") {
+    if (module == "network") {
+        if (tag == "dns") {
+            for (const auto& line : output.split('\n', Qt::SkipEmptyParts))
+                rows.append({"dns:" + line, {line, "", "", "", "", ""}, {tr("DNS")}, {}});
+        } else {
+            QJsonParseError e;
+            const auto doc = QJsonDocument::fromJson(output.toUtf8(), &e);
+            if (!doc.isArray()) {
+                *error = tr("Invalid network JSON: %1").arg(e.errorString());
+                return {};
+            }
+            for (const auto& value : doc.array()) {
+                const auto o = value.toObject();
+                if (tag == "addresses") {
+                    QStringList addresses;
+                    for (const auto& v : o["addr_info"].toArray()) {
+                        const auto a = v.toObject();
+                        addresses << a["local"].toString() + "/" + QString::number(a["prefixlen"].toInt());
+                    }
+                    const auto stats = o["stats64"].toObject();
+                    const auto name = o["ifname"].toString();
+                    rows.append({name,
+                                 {name, o["operstate"].toString(), addresses.join(", "), o["address"].toString(),
+                                  QString::number(stats["rx"].toObject()["bytes"].toVariant().toULongLong()),
+                                  QString::number(stats["tx"].toObject()["bytes"].toVariant().toULongLong())},
+                                 {tr("Interfaces")},
+                                 {}});
+                } else
+                    rows.append(
+                        {tag + ":" + QString::number(rows.size()),
+                         {o["dst"].toString("default"), o["gateway"].toString(), o["dev"].toString(), o["protocol"].toString(), "", ""},
+                         {tag},
+                         {}});
+            }
+        }
+    } else if (module == "ports") {
+        for (const auto& line : output.split('\n', Qt::SkipEmptyParts)) {
+            const auto f = line.simplified().split(' ');
+            if (f.size() < 6) {
+                *error = tr("Invalid socket listing");
+                continue;
+            }
+            rows.append({line, {f[0], f[1], f[4], f[5], f.size() > 6 ? f.mid(6).join(' ') : tr("Unknown / not permitted")}, {f[0]}, {}});
+        }
+    } else if (module == "firewall") {
+        QString zone;
+        for (const auto& line : output.split('\n', Qt::SkipEmptyParts)) {
+            if (!line.startsWith(' '))
+                zone = line.trimmed();
+            else
+                rows.append({zone + ":" + QString::number(rows.size()),
+                             {line.trimmed().section(':', 0, 0), line.trimmed().section(':', 1), tr("Read-only")},
+                             {zone},
+                             {}});
+        }
+        if (rows.isEmpty())
+            *error = tr("No firewall zone data returned");
+    } else if (module == "backups") {
         for (const auto& block : output.split("\n\n", Qt::SkipEmptyParts)) {
             QHash<QString, QString> properties;
             for (const auto& line : block.split('\n', Qt::SkipEmptyParts)) {
@@ -161,7 +227,29 @@ QVector<CenterRecord> InventoryProvider::parse(const QString& module, const QStr
 void InventoryProvider::refresh(const QString& module) {
     if (m_pending.contains(module))
         return;
-    if (module == "backups") {
+    if (module == "network")
+        start(module, {{"ip", {"-s", "-j", "address", "show"}, "addresses"},
+                       {"ip", {"-j", "route", "show"}, "IPv4 routes"},
+                       {"ip", {"-6", "-j", "route", "show"}, "IPv6 routes"},
+                       {"nmcli", {"-t", "-f", "GENERAL.DEVICE,IP4.DNS,IP6.DNS", "device", "show"}, "dns"}});
+    else if (module == "ports")
+        start(module, {{"ss", {"-H", "-lntup"}, "ports"}});
+    else if (module == "firewall")
+        start(module, {{"firewall-cmd", {"--list-all-zones"}, "zones"}});
+    else if (module == "servers") {
+        QVector<CenterRecord> rows;
+        for (const auto& service : m_services) {
+            if (!service.cells.join(' ').contains(
+                    QRegularExpression("jellyfin|caddy|smb|samba|sshd|sunshine|mediamtx|autobrr|postgresql|filebrowser|mcp",
+                                       QRegularExpression::CaseInsensitiveOption)))
+                continue;
+            auto r = service;
+            r.cells = {service.cells.value(0), service.cells.value(1), service.meta.value("scope").toString(), service.cells.value(2)};
+            r.groups = {service.meta.value("scope").toString()};
+            rows.append(r);
+        }
+        emit ready(module, headers(module), rows, {});
+    } else if (module == "backups") {
         QVector<InventoryCommand> commands;
         for (const auto& scope : {QString("system"), QString("user")}) {
             QStringList args;

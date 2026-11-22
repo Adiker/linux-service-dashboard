@@ -60,7 +60,7 @@ void MainWindow::buildUi() {
     m_overview = new OverviewPage(m_center, m_stack);
     m_systemd = new SystemdPage(m_center->systemd, m_stack);
     m_docker = new DockerPage(m_center, m_stack);
-    m_vpn = new VpnPage(m_center->network, m_stack);
+    m_vpn = new VpnPage(m_center, m_stack);
     m_mounts = new MountsPage(m_center->mounts, m_stack);
     m_sensors = new SensorsPage(m_center->sensors, m_stack);
     m_disks = new DisksPage(m_center->smart, m_stack);

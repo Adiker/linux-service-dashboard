@@ -1,5 +1,6 @@
 #include "src/parsers/ProviderParsers.h"
 #include "src/services/InventoryProvider.h"
+#include "src/services/NetworkProvider.h"
 #include "src/services/SystemdServiceProvider.h"
 
 #include <QFile>
@@ -30,6 +31,20 @@ class CenterProviderTests : public QObject {
         QCOMPARE(rows[0].cells[3], "-");
         InventoryProvider::parse("timers", "user", "bad", &error);
         QVERIFY(!error.isEmpty());
+    }
+    void escapedNamesAndNetworkData() {
+        // UUID/type/device/state remain separate when a display name contains colons.
+        const auto fields = NetworkProvider::splitNmcli("Office\\: VPN:uuid:wireguard:wg0:activated");
+        QCOMPARE(fields.size(), 5);
+        QCOMPARE(fields[0], "Office: VPN");
+        QString error;
+        const auto rows = InventoryProvider::parse(
+            "network", "addresses",
+            R"([{"ifname":"eth0","operstate":"UP","addr_info":[{"local":"192.0.2.5","prefixlen":24}],"stats64":{"rx":{"bytes":25},"tx":{"bytes":50}}}])",
+            &error);
+        QCOMPARE(rows.size(), 1);
+        QCOMPARE(rows[0].cells[2], "192.0.2.5/24");
+        QCOMPARE(rows[0].cells[4], "25");
     }
     void backupOutcomeIsNotIntegrity() {
         QString error;

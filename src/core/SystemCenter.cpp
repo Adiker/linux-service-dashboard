@@ -2,6 +2,7 @@
 
 #include "CommandRunner.h"
 
+#include <QCryptographicHash>
 #include <QDesktopServices>
 #include <QSettings>
 #include <QStandardPaths>
@@ -75,8 +76,11 @@ SystemCenter::SystemCenter(QObject* parent) : QObject(parent) {
             records.append({r.path, {r.path, r.model, r.size}, {}, {}});
         publish("smart", {tr("Device"), tr("Model"), tr("Size")}, records, error);
     });
-    connect(&network, &NetworkProvider::vpnStatusReady, this, [this](const VpnStatus& r, const QString& error) {
-        publish("vpn", {tr("Name"), tr("State"), tr("Device")}, {{r.device, {r.connectionName, r.state, r.device}, {}, {}}}, error);
+    connect(&network, &NetworkProvider::vpnConnectionsReady, this, [this](const auto& rows, const QString& error) {
+        QVector<CenterRecord> records;
+        for (const auto& r : rows)
+            records.append({r.id.isEmpty() ? r.device : r.id, {r.name, r.state, r.type, r.device, r.source}, {}, {}});
+        publish("vpn", {tr("Name"), tr("State"), tr("Type"), tr("Interface"), tr("Evidence source")}, records, error);
     });
     connect(&systemd, &SystemdServiceProvider::logsReady, this, &SystemCenter::textReady);
     connect(&docker, &DockerProvider::textReady, this, &SystemCenter::textReady);
@@ -98,6 +102,7 @@ void SystemCenter::publish(const QString& id, const QStringList& headers, const 
         inventory.setServices(rows);
         refresh("backups");
         refresh("sync");
+        refresh("servers");
     }
     if (error.isEmpty() && id == "timers") {
         inventory.setTimers(rows);
@@ -167,6 +172,14 @@ bool SystemCenter::isFavorite(const QString& module, const QString& id) const {
     return QSettings().value("favorites/ids").toStringList().contains(module + ":" + id);
 }
 void SystemCenter::open(const CenterRecord& r) {
+    const auto key = "panels/" + QString::fromLatin1(QCryptographicHash::hash(r.id.toUtf8(), QCryptographicHash::Sha256).toHex());
+    const QUrl panel(QSettings().value(key).toString());
+    if (panel.isValid() && !panel.host().isEmpty() && QStringList{"http", "https"}.contains(panel.scheme()) && panel.userInfo().isEmpty() &&
+        !panel.hasQuery() && !panel.hasFragment()) {
+        QDesktopServices::openUrl(panel);
+        return;
+    }
+
     if (r.meta.contains("path"))
         QDesktopServices::openUrl(QUrl::fromLocalFile(r.meta.value("path").toString()));
 }
