@@ -23,9 +23,9 @@ makedepends=('cmake')
 # of GitHub's archive of that commit. The archive root is ${pkgname}-${_commit}.
 # When a release tag is published, switch source to refs/tags/v$pkgver.tar.gz
 # and refresh sha256sums with updpkgsums or `makepkg -g`.
-_commit=REPLACE_WITH_COMMIT
+_commit=518a2ee02c839de5d2c93e546473597cbf46af9d
 source=("$pkgname-$pkgver.tar.gz::$url/archive/${_commit}.tar.gz")
-sha256sums=('REPLACE_WITH_SHA256')
+sha256sums=('7e795f87af720a167f46429592526bbc0cf7b140678892fc9c10f7f01d9efd1f')
 
 build() {
   cmake -S "$pkgname-$_commit" -B build \
