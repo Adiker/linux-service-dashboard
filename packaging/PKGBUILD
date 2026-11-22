@@ -5,7 +5,8 @@ pkgrel=1
 pkgdesc="Local Qt6 dashboard for systemd, Docker, VPN, mounts, sensors, and SMART"
 arch=('x86_64')
 url="https://github.com/Adiker/linux-service-dashboard"
-license=('MIT')
+# Upstream has not added a license file. Replace this once one is published.
+license=('LicenseRef-unknown')
 depends=(
   'qt6-base'
   'polkit'
@@ -17,15 +18,19 @@ depends=(
 optdepends=(
   'docker: Docker page support'
 )
-makedepends=('cmake' 'gcc')
-source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-# Pin the release tarball checksum before publishing: run `updpkgsums` (or
-# `makepkg -g`) once the v$pkgver tag exists and replace SKIP with the digest so
-# makepkg verifies source integrity. SKIP disables that check.
-sha256sums=('SKIP')
+makedepends=('cmake')
+# No v0.1.0 tag exists yet. Pin the commit this package builds and the SHA-256
+# of GitHub's archive of that commit. The archive root is ${pkgname}-${_commit}.
+# When a release tag is published, switch source to refs/tags/v$pkgver.tar.gz
+# and refresh sha256sums with updpkgsums or `makepkg -g`.
+_commit=REPLACE_WITH_COMMIT
+source=("$pkgname-$pkgver.tar.gz::$url/archive/${_commit}.tar.gz")
+sha256sums=('REPLACE_WITH_SHA256')
 
 build() {
-  cmake -S "$pkgname-$pkgver" -B build -DCMAKE_BUILD_TYPE=Release -DLSD_INSTALL_POLKIT_POLICY_SYSTEM=ON
+  cmake -S "$pkgname-$_commit" -B build \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DLSD_INSTALL_POLKIT_POLICY_SYSTEM=ON
   cmake --build build -j"$(nproc)"
 }
 

@@ -218,9 +218,9 @@ This installs:
 
 ### Distro packaging
 
-- **Arch Linux:** `packaging/PKGBUILD` builds a system package with polkit policy installed to `/usr/share/polkit-1/actions`.
-- **Debian/RPM:** CPack generators are enabled in CMake. Debian packages use `dpkg-shlibdeps` for Qt runtime libraries plus explicit dependencies on CLI tools (`smartmontools`, `network-manager`, etc.). After configuring a Release build, run `cpack -G DEB` or `cpack -G RPM` from the build directory.
-- **Builder prerequisites:** `cpack -G DEB` shells out to `dpkg-shlibdeps` and `file`, so the build host needs `dpkg-dev` and `file` installed (they are present by default on most Debian/Ubuntu systems but missing on minimal CI images). `cpack -G RPM` requires `rpmbuild` from the `rpm` package.
+- **Arch Linux:** `packaging/PKGBUILD` builds a system package with polkit policy installed to `/usr/share/polkit-1/actions`. `source` is a GitHub archive of a pinned commit (no `v0.1.0` tag exists yet) and `sha256sums` is the digest of that archive, so `makepkg` rejects a changed download. GitHub extracts the archive to `linux-service-dashboard-<commit>`.
+- **Debian/RPM:** CPack generators are enabled in CMake. Debian packages use `dpkg-shlibdeps` for Qt runtime libraries (`libqt6widgets6` or `libqt6widgets6t64`, whichever the builder links) plus explicit dependencies on CLI tools (`smartmontools`, `network-manager`, `polkitd`, `pkexec`). `policykit-1` is not used: Debian 13 dropped that transitional package. RPM requires `qt6-qtbase-gui` because that is the Fedora package that ships Qt Widgets. After configuring a Release build, run `cpack -G DEB` or `cpack -G RPM` from the build directory.
+- **Builder prerequisites:** `cpack -G DEB` shells out to `dpkg-shlibdeps` and `file`, so the build host needs `dpkg-dev` and `file` installed (they are present by default on most Debian/Ubuntu systems but missing on minimal CI images). Configuring on a Debian-family host warns when either tool is missing. `cpack -G RPM` requires `rpmbuild` from the `rpm` package. The repository has no license file, so the Arch recipe uses `LicenseRef-unknown` and the RPM license field is `Unknown`.
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
