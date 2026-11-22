@@ -15,20 +15,28 @@
 #include <QLineEdit>
 #include <QMenu>
 #include <QMessageBox>
+#include <QPainter>
+#include <QScreen>
 #include <QScrollArea>
 #include <QSettings>
 #include <QShortcut>
+#include <QSignalBlocker>
 #include <QStackedWidget>
 #include <QStyle>
 #include <QSystemTrayIcon>
+#include <QTableView>
 #include <QTimer>
 #include <QTreeWidget>
 #include <QTreeWidgetItemIterator>
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
+    m_systemPalette = QApplication::palette();
     setWindowTitle(QStringLiteral("Linux Service Dashboard"));
     setWindowIcon(serviceDashboardIcon());
-    resize(1200, 800);
+    const auto available =
+        QGuiApplication::primaryScreen() ? QGuiApplication::primaryScreen()->availableGeometry().size() : QSize(1200, 800);
+    resize(qMin(1200, int(available.width() * .9)), qMin(800, int(available.height() * .9)));
+    setMinimumSize(760, 540);
     m_center = new SystemCenter(this);
     buildUi();
     buildTray();
@@ -51,7 +59,10 @@ void MainWindow::buildUi() {
     m_sidebar = new QTreeWidget;
     m_sidebar->setObjectName("sidebar");
     m_sidebar->setHeaderHidden(true);
-    m_sidebar->setMinimumWidth(210);
+    m_sidebar->setIndentation(12);
+    m_sidebar->setWordWrap(true);
+    m_sidebar->setTextElideMode(Qt::ElideNone);
+    m_sidebar->setMinimumWidth(230);
     m_sidebar->setMaximumWidth(300);
     layout->addWidget(m_sidebar);
     m_stack = new QStackedWidget;
@@ -72,9 +83,21 @@ void MainWindow::buildUi() {
                {"mounts", m_mounts},     {"sensors", m_sensors}, {"smart", m_disks},   {"settings", settingsScroll}};
     QHash<QString, QTreeWidgetItem*> groups;
     for (const auto& module : centerModules()) {
-        if (!groups.contains(module.group))
-            groups[module.group] = new QTreeWidgetItem(m_sidebar, {module.group});
-        auto* entry = new QTreeWidgetItem(groups[module.group], {module.title});
+        QTreeWidgetItem* entry = nullptr;
+        if (module.id == "overview")
+            entry = new QTreeWidgetItem(m_sidebar, {module.title});
+        else {
+            if (!groups.contains(module.group)) {
+                auto* group = new QTreeWidgetItem(m_sidebar, {module.group});
+                group->setToolTip(0, module.group);
+                auto font = group->font(0);
+                font.setBold(true);
+                group->setFont(0, font);
+                groups[module.group] = group;
+            }
+            entry = new QTreeWidgetItem(groups[module.group], {module.title});
+        }
+        entry->setToolTip(0, module.title);
         entry->setData(0, Qt::UserRole, module.id);
         if (!m_pages.contains(module.id))
             m_pages[module.id] = new CenterPage(module.id, m_center, m_stack);
@@ -85,7 +108,7 @@ void MainWindow::buildUi() {
     m_searchPage = new CenterPage("search", m_center, m_stack);
     m_stack->addWidget(m_searchPage);
     connect(m_searchPage, &CenterPage::navigate, this, &MainWindow::navigate);
-    m_sidebar->expandAll();
+    m_sidebar->collapseAll();
     connect(m_sidebar, &QTreeWidget::currentItemChanged, this, [this](auto* item) {
         if (!item)
             return;
@@ -105,6 +128,10 @@ void MainWindow::buildUi() {
             navigate("overview");
             return;
         }
+        if (search->text().trimmed().size() >= 2)
+            for (const auto& id : {QString("apps"), QString("packages")})
+                if (!m_center->snapshot(id).lastSuccess.isValid())
+                    m_center->refresh(id);
         m_searchPage->setSearch(search->text());
         m_stack->setCurrentWidget(m_searchPage);
     });
@@ -132,12 +159,40 @@ void MainWindow::buildUi() {
 void MainWindow::navigate(const QString& module, const QString& id) {
     if (!m_pages.contains(module) || !centerModuleEnabled(module))
         return;
+    QTreeWidgetItemIterator nav(m_sidebar);
+    while (*nav) {
+        if ((*nav)->data(0, Qt::UserRole).toString() == module) {
+            for (int group = 0; group < m_sidebar->topLevelItemCount(); ++group) {
+                auto* item = m_sidebar->topLevelItem(group);
+                if (item != (*nav)->parent())
+                    item->setExpanded(false);
+            }
+            const QSignalBlocker block(m_sidebar);
+            m_sidebar->setCurrentItem(*nav);
+            if ((*nav)->parent())
+                (*nav)->parent()->setExpanded(true);
+            break;
+        }
+        ++nav;
+    }
+    if (module == "systemd" && !id.isEmpty())
+        m_systemd->selectRecord(id);
     m_stack->setCurrentWidget(m_pages[module]);
     if (auto* page = qobject_cast<CenterPage*>(m_pages[module])) {
         page->render();
         if (!id.isEmpty())
             page->selectRecord(id);
     }
+    if (!id.isEmpty())
+        if (auto* table = m_pages[module]->findChild<QTableView*>()) {
+            for (int row = 0; row < table->model()->rowCount(); ++row)
+                if (table->model()->index(row, 0).data(Qt::UserRole).toString() == id) {
+                    const auto index = table->model()->index(row, 0);
+                    table->setCurrentIndex(index);
+                    table->scrollTo(index);
+                    break;
+                }
+        }
     if (module != "overview" && module != "settings")
         m_center->refresh(module);
 }
@@ -145,8 +200,8 @@ void MainWindow::navigate(const QString& module, const QString& id) {
 void MainWindow::buildTray() {
     m_tray = new QSystemTrayIcon(serviceDashboardIcon(), this);
     auto* menu = new QMenu(this);
-    auto* showAction = menu->addAction(QStringLiteral("Show Dashboard"));
-    auto* refreshAction = menu->addAction(QStringLiteral("Refresh Now"));
+    auto* showAction = menu->addAction(tr("Show Dashboard"));
+    auto* refreshAction = menu->addAction(tr("Refresh Now"));
     auto* aboutAction = menu->addAction(tr("About"));
     connect(aboutAction, &QAction::triggered, this, [this]() {
         QMessageBox::about(this, tr("About Linux Service Dashboard"),
@@ -154,7 +209,7 @@ void MainWindow::buildTray() {
                                .arg(QCoreApplication::applicationVersion(), QString::fromLatin1(qVersion())));
     });
     menu->addSeparator();
-    auto* quitAction = menu->addAction(QStringLiteral("Quit"));
+    auto* quitAction = menu->addAction(tr("Quit"));
     connect(showAction, &QAction::triggered, this, [this]() {
         showNormal();
         raise();
@@ -171,6 +226,32 @@ void MainWindow::buildTray() {
     });
     m_tray->setContextMenu(menu);
     m_tray->setToolTip(QStringLiteral("Linux Service Dashboard"));
+    connect(m_center, &SystemCenter::changed, this, [this](const QString&) {
+        const int count = m_center->attentionCount();
+        m_tray->setToolTip(tr("Linux Service Dashboard · %1 items require attention").arg(count));
+        auto pixmap = serviceDashboardIcon().pixmap(32, 32);
+        if (count > 0) {
+            QPainter painter(&pixmap);
+            painter.setRenderHint(QPainter::Antialiasing);
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(QColor("#b42318"));
+            painter.drawEllipse(QRectF(14, 14, 18, 18));
+            painter.setPen(Qt::white);
+            auto font = painter.font();
+            font.setPixelSize(10);
+            font.setBold(true);
+            painter.setFont(font);
+            painter.drawText(QRectF(14, 14, 18, 18), Qt::AlignCenter, count > 9 ? "9+" : QString::number(count));
+        }
+        m_tray->setIcon(QIcon(pixmap));
+        const auto now = QDateTime::currentSecsSinceEpoch();
+        if (count > m_lastAttention && now - m_lastNotification >= 60 && QSettings().value("notifications/enabled", false).toBool()) {
+            m_lastNotification = now;
+            m_tray->showMessage(tr("System needs attention"), tr("%1 items require attention. Open the dashboard for details.").arg(count),
+                                QSystemTrayIcon::Warning);
+        }
+        m_lastAttention = count;
+    });
     m_tray->show();
 }
 
@@ -194,6 +275,8 @@ void MainWindow::applyModuleVisibility() {
     }
     for (int i = 0; i < m_sidebar->topLevelItemCount(); ++i) {
         auto* group = m_sidebar->topLevelItem(i);
+        if (!group->data(0, Qt::UserRole).toString().isEmpty())
+            continue;
         bool any = false;
         for (int j = 0; j < group->childCount(); ++j)
             any = any || !group->child(j)->isHidden();
@@ -207,7 +290,7 @@ void MainWindow::applyModuleVisibility() {
 void MainWindow::applyTheme() {
     QSettings settings;
     const QString preference = settings.value(QStringLiteral("theme/preference"), QStringLiteral("System")).toString();
-    const bool systemDark = palette().color(QPalette::Window).lightness() < 128;
+    const bool systemDark = m_systemPalette.color(QPalette::Window).lightness() < 128;
     const bool oled = preference == QStringLiteral("OLED");
     const bool dark = oled || preference == QStringLiteral("Dark") || (preference == QStringLiteral("System") && systemDark);
 
@@ -220,6 +303,23 @@ void MainWindow::applyTheme() {
     const QString muted = oled ? QStringLiteral("#a7adb4") : (dark ? QStringLiteral("#aeb8c2") : QStringLiteral("#5f6b78"));
     const QString accent = oled ? QStringLiteral("#32d296") : (dark ? QStringLiteral("#5db6a3") : QStringLiteral("#2d7f86"));
     const QString accentSoft = oled ? QStringLiteral("#113428") : (dark ? QStringLiteral("#243f3f") : QStringLiteral("#dcefeb"));
+    QPalette colors = m_systemPalette;
+    colors.setColor(QPalette::Window, QColor(window));
+    colors.setColor(QPalette::WindowText, QColor(text));
+    colors.setColor(QPalette::Base, QColor(surface));
+    colors.setColor(QPalette::AlternateBase, QColor(surfaceAlt));
+    colors.setColor(QPalette::Text, QColor(text));
+    colors.setColor(QPalette::Button, QColor(surface));
+    colors.setColor(QPalette::ButtonText, QColor(text));
+    colors.setColor(QPalette::ToolTipBase, QColor(surface));
+    colors.setColor(QPalette::ToolTipText, QColor(text));
+    colors.setColor(QPalette::Highlight, QColor(accent));
+    colors.setColor(QPalette::HighlightedText, dark ? QColor("#101010") : QColor("#ffffff"));
+    colors.setColor(QPalette::Mid, QColor(border));
+    colors.setColor(QPalette::Disabled, QPalette::Text, QColor(muted));
+    colors.setColor(QPalette::Disabled, QPalette::WindowText, QColor(muted));
+    colors.setColor(QPalette::Disabled, QPalette::ButtonText, QColor(muted));
+    QApplication::setPalette(colors);
     qApp->setStyleSheet(QStringLiteral(R"(
         QWidget {
             font-size: 10.5pt;
@@ -239,8 +339,8 @@ void MainWindow::applyTheme() {
         }
         QTreeWidget#sidebar::item {
             border-radius: 6px;
-            padding: 10px 12px;
-            margin: 3px 0;
+            padding: 6px 8px;
+            margin: 1px 0;
             color: %7;
             border: 1px solid transparent;
         }
@@ -268,8 +368,9 @@ void MainWindow::applyTheme() {
             background: %3;
             border: 1px solid %5;
             border-radius: 8px;
-            padding: 14px;
+            padding: 0px;
         }
+        QLabel#cardNote { font-size: 9pt; color: %7; }
         QLabel#cardValue {
             font-size: 18pt;
             font-weight: 700;

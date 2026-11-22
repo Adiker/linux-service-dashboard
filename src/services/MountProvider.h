@@ -14,6 +14,7 @@ class MountProvider : public QObject {
     void unmount(const QString& target);
 
   signals:
+    void actionCompleted(bool success);
     void mountsReady(const QVector<MountRow>& rows, const QString& error);
     void actionFinished(const QString& message, const QString& details);
 

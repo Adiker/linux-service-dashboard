@@ -20,6 +20,7 @@ class SystemdPage : public QWidget {
   public slots:
     void refresh();
     void reloadGroupSelector();
+    void selectRecord(const QString& id);
 
   private:
     ServiceRow selectedRow() const;

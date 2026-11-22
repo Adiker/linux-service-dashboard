@@ -119,6 +119,8 @@ QVector<DockerContainerRow> parseDockerContainerLines(const QString& output, QSt
         row.ports = object.value(QStringLiteral("Ports")).toString();
         row.created = object.value(QStringLiteral("CreatedAt")).toString(object.value(QStringLiteral("Created")).toString());
         row.id = object.value(QStringLiteral("ID")).toString();
+        row.project = object.value("ComposeProject").toString();
+        row.composeService = object.value("ComposeService").toString();
         const auto labels = object.value("Labels").toString().split(',');
         for (const auto& label : labels) {
             if (label.startsWith("com.docker.compose.project="))
@@ -210,6 +212,12 @@ QVector<SensorRow> parseSensorsJson(const QString& output, QString* error) {
                 }
             }
             if (hasInput) {
+                // libsensors JSON frequencies are in Hz; display them consistently in MHz.
+                if (inputKey.startsWith("freq")) {
+                    input /= 1e6;
+                    high /= 1e6;
+                    critical /= 1e6;
+                }
                 const QString unit = inputKey.startsWith("temp")    ? "°C"
                                      : inputKey.startsWith("fan")   ? "RPM"
                                      : inputKey.startsWith("in")    ? "V"

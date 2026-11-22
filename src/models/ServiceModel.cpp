@@ -17,6 +17,8 @@ QVariant ServiceModel::data(const QModelIndex& index, int role) const {
         return {};
     }
     const auto& row = m_rows.at(index.row());
+    if (role == Qt::UserRole)
+        return (row.scope == ServiceScope::User ? QString("user:") : QString("system:")) + row.unit;
     if (role == Qt::DisplayRole) {
         switch (index.column()) {
         case 0:
@@ -39,13 +41,7 @@ QVariant ServiceModel::data(const QModelIndex& index, int role) const {
             return {};
         }
     }
-    if (role == Qt::ForegroundRole && index.column() == 2) {
-        if (row.activeState == QStringLiteral("active"))
-            return QBrush(QColor(QStringLiteral("#8fd694")));
-        if (row.activeState == QStringLiteral("failed"))
-            return QBrush(QColor(QStringLiteral("#ff8a80")));
-        return QBrush(QColor(QStringLiteral("#f0c36d")));
-    }
+
     return {};
 }
 
@@ -54,14 +50,8 @@ QVariant ServiceModel::headerData(int section, Qt::Orientation orientation, int 
         return {};
     }
     static const QStringList headers{
-        QStringLiteral("Unit"),
-        QStringLiteral("Load state"),
-        QStringLiteral("Active state"),
-        QStringLiteral("Sub state"),
-        QStringLiteral("Description"),
-        QStringLiteral("Last refresh"),
-        tr("Scope"),
-        tr("Unit file state"),
+        tr("Unit"),        tr("Load state"),   tr("Active state"), tr("Sub state"),
+        tr("Description"), tr("Last refresh"), tr("Scope"),        tr("Unit file state"),
     };
     return headers.value(section);
 }

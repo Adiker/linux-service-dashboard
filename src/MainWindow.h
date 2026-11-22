@@ -68,4 +68,7 @@ class MainWindow : public QMainWindow {
     QHash<QString, QWidget*> m_pages;
     QTimer* m_metricTimer = nullptr;
     void navigate(const QString& module, const QString& id = {});
+    int m_lastAttention = 0;
+    qint64 m_lastNotification = 0;
+    QPalette m_systemPalette;
 };

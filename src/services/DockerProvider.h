@@ -8,18 +8,19 @@
 class DockerProvider : public QObject {
     Q_OBJECT
 
-public:
-    explicit DockerProvider(QObject *parent = nullptr);
+  public:
+    explicit DockerProvider(QObject* parent = nullptr);
     void refreshContainers();
-    void containerLogs(const QString &container);
-    void inspectContainer(const QString &container);
-    void controlContainer(const QString &container, const QString &action);
+    void containerLogs(const QString& container);
+    void inspectContainer(const QString& container);
+    void controlContainer(const QString& container, const QString& action);
 
-signals:
-    void containersReady(const QVector<DockerContainerRow> &rows, const QString &error);
-    void textReady(const QString &title, const QString &text);
-    void actionFinished(const QString &message, const QString &details);
+  signals:
+    void actionCompleted(bool success);
+    void containersReady(const QVector<DockerContainerRow>& rows, const QString& error);
+    void textReady(const QString& title, const QString& text);
+    void actionFinished(const QString& message, const QString& details);
 
-private:
+  private:
     CommandRunner m_runner;
 };

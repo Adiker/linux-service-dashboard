@@ -24,13 +24,18 @@ int main(int argc, char* argv[]) {
     QCoreApplication::setApplicationName("Linux Service Dashboard");
     QCoreApplication::setApplicationVersion(QStringLiteral(LSD_VERSION " (" LSD_REVISION ")"));
     QGuiApplication::setDesktopFileName(QStringLiteral("io.github.Adiker.LinuxServiceDashboard"));
+    const QPalette systemPalette = QApplication::palette();
     QApplication::setStyle(QStringLiteral("Fusion"));
+    QApplication::setPalette(systemPalette);
     QApplication::setWindowIcon(serviceDashboardIcon());
 
     QTranslator translator, qtTranslator;
     const QString preference = QSettings().value("ui/language", "System").toString();
     const bool polish = preference == "pl" || (preference == "System" && QLocale::system().language() == QLocale::Polish);
+    if (preference == "en")
+        QLocale::setDefault(QLocale::English);
     if (polish) {
+        QLocale::setDefault(QLocale::Polish);
         if (translator.load(":/i18n/dashboard_pl.qm"))
             app.installTranslator(&translator);
         if (qtTranslator.load("qtbase_pl", QLibraryInfo::path(QLibraryInfo::TranslationsPath)))

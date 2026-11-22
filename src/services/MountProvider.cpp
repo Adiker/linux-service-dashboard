@@ -71,6 +71,7 @@ MountProvider::MountProvider(QObject* parent) : QObject(parent) {
             }
             emit mountsReady(rows, error);
         } else if (context.startsWith(QStringLiteral("mount-unmount:"))) {
+            emit actionCompleted(result.ok());
             const QString target = context.mid(QStringLiteral("mount-unmount:").size());
             emit actionFinished(result.ok() ? QStringLiteral("Unmounted %1.").arg(target)
                                             : QStringLiteral("Could not unmount %1.").arg(target),

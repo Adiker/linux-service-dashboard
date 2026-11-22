@@ -22,6 +22,7 @@ class SettingsPage : public QWidget {
   private:
     QHash<QString, QCheckBox*> m_extraModules;
     QComboBox* m_language = nullptr;
+    QCheckBox* m_notifications = nullptr;
     void load();
     void save();
     void reloadGroups();

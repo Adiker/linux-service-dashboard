@@ -1,16 +1,22 @@
-# System center delivery roadmap
+# System center delivery
 
-The MVP already includes parser tests, module toggles, service groups, DBus providers,
-mount profiles, table persistence, and opt-in SMART history/scheduling. These are baseline features.
+The seven implementation increments are complete in the system-center PR series:
 
-1. Foundation: identifiable builds and current documentation.
-2. Navigation/data: grouped modules, shared snapshots, search, Polish/English UI.
-3. Services/containers: both systemd scopes, tasks, Compose hierarchy and logs.
-4. Data protection: backup outcomes, schedules, synchronization, local/cloud mounts.
-5. Network/server views: interfaces, tunnels, read-only firewall/ports, server shortcuts.
-6. Hardware/software: metrics/devices, XDG applications, package and VM inventories.
-7. Release: diagnostics, bounded events, optional notifications, regression and platform checks.
+1. Identifiable builds, current baseline and documentation.
+2. Grouped module navigation, shared snapshots, search, favorites and language infrastructure.
+3. Scoped systemd services/tasks and Compose hierarchy/inventories.
+4. Backup evidence, schedules, synchronization and cloud/local mounts.
+5. Multi-source tunnel evidence, network/firewall/ports and shared local-server views.
+6. Hardware/session metrics, XDG/native/Flatpak catalogs and VM/tool inventories.
+7. Bounded events, diagnostic projection, notifications, full UI translations, palette/layout refinement and regression/platform validation.
 
-Each increment targets main in a separate PR. Dependent increments include preceding
-commits until those PRs merge; review the increment commit separately in that case.
-No automatic privileged configuration, package removal, volume pruning, or backup restore.
+Each PR targets main. Dependent increments include previous commits until preceding
+PRs merge; inspect the increment commits for focused review. Preserve ancestry with
+ordered merge commits, or update later branches against main when using squash merges.
+No published history rewrite or branch deletion is needed.
+
+Further work is deliberately separate: native synchronization progress, backup verification,
+advanced hardware configuration, remote monitoring and additional distro packaging.
+Those capabilities need their own interfaces and acceptance criteria. Current views do
+not infer successful transfers, verified backups, reachable VPNs or healthy VM guests
+from process/service presence.

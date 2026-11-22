@@ -1,6 +1,7 @@
 #include "InventoryProvider.h"
 
 #include "SystemInventory.h"
+#include "ToolLauncher.h"
 
 #include <QDateTime>
 #include <QDir>
@@ -18,6 +19,12 @@
 
 InventoryProvider::InventoryProvider(QObject* parent) : QObject(parent) {
     connect(&m_runner, &CommandRunner::commandFinished, this, [this](const auto&, const CommandResult& r, const QString& context) {
+        if (context.startsWith("desktop-launch:")) {
+            emit launchCompleted(r.ok());
+            if (!r.ok())
+                emit launchFailed(r.standardError);
+            return;
+        }
         const auto module = context.section(':', 0, 0), tag = context.section(':', 1);
         QString error;
         if (r.ok())
@@ -31,7 +38,7 @@ InventoryProvider::InventoryProvider(QObject* parent) : QObject(parent) {
                 while (row.cells.size() < 8)
                     row.cells.append("-");
                 row.cells[6] = tr("Unknown");
-                for (const auto& timer : m_timers)
+                for (const auto& timer : (centerModuleEnabled("timers") ? m_timers : QVector<CenterRecord>{}))
                     if (timer.meta.value("scope") == row.meta.value("scope") && timer.meta.value("activates") == row.meta.value("unit"))
                         row.cells[6] = timer.cells.value(2);
             }
@@ -245,6 +252,8 @@ QVector<CenterRecord> InventoryProvider::parse(const QString& module, const QStr
 void InventoryProvider::refresh(const QString& module) {
     if (m_pending.contains(module))
         return;
+    if (QStringList{"sync", "servers", "backups"}.contains(module) && !m_serviceRead && centerModuleEnabled("systemd"))
+        return;
     if (QStringList{"apps", "tools", "metrics", "vms"}.contains(module)) {
         m_pending[module] = 1;
         auto* watcher = new QFutureWatcher<CenterSnapshot>(this);
@@ -278,9 +287,9 @@ void InventoryProvider::refresh(const QString& module) {
             commands.append({"pacman", {"-Q"}, "pacman"});
             commands.append({"pacman", {"-Qm"}, "foreign"});
         } else if (!QStandardPaths::findExecutable("dpkg-query").isEmpty())
-            commands.append({"dpkg-query", {"-W", "-f=${Package}\t${Version}\n"}, "dpkg"});
+            commands.append({"dpkg-query", {"-W", "-f=${db:Status-Status}\t${binary:Package}\t${Version}\n"}, "dpkg"});
         else if (!QStandardPaths::findExecutable("rpm").isEmpty())
-            commands.append({"rpm", {"-qa", "--qf", "%{NAME}\t%{VERSION}-%{RELEASE}\n"}, "rpm"});
+            commands.append({"rpm", {"-qa", "--qf", "%{NAME}\t%{VERSION}-%{RELEASE}\t%{ARCH}\n"}, "rpm"});
         if (!QStandardPaths::findExecutable("flatpak").isEmpty())
             commands.append({"flatpak", {"list", "--columns=application,name,version,installation,ref"}, "flatpak"});
         if (commands.isEmpty()) {
@@ -339,7 +348,17 @@ void InventoryProvider::refresh(const QString& module) {
             r.groups = {service.meta.value("scope").toString()};
             rows.append(r);
         }
-        emit ready(module, headers(module), rows, {});
+        for (const auto& container : (centerModuleEnabled("docker") ? m_containers : QVector<CenterRecord>{})) {
+            auto r = container;
+            r.cells = {container.cells.value(0), container.cells.value(1), "Docker",
+                       container.cells.value(3) + " | " + container.cells.value(4)};
+            r.groups = {"Docker"};
+            rows.append(r);
+        }
+        emit ready(module, headers(module), rows,
+                   !centerModuleEnabled("systemd")
+                       ? tr("Service module disabled; state is unknown")
+                       : QStringList{m_serviceError, centerModuleEnabled("docker") ? m_containerError : QString()}.join("\n").trimmed());
     } else if (module == "backups") {
         QVector<InventoryCommand> commands;
         for (const auto& scope : {QString("system"), QString("user")}) {
@@ -364,7 +383,7 @@ void InventoryProvider::refresh(const QString& module) {
                          {tr("Backup tasks"), "-", tr("No detected task"), tr("Unknown"), "-", "-", tr("Unknown"), tr("Not verified")},
                          {},
                          {}}},
-                       {});
+                       !centerModuleEnabled("systemd") ? tr("Service module disabled; state is unknown") : m_serviceError);
         } else
             start(module, commands);
     } else if (module == "snapshots") {
@@ -399,7 +418,8 @@ void InventoryProvider::refresh(const QString& module) {
             }
         if (rows.isEmpty())
             rows.append({"sync-unknown", {tr("Synchronization"), tr("No detected service"), "-", tr("Unknown")}, {}, {}});
-        emit ready(module, headers(module), rows, {});
+        emit ready(module, headers(module), rows,
+                   !centerModuleEnabled("systemd") ? tr("Service module disabled; state is unknown") : m_serviceError);
     } else if (module == "timers" || module == "sockets") {
         const auto action = module == "timers" ? "list-timers" : "list-sockets";
         start(module, {{"systemctl", {action, "--all", "--no-pager", "--output=json"}, "system"},
@@ -430,4 +450,14 @@ void InventoryProvider::refresh(const QString& module) {
         }
         emit ready(module, headers(module), rows, {});
     }
+}
+
+void InventoryProvider::launchDesktop(const QString& file) {
+    const auto error = ToolLauncher::desktopError(file);
+    if (!error.isEmpty()) {
+        emit launchFailed(error);
+        emit launchCompleted(false);
+        return;
+    }
+    m_runner.run("gio", {"launch", file}, 10000, "desktop-launch:" + file);
 }

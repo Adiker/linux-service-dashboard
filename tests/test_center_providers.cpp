@@ -43,12 +43,28 @@ class CenterProviderTests : public QObject {
             else
                 QCOMPARE(row.unit, "°C");
         }
+        const auto frequency =
+            ProviderParsers::parseSensorsJson(R"({"chip":{"Clock":{"freq1_input":1500000000,"freq1_max":2000000000}}})", &error);
+        QCOMPARE(frequency.size(), 1);
+        QCOMPARE(frequency[0].current, 1500.0);
+        QCOMPARE(frequency[0].high, 2000.0);
+        QCOMPARE(frequency[0].unit, "MHz");
         auto packages = SystemInventory::parse("packages", "foreign", "custom-package 1.2.3\n", &error);
         QCOMPARE(packages.size(), 1);
         QVERIFY(packages[0].meta.value("foreign").toBool());
         const auto power = SystemInventory::parse("power", "UPower", "  serial: do-not-retain\n  percentage: 90%\n", &error);
         QCOMPARE(power.size(), 1);
         QVERIFY(!power[0].cells.join(' ').contains("do-not-retain"));
+    }
+    void nativePackageIdentities() {
+        QString error;
+        const auto deb = SystemInventory::parse(
+            "packages", "dpkg", "installed\tlib:amd64\t1.0\ninstalled\tlib:i386\t1.0\nconfig-files\tremoved\t1.0\n", &error);
+        QCOMPARE(deb.size(), 2);
+        QVERIFY(deb[0].id != deb[1].id);
+        const auto rpm = SystemInventory::parse("packages", "rpm", "kernel\t1.0\tx86_64\nkernel\t2.0\tx86_64\n", &error);
+        QCOMPARE(rpm.size(), 2);
+        QVERIFY(rpm[0].id != rpm[1].id);
     }
     void composeAndInvalidJson() {
         QString error;
@@ -59,6 +75,13 @@ class CenterProviderTests : public QObject {
         QCOMPARE(rows[0].project, "project");
         QCOMPARE(rows[0].composeService, "web");
         QCOMPARE(rows[0].health, "unhealthy");
+        const auto projected = ProviderParsers::parseDockerContainerLines(
+            R"json({"ID":"abc","Names":"example","ComposeProject":"project","ComposeService":"web","State":"running","Status":"Up (healthy)"})json",
+            &error);
+        QCOMPARE(projected.size(), 1);
+        QCOMPARE(projected[0].project, "project");
+        QCOMPARE(projected[0].composeService, "web");
+        QCOMPARE(projected[0].health, "healthy");
         ProviderParsers::parseDockerContainerLines("broken", &error);
         QVERIFY(!error.isEmpty());
     }

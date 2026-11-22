@@ -1,7 +1,9 @@
 #include "CenterTypes.h"
 
 #include <QCoreApplication>
+#include <QFileInfo>
 #include <QSettings>
+#include <QStandardPaths>
 
 QVector<ModuleDescriptor> centerModules() {
     const auto t = [](const char* s) { return QCoreApplication::translate("Modules", s); };
@@ -57,4 +59,9 @@ QString centerTitle(const QString& id) {
 }
 bool centerModuleEnabled(const QString& id) {
     return id == "overview" || id == "settings" || QSettings().value("modules/" + id, true).toBool();
+}
+
+bool centerModuleToolAvailable(const ModuleDescriptor& module) {
+    return module.tool.isEmpty() || !QStandardPaths::findExecutable(module.tool).isEmpty() ||
+           (module.id == "snapshots" && QFileInfo::exists("/opt/KopiaUI/resources/server/kopia"));
 }

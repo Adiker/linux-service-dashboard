@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <functional>
 class QHBoxLayout;
+class MetricChart;
 class QTreeWidget;
 class QLineEdit;
 class QLabel;
@@ -24,6 +25,13 @@ class CenterPage : public QWidget {
 
   private:
     QHBoxLayout* m_actions = nullptr;
+    QHash<QString, QLabel*> m_cards;
+    QHBoxLayout* m_extraActions = nullptr;
+    QLabel* m_activity = nullptr;
+    MetricChart* m_chart = nullptr;
+    QPushButton* m_open = nullptr;
+    QPushButton* m_logs = nullptr;
+    void showReport();
     QString m_module;
     SystemCenter* m_center;
     QTreeWidget* m_table;

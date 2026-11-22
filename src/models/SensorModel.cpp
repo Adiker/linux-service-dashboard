@@ -17,6 +17,8 @@ QVariant SensorModel::data(const QModelIndex& index, int role) const {
         return {};
     }
     const auto& row = m_rows.at(index.row());
+    if (role == Qt::UserRole)
+        return row.chip + "/" + row.label;
     if (role == Qt::DisplayRole) {
         switch (index.column()) {
         case 0:
@@ -37,14 +39,7 @@ QVariant SensorModel::data(const QModelIndex& index, int role) const {
             return {};
         }
     }
-    if (role == Qt::ForegroundRole && index.column() == 5) {
-        if (row.status == QStringLiteral("Critical"))
-            return QBrush(QColor(QStringLiteral("#ff8a80")));
-        if (row.status == QStringLiteral("Warning"))
-            return QBrush(QColor(QStringLiteral("#f0c36d")));
-        if (row.status == QStringLiteral("OK"))
-            return QBrush(QColor(QStringLiteral("#8fd694")));
-    }
+
     return {};
 }
 
@@ -53,13 +48,7 @@ QVariant SensorModel::headerData(int section, Qt::Orientation orientation, int r
         return {};
     }
     static const QStringList headers{
-        QStringLiteral("Chip/device"),
-        QStringLiteral("Sensor label"),
-        QStringLiteral("Current"),
-        QStringLiteral("High"),
-        QStringLiteral("Critical"),
-        QStringLiteral("Status"),
-        tr("Unit"),
+        tr("Chip/device"), tr("Sensor label"), tr("Current"), tr("High"), tr("Critical"), tr("Status"), tr("Unit"),
     };
     return headers.value(section);
 }

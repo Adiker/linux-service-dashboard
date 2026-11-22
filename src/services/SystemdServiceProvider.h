@@ -16,6 +16,7 @@ class SystemdServiceProvider : public QObject {
     void controlService(const QString& unit, const QString& action, ServiceScope scope = ServiceScope::System);
     static bool isProtectedUnit(const QString& unit);
   signals:
+    void actionCompleted(bool success);
     void servicesReady(const QVector<ServiceRow>& rows, const QString& error);
     void failedCountReady(int count, const QString& error);
     void logsReady(const QString& title, const QString& text);
