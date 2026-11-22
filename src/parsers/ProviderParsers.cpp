@@ -19,8 +19,11 @@ bool isVpnLikeConnectionType(const QString& type) {
 }
 
 void collectMounts(const QJsonArray& array, QVector<MountRow>* rows) {
-    static const QSet<QString> interestingTypes{QStringLiteral("cifs"), QStringLiteral("nfs"), QStringLiteral("nfs4"),
-                                                QStringLiteral("sshfs")};
+    static const QSet<QString> interestingTypes{
+        QStringLiteral("cifs"),       QStringLiteral("nfs"),         QStringLiteral("nfs4"),  QStringLiteral("sshfs"),
+        QStringLiteral("fuse.sshfs"), QStringLiteral("fuse.rclone"), QStringLiteral("ext4"),  QStringLiteral("ext3"),
+        QStringLiteral("ext2"),       QStringLiteral("ntfs3"),       QStringLiteral("ntfs"),  QStringLiteral("fuseblk"),
+        QStringLiteral("vfat"),       QStringLiteral("exfat"),       QStringLiteral("btrfs"), QStringLiteral("xfs")};
     for (const QJsonValue& value : array) {
         const QJsonObject object = value.toObject();
         const QString type = object.value(QStringLiteral("fstype")).toString();

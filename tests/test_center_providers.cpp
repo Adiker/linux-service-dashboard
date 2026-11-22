@@ -31,6 +31,26 @@ class CenterProviderTests : public QObject {
         InventoryProvider::parse("timers", "user", "bad", &error);
         QVERIFY(!error.isEmpty());
     }
+    void backupOutcomeIsNotIntegrity() {
+        QString error;
+        auto rows = InventoryProvider::parse("backups", "system",
+                                             "Id=backup.service\nActiveState=inactive\nSubState=dead\nResult=success\nExecMainStatus="
+                                             "0\nExecMainExitTimestamp=Tue 2026-10-20 12:00:00 CEST\n",
+                                             &error);
+        QCOMPARE(rows.size(), 1);
+        QCOMPARE(rows[0].cells[3], "success");
+        QCOMPARE(rows[0].cells[7], "Not verified");
+        QVERIFY(!rows[0].attention);
+        rows = InventoryProvider::parse("backups", "system",
+                                        "Id=backup.service\nResult=success\nExecMainStatus=0\nExecMainExitTimestamp=\n", &error);
+        QCOMPARE(rows[0].cells[3], "Unknown");
+        rows =
+            ProviderParsers::parseFindmntJson(R"({"filesystems":[{"target":"/cloud","source":"remote:","fstype":"fuse.rclone"}]})", &error)
+                    .isEmpty()
+                ? QVector<CenterRecord>{}
+                : QVector<CenterRecord>{{}};
+        QCOMPARE(rows.size(), 1);
+    }
     void scopedFallbackAndUnloadedUnits() {
         QTemporaryDir dir;
         QFile file(dir.filePath("systemctl"));

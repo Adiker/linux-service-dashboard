@@ -1,5 +1,6 @@
 #include "CenterPage.h"
 
+#include <QFileDialog>
 #include <QHeaderView>
 #include <QLabel>
 #include <QLineEdit>
@@ -82,6 +83,18 @@ CenterPage::CenterPage(const QString& module, SystemCenter* center, QWidget* par
     });
     connect(m_table->header(), &QHeaderView::sectionResized, this,
             [this]() { QSettings().setValue("centerTables/" + m_module, m_table->header()->saveState()); });
+    if (m_module == "snapshots") {
+        auto* pick = new QPushButton(tr("Select repository configuration"));
+        layout->insertWidget(1, pick);
+        connect(pick, &QPushButton::clicked, this, [this]() {
+            const auto path = QFileDialog::getOpenFileName(this, tr("Existing Kopia configuration"), {},
+                                                           tr("Configuration files (*.config *.json);;All files (*)"));
+            if (!path.isEmpty()) {
+                QSettings().setValue("backups/kopiaConfig", path);
+                m_center->refresh("snapshots");
+            }
+        });
+    }
     render();
 }
 CenterRecord CenterPage::selected() const {
