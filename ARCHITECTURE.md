@@ -121,3 +121,10 @@ Use offscreen/minimal startup checks and normal Wayland/XWayland sessions when a
 ## Limits
 
 Structured task views require a systemctl version with JSON output; older versions report unavailable. Optional tools/permissions/daemons may limit data. Backups/sync/GPU configuration remain in their native tools; synchronization progress, repository verification and cloud account credentials are not implemented. Raw command/tool output remains in its original language. Destructive operations are intentionally excluded from automated live-system tests.
+
+
+
+## Distro packaging
+
+- Arch Linux: `packaging/PKGBUILD` builds a system package with polkit policy in `/usr/share/polkit-1/actions`.
+- Debian/RPM: CPack generators (`cpack -G DEB` / `cpack -G RPM`) are enabled in `CMakeLists.txt`.

@@ -111,6 +111,40 @@ QT_QPA_PLATFORM=offscreen timeout 3s build/linux-service-dashboard
 QT_QPA_PLATFORM=minimal timeout 3s build/linux-service-dashboard
 ```
 
+
+
+For `/usr/local`, polkit loads policies from `/usr/share/polkit-1/actions`; enable `LSD_INSTALL_POLKIT_POLICY_SYSTEM` as above. For staged/relocatable installs, leave it off to place policy files under the chosen prefix. The policy is generated at install time for that prefix, and the helper path resolves relative to the application.
+
+### Distro packages
+
+- Arch Linux: build with `packaging/PKGBUILD`. It downloads a pinned GitHub archive and checks that file's SHA-256. There is no `v0.1.0` release tag yet. When one is published, point `source` at `refs/tags/v$pkgver.tar.gz` and replace `sha256sums` (`updpkgsums` or `makepkg -g`).
+- Debian/RPM: configure a Release build, then run `cpack -G DEB` or `cpack -G RPM` from the build directory. `cpack -G DEB` fills Qt library dependencies with `dpkg-shlibdeps`, which needs the `dpkg-dev` and `file` packages. `cpack -G RPM` needs `rpmbuild` from the `rpm` package.
+
+```bash
+sudo apt install dpkg-dev file
+```
+
+For `/usr/local`, polkit loads policies from `/usr/share/polkit-1/actions`; enable `LSD_INSTALL_POLKIT_POLICY_SYSTEM` as above. For staged/relocatable installs, leave it off to place policy files under the chosen prefix. The policy is generated at install time for that prefix, and the helper path resolves relative to the application.
+
+SMART first uses the user's permissions, then the installed narrow `pkexec` helper when required. Manual batches share one authorization request. The helper only accepts validated disk paths and SMART read operations. The application does not request or store sudo passwords.
+
+## Settings and privacy
+
+Settings retain the `LocalTools` / `Linux Service Dashboard` QSettings identity. Migration is additive: service groups, mount profiles, table layouts, SMART history and theme remain. Theme values are `System`, `Light`, `Dark`, `OLED`; language selection takes effect after restart.
+
+Regular enabled-module status refresh defaults to 30 seconds. Performance and container resource sampling run every two seconds only on their visible page. SMART is manual unless its minimum-five-minute opt-in schedule is enabled. Disabling a module skips its collection; derived service views indicate unavailable sources rather than claiming cached state is fresh.
+
+Desktop notifications are off by default. When enabled, attention increases are deduplicated and rate limited. Local events retain at most 1000 standardized entries and never store raw command arguments/output. Diagnostic export has a preview and only includes version/platform metadata, module availability/counts/timestamps and error flags. It excludes settings values, raw logs, paths, account names, device identities and network addresses. Newly saved mount profiles omit inline password options; existing profiles are not rewritten.
+
+## Validation and limits
+
+CTest covers parsers, command timeouts/output limits, scoped fallbacks, backup evidence, XDG precedence, sorted selection, settings migration, safe reports and navigation in both languages. UI tests use temporary settings and never invoke destructive actions or automatic SMART checks.
+
+```bash
+QT_QPA_PLATFORM=offscreen timeout 3s build/linux-service-dashboard
+QT_QPA_PLATFORM=minimal timeout 3s build/linux-service-dashboard
+```
+
 Exit 124 from these commands means the app remained alive until timeout. Also smoke-test a normal Wayland session and `QT_QPA_PLATFORM=xcb` when available. The application never forces a platform plugin or layer-shell.
 
 Optional daemon/API configuration, synchronization progress, backup verification and advanced GPU controls remain in their native tools. USB bridge SMART transports may need device-specific support. See [ARCHITECTURE.md](ARCHITECTURE.md) for internal contracts and [ROADMAP.md](ROADMAP.md) for delivery status.
