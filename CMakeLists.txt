@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(linux-service-dashboard VERSION 0.1.0 LANGUAGES CXX)
+project(linux-service-dashboard VERSION 0.2.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -8,8 +8,19 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_AUTORCC ON)
 
 include(GNUInstallDirs)
+execute_process(COMMAND git rev-parse --short=12 HEAD WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    OUTPUT_VARIABLE LSD_REVISION OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+execute_process(COMMAND git diff --quiet HEAD WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    RESULT_VARIABLE LSD_DIRTY ERROR_QUIET)
+if(LSD_REVISION AND LSD_DIRTY EQUAL 1)
+    string(APPEND LSD_REVISION "-dirty")
+endif()
+if(NOT LSD_REVISION)
+    set(LSD_REVISION "unknown")
+endif()
+configure_file(src/BuildInfo.h.in generated/BuildInfo.h @ONLY)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Test DBus)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Test DBus Concurrent LinguistTools)
 
 qt_standard_project_setup()
 
@@ -45,9 +56,19 @@ else()
         "Directory where polkit loads action policy files (relative paths are rooted at the install prefix)" FORCE)
 endif()
 
-qt_add_executable(linux-service-dashboard
+add_library(dashboard-core OBJECT
     resources/resources.qrc
-    src/main.cpp
+    src/services/SystemInventory.cpp
+    src/services/ToolLauncher.cpp
+    src/services/InventoryProvider.cpp
+    src/services/FirewallProvider.cpp
+    src/services/FirewallProvider.h
+    src/utils/TableTools.cpp
+    src/core/EventStore.cpp
+    src/widgets/MetricChart.cpp
+    src/core/CenterTypes.cpp
+    src/core/SystemCenter.cpp
+    src/widgets/CenterPage.cpp
     src/AppIcon.cpp
     src/AppIcon.h
     src/MainWindow.cpp
@@ -59,18 +80,16 @@ qt_add_executable(linux-service-dashboard
     src/core/CommandRunner.h
     src/core/RefreshScheduler.cpp
     src/core/RefreshScheduler.h
-    src/core/ModuleSettings.cpp
-    src/core/ModuleSettings.h
-    src/core/MountProfileStore.cpp
-    src/core/MountProfileStore.h
-    src/core/ServiceGroupSettings.cpp
-    src/core/ServiceGroupSettings.h
-    src/core/ServiceRegistry.cpp
-    src/core/ServiceRegistry.h
     src/core/SmartHistoryStore.cpp
     src/core/SmartHistoryStore.h
     src/core/SmartRefreshScheduler.cpp
     src/core/SmartRefreshScheduler.h
+    src/core/MountProfileStore.cpp
+    src/core/MountProfileStore.h
+    src/core/ServiceGroupSettings.cpp
+    src/core/ServiceGroupSettings.h
+    src/core/ModuleSettings.cpp
+    src/core/ModuleSettings.h
     src/models/ServiceModel.cpp
     src/models/ServiceModel.h
     src/models/DockerContainerModel.cpp
@@ -81,8 +100,6 @@ qt_add_executable(linux-service-dashboard
     src/models/SensorModel.h
     src/models/DiskModel.cpp
     src/models/DiskModel.h
-    src/models/TableFilterProxyModel.cpp
-    src/models/TableFilterProxyModel.h
     src/services/SystemdServiceProvider.cpp
     src/services/SystemdServiceProvider.h
     src/services/DockerProvider.cpp
@@ -113,14 +130,10 @@ qt_add_executable(linux-service-dashboard
     src/widgets/SettingsPage.h
     src/widgets/LogViewerDialog.cpp
     src/widgets/LogViewerDialog.h
-    src/widgets/ConfirmActionDialog.cpp
-    src/widgets/ConfirmActionDialog.h
-    src/widgets/DiagnosticsDialog.cpp
-    src/widgets/DiagnosticsDialog.h
     src/widgets/SmartHistoryDialog.cpp
     src/widgets/SmartHistoryDialog.h
-    src/widgets/StatusBanner.cpp
-    src/widgets/StatusBanner.h
+    src/widgets/ConfirmActionDialog.cpp
+    src/widgets/ConfirmActionDialog.h
     src/ui/StatusBadgeDelegate.cpp
     src/ui/StatusBadgeDelegate.h
     src/ui/ThemeManager.cpp
@@ -131,15 +144,24 @@ qt_add_executable(linux-service-dashboard
     src/utils/TimeUtils.h
     src/utils/StatusUtils.cpp
     src/utils/StatusUtils.h
-    src/parsers/ProviderParsers.cpp
-    src/parsers/ProviderParsers.h
     src/utils/FstabParser.cpp
     src/utils/FstabParser.h
     src/utils/TableLayoutPersistence.cpp
     src/utils/TableLayoutPersistence.h
+    src/parsers/ProviderParsers.cpp
+    src/parsers/ProviderParsers.h
 )
 
-target_link_libraries(linux-service-dashboard PRIVATE Qt6::Widgets Qt6::DBus)
+target_include_directories(dashboard-core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_BINARY_DIR}/generated)
+target_link_libraries(dashboard-core PUBLIC Qt6::Widgets Qt6::DBus Qt6::Concurrent)
+target_compile_definitions(dashboard-core PRIVATE SMART_HELPER_RELATIVE_PATH="${SMART_HELPER_RELATIVE_PATH}")
+qt_add_executable(linux-service-dashboard src/main.cpp)
+target_link_libraries(linux-service-dashboard PRIVATE dashboard-core)
+
+qt_add_translations(linux-service-dashboard TS_FILES translations/dashboard_pl.ts RESOURCE_PREFIX "/i18n")
+
+target_include_directories(linux-service-dashboard PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generated)
+target_link_libraries(linux-service-dashboard PRIVATE Qt6::Widgets Qt6::DBus Qt6::Concurrent)
 target_compile_definitions(linux-service-dashboard PRIVATE SMART_HELPER_RELATIVE_PATH="${SMART_HELPER_RELATIVE_PATH}")
 
 qt_add_executable(provider-parser-tests
@@ -156,6 +178,22 @@ target_link_libraries(provider-parser-tests PRIVATE Qt6::Test Qt6::Core)
 target_include_directories(provider-parser-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_test(NAME provider-parser-tests COMMAND provider-parser-tests)
+qt_add_executable(command-runner-tests tests/test_command_runner.cpp src/core/CommandRunner.cpp)
+target_include_directories(command-runner-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(command-runner-tests PRIVATE Qt6::Test Qt6::Core)
+add_test(NAME command-runner-tests COMMAND command-runner-tests)
+qt_add_executable(center-provider-tests src/services/ToolLauncher.cpp src/core/CenterTypes.cpp src/services/SystemInventory.cpp src/services/NetworkProvider.cpp src/services/FirewallProvider.cpp tests/test_center_providers.cpp src/services/InventoryProvider.cpp
+    src/services/SystemdServiceProvider.cpp src/core/CommandRunner.cpp src/parsers/ProviderParsers.cpp
+    src/utils/JsonUtils.cpp src/utils/StatusUtils.cpp src/utils/TimeUtils.cpp)
+target_include_directories(center-provider-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(center-provider-tests PRIVATE Qt6::Test Qt6::Core Qt6::DBus Qt6::Concurrent)
+add_test(NAME center-provider-tests COMMAND center-provider-tests)
+qt_add_executable(center-ui-tests tests/test_center_ui.cpp)
+target_include_directories(center-ui-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(center-ui-tests PRIVATE dashboard-core Qt6::Test)
+target_compile_definitions(center-ui-tests PRIVATE LSD_TEST_QM_PATH="${CMAKE_CURRENT_BINARY_DIR}/dashboard_pl.qm")
+add_test(NAME center-ui-tests COMMAND center-ui-tests)
+set_tests_properties(center-ui-tests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 90)
 
 qt_add_executable(${SMART_HELPER_TARGET}
     src/helpers/SmartHelper.cpp
@@ -206,13 +244,43 @@ foreach(icon_size 16 22 24 32 48 64 128 256)
     )
 endforeach()
 
+qt_add_executable(firewall-provider-tests tests/test_firewall_provider.cpp src/services/FirewallProvider.cpp)
+target_include_directories(firewall-provider-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(firewall-provider-tests PRIVATE Qt6::Test Qt6::DBus)
+add_test(NAME firewall-provider-tests COMMAND firewall-provider-tests)
+set_tests_properties(firewall-provider-tests PROPERTIES TIMEOUT 30)
+
+qt_add_executable(smart-provider-tests tests/test_smart_provider.cpp src/services/SmartProvider.cpp
+    src/models/DiskModel.cpp src/core/CommandRunner.cpp src/utils/JsonUtils.cpp src/utils/TimeUtils.cpp)
+target_include_directories(smart-provider-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(smart-provider-tests PRIVATE Qt6::Test Qt6::Widgets)
+add_test(NAME smart-provider-tests COMMAND smart-provider-tests)
+set_tests_properties(smart-provider-tests PROPERTIES TIMEOUT 30)
+
 set(CPACK_PACKAGE_NAME linux-service-dashboard)
 set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
 set(CPACK_PACKAGE_CONTACT "Adiker")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Local Qt6 dashboard for Linux services and system health")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
+set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://github.com/Adiker/linux-service-dashboard")
 set(CPACK_GENERATOR "DEB;RPM")
+# Qt shared libraries come from dpkg-shlibdeps so the package names match the
+# distro (libqt6widgets6 vs libqt6widgets6t64). CLI tools are not linked, so
+# they stay explicit. policykit-1 is a transitional dummy that Debian 13
+# removed; polkitd and pkexec are the installable runtime packages.
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "smartmontools, policykit-1, util-linux, lm-sensors, network-manager")
-set(CPACK_RPM_PACKAGE_REQUIRES "smartmontools, polkit, util-linux, lm_sensors, NetworkManager, qt6-qtbase")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "smartmontools, polkitd, pkexec, util-linux, lm-sensors, network-manager")
+# qt6-qtbase does not ship Qt Widgets. qt6-qtbase-gui does, and it depends on qt6-qtbase.
+set(CPACK_RPM_PACKAGE_URL "https://github.com/Adiker/linux-service-dashboard")
+set(CPACK_RPM_PACKAGE_LICENSE "Unknown")
+set(CPACK_RPM_PACKAGE_REQUIRES "smartmontools, polkit, util-linux, lm_sensors, NetworkManager, qt6-qtbase-gui")
+if(EXISTS "/etc/debian_version")
+    find_program(LSD_DPKG_SHLIBDEPS dpkg-shlibdeps)
+    find_program(LSD_FILE_EXECUTABLE file)
+    if(NOT LSD_DPKG_SHLIBDEPS OR NOT LSD_FILE_EXECUTABLE)
+        message(WARNING
+            "cpack -G DEB needs both 'dpkg-shlibdeps' (Debian package dpkg-dev) and 'file'. "
+            "CPACK_DEBIAN_PACKAGE_SHLIBDEPS is ON, so those tools must be installed before packaging.")
+    endif()
+endif()
 include(CPack)

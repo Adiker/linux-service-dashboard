@@ -7,22 +7,27 @@
 
 StatusTone classifyStatusTone(const QString& status) {
     const QString s = status.trimmed().toLower();
-    if (s.isEmpty() || s == QStringLiteral("-") || s == QStringLiteral("unknown") || s == QStringLiteral("unavailable") ||
+    if (s.isEmpty() || s == QStringLiteral("-") || s == QStringLiteral("unknown") || s == QStringLiteral("nieznany") ||
+        s == QStringLiteral("unavailable") || s == QStringLiteral("not checked") || s == QStringLiteral("nie sprawdzono") ||
         s == QStringLiteral("disconnected") || s.startsWith(QStringLiteral("configured")) || s.startsWith(QStringLiteral("profile:"))) {
         return StatusTone::Muted;
     }
     if (s.contains(QStringLiteral("fail")) || s.contains(QStringLiteral("critical")) || s.contains(QStringLiteral("error")) ||
-        s.contains(QStringLiteral("denied")) || s.contains(QStringLiteral("missing"))) {
+        s.contains(QStringLiteral("denied")) || s.contains(QStringLiteral("missing")) || s.contains(QStringLiteral("krytyczn")) ||
+        s.contains(QStringLiteral("błąd")) || s.contains(QStringLiteral("odmowa"))) {
         return StatusTone::Error;
     }
     if (s.contains(QStringLiteral("warn")) || s.contains(QStringLiteral("inactive")) || s.contains(QStringLiteral("exited")) ||
         s.contains(QStringLiteral("activating")) || s.contains(QStringLiteral("deactivating")) || s.contains(QStringLiteral("paused")) ||
-        s.contains(QStringLiteral("restarting")) || s.contains(QStringLiteral("authorization"))) {
+        s.contains(QStringLiteral("restarting")) || s.contains(QStringLiteral("authorization")) ||
+        s.contains(QStringLiteral("health unavailable")) || s.contains(QStringLiteral("ostrzeż")) ||
+        s.contains(QStringLiteral("niedostępn"))) {
         return StatusTone::Warn;
     }
     if (s.contains(QStringLiteral("active")) || s.contains(QStringLiteral("running")) || s.contains(QStringLiteral("passed")) ||
-        s == QStringLiteral("ok") || s == QStringLiteral("mounted") || s == QStringLiteral("connected") ||
-        s == QStringLiteral("activated")) {
+        s == QStringLiteral("ok") || s == QStringLiteral("mounted") || s == QStringLiteral("zamontowano") ||
+        s == QStringLiteral("connected") || s == QStringLiteral("activated") || s.contains(QStringLiteral("aktywn")) ||
+        s.contains(QStringLiteral("prawidłow"))) {
         return StatusTone::Ok;
     }
     return StatusTone::Muted;

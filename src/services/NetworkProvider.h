@@ -1,50 +1,34 @@
 #pragma once
-
 #include "../core/CommandRunner.h"
 
 #include <QObject>
 #include <QVector>
 
+// Retained for parser/source compatibility; UI consumes the collection below.
 struct VpnStatus {
     bool connected = false;
-    QString connectionName = QStringLiteral("None");
-    QString device = QStringLiteral("-");
-    QString state = QStringLiteral("Unknown");
-    QString lastRefresh;
+    QString connectionName = "None", device = "-", state = "Unknown", lastRefresh;
 };
-
-struct VpnProfile {
-    QString name;
-    QString type;
-    QString device = QStringLiteral("-");
-    QString state = QStringLiteral("disconnected");
-    bool active = false;
+struct VpnConnection {
+    QString id, name, type, device, state, source;
+    bool managerActive = false;
 };
-
-class QDBusPendingCallWatcher;
-
 class NetworkProvider : public QObject {
     Q_OBJECT
-
   public:
     explicit NetworkProvider(QObject* parent = nullptr);
     void refreshVpnStatus();
-    void refreshVpnProfiles();
-    void connectVpn(const QString& connectionName);
-    void disconnectVpn(const QString& connectionName);
-
-    [[nodiscard]] CommandRunner* commandRunner() { return &m_runner; }
-
+    static QStringList splitNmcli(const QString& line);
   signals:
     void vpnStatusReady(const VpnStatus& status, const QString& error);
-    void activeVpnsReady(const QVector<VpnStatus>& activeVpns, const QString& error);
-    void vpnProfilesReady(const QVector<VpnProfile>& profiles, const QString& error);
-    void actionFinished(const QString& message, const QString& details);
+    void vpnConnectionsReady(const QVector<VpnConnection>& rows, const QString& error);
 
   private:
-    void refreshVpnViaNmcli();
-    void handleActiveConnectionsReply(QDBusPendingCallWatcher* watcher);
-
     CommandRunner m_runner;
-    bool m_dbusQueryInFlight = false;
+    bool m_busy = false, m_nmDone = false, m_linksDone = false;
+    int m_pending = 0;
+    QVector<VpnConnection> m_connections, m_links;
+    QStringList m_errors;
+    void fallback();
+    void finish();
 };

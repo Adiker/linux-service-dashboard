@@ -8,8 +8,6 @@ namespace MountProfileStore {
 namespace {
 
 QString encodedProfileGroup(const QString& name) {
-    // Percent-encode profile names so names containing '/' (such as the default
-    // target path "/mnt/nas") do not create nested QSettings subgroups or break removal.
     return QStringLiteral("mounts/profiles/%1").arg(QString::fromUtf8(QUrl::toPercentEncoding(name)));
 }
 
@@ -68,7 +66,14 @@ void saveProfile(const MountRow& row, const QString& name) {
     settings.setValue(prefix + QStringLiteral("source"), row.source);
     settings.setValue(prefix + QStringLiteral("target"), row.target);
     settings.setValue(prefix + QStringLiteral("filesystemType"), row.filesystemType);
-    settings.setValue(prefix + QStringLiteral("options"), row.options);
+    QStringList options;
+    for (const auto& option : row.options.split(',')) {
+        if (!option.startsWith("password=", Qt::CaseInsensitive) && !option.startsWith("pass=", Qt::CaseInsensitive) &&
+            !option.startsWith("passwd=", Qt::CaseInsensitive)) {
+            options.append(option);
+        }
+    }
+    settings.setValue(prefix + QStringLiteral("options"), options.join(','));
 }
 
 void removeProfile(const QString& name) {
@@ -76,9 +81,10 @@ void removeProfile(const QString& name) {
     QStringList names = settings.value(QStringLiteral("mounts/profileNames")).toStringList();
     names.removeAll(name);
     settings.setValue(QStringLiteral("mounts/profileNames"), names);
-    settings.remove(encodedProfileGroup(name));
+    const QString encoded = encodedProfileGroup(name);
+    settings.remove(encoded);
     const QString legacy = legacyProfileGroup(name);
-    if (legacy != encodedProfileGroup(name)) {
+    if (legacy != encoded) {
         settings.remove(legacy);
     }
 }

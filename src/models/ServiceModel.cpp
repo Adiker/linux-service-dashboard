@@ -1,6 +1,6 @@
 #include "ServiceModel.h"
 
-#include <QFontDatabase>
+#include <QBrush>
 
 ServiceModel::ServiceModel(QObject* parent) : QAbstractTableModel(parent) {}
 
@@ -9,7 +9,7 @@ int ServiceModel::rowCount(const QModelIndex& parent) const {
 }
 
 int ServiceModel::columnCount(const QModelIndex& parent) const {
-    return parent.isValid() ? 0 : 6;
+    return parent.isValid() ? 0 : 8;
 }
 
 QVariant ServiceModel::data(const QModelIndex& index, int role) const {
@@ -17,6 +17,8 @@ QVariant ServiceModel::data(const QModelIndex& index, int role) const {
         return {};
     }
     const auto& row = m_rows.at(index.row());
+    if (role == Qt::UserRole)
+        return (row.scope == ServiceScope::User ? QString("user:") : QString("system:")) + row.unit;
     if (role == Qt::DisplayRole) {
         switch (index.column()) {
         case 0:
@@ -31,13 +33,15 @@ QVariant ServiceModel::data(const QModelIndex& index, int role) const {
             return row.description;
         case 5:
             return row.lastRefresh;
+        case 6:
+            return row.scope == ServiceScope::User ? tr("User") : tr("System");
+        case 7:
+            return row.unitFileState;
         default:
             return {};
         }
     }
-    if (role == Qt::FontRole && index.column() == 0) {
-        return QFontDatabase::systemFont(QFontDatabase::FixedFont);
-    }
+
     return {};
 }
 
@@ -46,8 +50,8 @@ QVariant ServiceModel::headerData(int section, Qt::Orientation orientation, int 
         return {};
     }
     static const QStringList headers{
-        QStringLiteral("Unit"),      QStringLiteral("Load state"),  QStringLiteral("Active state"),
-        QStringLiteral("Sub state"), QStringLiteral("Description"), QStringLiteral("Last refresh"),
+        tr("Unit"),        tr("Load state"),   tr("Active state"), tr("Sub state"),
+        tr("Description"), tr("Last refresh"), tr("Scope"),        tr("Unit file state"),
     };
     return headers.value(section);
 }

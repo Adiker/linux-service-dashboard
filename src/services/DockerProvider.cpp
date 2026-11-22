@@ -8,7 +8,7 @@ DockerProvider::DockerProvider(QObject* parent) : QObject(parent) {
             QString error;
             QVector<DockerContainerRow> rows;
             if (result.ok()) {
-                rows = ProviderParsers::parseDockerContainerLines(result.standardOutput, nullptr);
+                rows = ProviderParsers::parseDockerContainerLines(result.standardOutput, &error);
             } else {
                 error = result.startFailed ? QStringLiteral("docker not found. Install the Docker CLI to enable this page.")
                                            : result.standardError.trimmed();
@@ -19,13 +19,14 @@ DockerProvider::DockerProvider(QObject* parent) : QObject(parent) {
             emit containersReady(rows, error);
         } else if (context.startsWith(QStringLiteral("docker-logs:"))) {
             const QString container = context.mid(QStringLiteral("docker-logs:").size());
-            emit textReady(QStringLiteral("docker logs %1").arg(container), result.ok() ? result.standardOutput : result.standardError);
+            emit textReady(QStringLiteral("docker logs %1").arg(container), result.standardOutput + "\n" + result.standardError);
         } else if (context.startsWith(QStringLiteral("docker-inspect:"))) {
             const QString container = context.mid(QStringLiteral("docker-inspect:").size());
             emit textReady(QStringLiteral("docker inspect %1").arg(container), result.ok() ? result.standardOutput : result.standardError);
         } else if (context.startsWith(QStringLiteral("docker-action:"))) {
-            const QString action = context.section(QLatin1Char(':'), 1, 1);
-            const QString container = context.section(QLatin1Char(':'), 2);
+            emit actionCompleted(result.ok());
+            const QString action = context.section(':', 1, 1);
+            const QString container = context.section(':', 2);
             const QString message = result.ok() ? QStringLiteral("docker %1 %2 succeeded.").arg(action, container)
                                                 : QStringLiteral("docker %1 %2 failed.").arg(action, container);
             emit actionFinished(message, result.ok() ? result.standardOutput : result.standardError);
@@ -34,15 +35,16 @@ DockerProvider::DockerProvider(QObject* parent) : QObject(parent) {
 }
 
 void DockerProvider::refreshContainers() {
-    m_runner.run(QStringLiteral("docker"),
-                 {QStringLiteral("ps"), QStringLiteral("-a"), QStringLiteral("--format"), QStringLiteral("{{json .}}")}, 20000,
-                 QStringLiteral("docker-list"),
-                 /*deduplicateContext=*/true);
+    m_runner.run(
+        QStringLiteral("docker"),
+        {QStringLiteral("ps"), QStringLiteral("-a"), QStringLiteral("--format"),
+         QStringLiteral(
+             R"json({"Names":{{json .Names}},"Image":{{json .Image}},"Status":{{json .Status}},"State":{{json .State}},"Ports":{{json .Ports}},"CreatedAt":{{json .CreatedAt}},"ID":{{json .ID}},"ComposeProject":{{json (.Label "com.docker.compose.project")}},"ComposeService":{{json (.Label "com.docker.compose.service")}}})json")},
+        20000, QStringLiteral("docker-list"));
 }
 
-void DockerProvider::containerLogs(const QString& container, int tailLines) {
-    m_runner.run(QStringLiteral("docker"),
-                 {QStringLiteral("logs"), QStringLiteral("--tail"), QString::number(qMax(10, tailLines)), container}, 20000,
+void DockerProvider::containerLogs(const QString& container) {
+    m_runner.run(QStringLiteral("docker"), {QStringLiteral("logs"), QStringLiteral("--tail"), QStringLiteral("300"), container}, 20000,
                  QStringLiteral("docker-logs:%1").arg(container));
 }
 

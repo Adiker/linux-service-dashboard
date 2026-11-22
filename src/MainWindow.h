@@ -2,7 +2,7 @@
 
 #include "core/AlertMonitor.h"
 #include "core/RefreshScheduler.h"
-#include "core/ServiceRegistry.h"
+#include "core/SystemCenter.h"
 #include "widgets/DisksPage.h"
 #include "widgets/DockerPage.h"
 #include "widgets/MountsPage.h"
@@ -12,10 +12,12 @@
 #include "widgets/SystemdPage.h"
 #include "widgets/VpnPage.h"
 
+#include <QHash>
 #include <QMainWindow>
 
-class QListWidget;
-class QPushButton;
+class QTreeWidget;
+class QLineEdit;
+class QTimer;
 class QStackedWidget;
 class QSystemTrayIcon;
 
@@ -38,10 +40,6 @@ class MainWindow : public QMainWindow {
     void applyTheme();
     void reloadSettings();
     void applyModuleVisibility();
-    void openDiagnostics();
-    void updateDiagnosticsBadge();
-    void saveWindowGeometry();
-    void restoreWindowGeometry();
 
     enum PageIndex {
         PageOverview = 0,
@@ -54,14 +52,10 @@ class MainWindow : public QMainWindow {
         PageSettings,
     };
 
-    QListWidget* m_sidebar = nullptr;
+    QTreeWidget* m_sidebar = nullptr;
     QStackedWidget* m_stack = nullptr;
     QSystemTrayIcon* m_tray = nullptr;
-    QPushButton* m_diagnosticsButton = nullptr;
     RefreshScheduler m_scheduler;
-    ServiceRegistry* m_registry = nullptr;
-    AlertMonitor* m_alertMonitor = nullptr;
-    bool m_closeToTray = true;
 
     OverviewPage* m_overview = nullptr;
     SystemdPage* m_systemd = nullptr;
@@ -71,5 +65,16 @@ class MainWindow : public QMainWindow {
     SensorsPage* m_sensors = nullptr;
     DisksPage* m_disks = nullptr;
     SettingsPage* m_settings = nullptr;
-    ModuleSettings m_modules;
+    SystemCenter* m_center = nullptr;
+    CenterPage* m_searchPage = nullptr;
+    QHash<QString, QWidget*> m_pages;
+    QTimer* m_metricTimer = nullptr;
+    void navigate(const QString& module, const QString& id = {});
+    void saveWindowGeometry();
+    void restoreWindowGeometry();
+    AlertMonitor* m_alertMonitor = nullptr;
+    bool m_closeToTray = true;
+    int m_lastAttention = 0;
+    qint64 m_lastNotification = 0;
+    QPalette m_systemPalette;
 };

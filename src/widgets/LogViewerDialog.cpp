@@ -1,5 +1,7 @@
 #include "LogViewerDialog.h"
 
+#include "../ui/ThemeManager.h"
+
 #include <QApplication>
 #include <QCheckBox>
 #include <QClipboard>
@@ -9,7 +11,6 @@
 #include <QFileDialog>
 #include <QFontDatabase>
 #include <QHBoxLayout>
-#include <QIcon>
 #include <QKeySequence>
 #include <QLabel>
 #include <QLineEdit>
@@ -17,6 +18,7 @@
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QShortcut>
+#include <QStyle>
 #include <QTextCursor>
 #include <QTextDocument>
 #include <QVBoxLayout>
@@ -30,14 +32,14 @@ LogViewerDialog::LogViewerDialog(const QString& title, const QString& text, QWid
 
     auto* toolbar = new QHBoxLayout;
     m_searchEdit = new QLineEdit(this);
-    m_searchEdit->setPlaceholderText(QStringLiteral("Find in output (Ctrl+F)..."));
+    m_searchEdit->setPlaceholderText(tr("Find in output (Ctrl+F)..."));
     m_searchEdit->setClearButtonEnabled(true);
-    auto* prevButton = new QPushButton(QStringLiteral("Prev"), this);
-    auto* nextButton = new QPushButton(QStringLiteral("Next"), this);
+    auto* prevButton = new QPushButton(tr("Prev"), this);
+    auto* nextButton = new QPushButton(tr("Next"), this);
     m_matchLabel = new QLabel(this);
     m_matchLabel->setMinimumWidth(72);
 
-    m_wrapCheck = new QCheckBox(QStringLiteral("Wrap"), this);
+    m_wrapCheck = new QCheckBox(tr("Wrap"), this);
     m_wrapCheck->setChecked(true);
 
     toolbar->addWidget(m_searchEdit, 1);
@@ -48,11 +50,12 @@ LogViewerDialog::LogViewerDialog(const QString& title, const QString& text, QWid
 
     if (m_refreshCallback) {
         m_tailCombo = new QComboBox(this);
-        m_tailCombo->addItem(QStringLiteral("100 lines"), 100);
-        m_tailCombo->addItem(QStringLiteral("300 lines"), 300);
-        m_tailCombo->addItem(QStringLiteral("1000 lines"), 1000);
+        m_tailCombo->addItem(tr("100 lines"), 100);
+        m_tailCombo->addItem(tr("300 lines"), 300);
+        m_tailCombo->addItem(tr("1000 lines"), 1000);
         m_tailCombo->setCurrentIndex(1);
-        m_refreshButton = new QPushButton(QIcon::fromTheme(QStringLiteral("view-refresh")), QStringLiteral("Refresh"), this);
+        m_refreshButton =
+            new QPushButton(ThemeManager::themedIcon(QStringLiteral("view-refresh"), QStyle::SP_BrowserReload), tr("Refresh"), this);
         toolbar->addWidget(m_tailCombo);
         toolbar->addWidget(m_refreshButton);
         connect(m_refreshButton, &QPushButton::clicked, this, [this]() {
@@ -72,8 +75,9 @@ LogViewerDialog::LogViewerDialog(const QString& title, const QString& text, QWid
     layout->addWidget(m_textEdit, 1);
 
     auto* bottomRow = new QHBoxLayout;
-    auto* copyButton = new QPushButton(QIcon::fromTheme(QStringLiteral("edit-copy")), QStringLiteral("Copy all"), this);
-    auto* saveButton = new QPushButton(QIcon::fromTheme(QStringLiteral("document-save")), QStringLiteral("Save to file..."), this);
+    auto* copyButton = new QPushButton(ThemeManager::themedIcon(QStringLiteral("edit-copy"), QStyle::SP_FileIcon), tr("Copy all"), this);
+    auto* saveButton = new QPushButton(ThemeManager::themedIcon(QStringLiteral("document-save"), QStyle::SP_DialogSaveButton),
+                                       tr("Save to file..."), this);
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Close, this);
     bottomRow->addWidget(copyButton);
     bottomRow->addWidget(saveButton);
@@ -142,18 +146,18 @@ void LogViewerDialog::updateMatchCount() {
         ++count;
         pos += query.size();
     }
-    m_matchLabel->setText(QStringLiteral("%1 matches").arg(count));
+    m_matchLabel->setText(tr("%1 matches").arg(count));
 }
 
 void LogViewerDialog::saveToFile() {
-    const QString path = QFileDialog::getSaveFileName(this, QStringLiteral("Save output"), QStringLiteral("output.log"),
-                                                      QStringLiteral("Log files (*.log *.txt *.json);;All files (*)"));
+    const QString path = QFileDialog::getSaveFileName(this, tr("Save output"), QStringLiteral("output.log"),
+                                                      tr("Log files (*.log *.txt *.json);;All files (*)"));
     if (path.isEmpty()) {
         return;
     }
     QFile file(path);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
-        QMessageBox::warning(this, QStringLiteral("Save output"), QStringLiteral("Could not open %1 for writing.").arg(path));
+        QMessageBox::warning(this, tr("Save output"), tr("Could not open %1 for writing.").arg(path));
         return;
     }
     file.write(m_textEdit->toPlainText().toUtf8());

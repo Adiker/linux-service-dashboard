@@ -36,7 +36,6 @@ ThemePalette paletteForPreference(const QString& preference, const QPalette& sys
 QString buildStyleSheet(const ThemePalette& palette);
 void applyToApplication(const QString& preference, const QPalette& systemPalette);
 const ThemePalette& currentPalette();
-
 QIcon themedIcon(const QString& themeName, QStyle::StandardPixmap fallback);
 
 } // namespace ThemeManager

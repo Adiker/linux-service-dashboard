@@ -32,13 +32,13 @@ void bind(QTableView* table, const QString& settingsKey, bool persistSortOrder) 
     restore(table, settingsKey);
     QHeaderView* header = table->horizontalHeader();
     if (!persistSortOrder) {
+        // This table does not reorder rows (no sorting proxy), so drop any sort
+        // indicator that a previously saved state may have restored; otherwise a
+        // stale arrow would point at a column the rows are not actually sorted by.
         header->setSortIndicator(-1, Qt::AscendingOrder);
-    } else if (table->isSortingEnabled() && header->sortIndicatorSection() >= 0) {
-        table->sortByColumn(header->sortIndicatorSection(), header->sortIndicatorOrder());
     }
     const auto persist = [table, settingsKey]() { save(table, settingsKey); };
     QObject::connect(header, &QHeaderView::sectionResized, table, persist);
-    QObject::connect(header, &QHeaderView::sectionMoved, table, persist);
     if (persistSortOrder) {
         QObject::connect(header, &QHeaderView::sortIndicatorChanged, table, persist);
     }

@@ -1,5 +1,7 @@
 #include "SensorModel.h"
 
+#include <QBrush>
+
 SensorModel::SensorModel(QObject* parent) : QAbstractTableModel(parent) {}
 
 int SensorModel::rowCount(const QModelIndex& parent) const {
@@ -7,7 +9,7 @@ int SensorModel::rowCount(const QModelIndex& parent) const {
 }
 
 int SensorModel::columnCount(const QModelIndex& parent) const {
-    return parent.isValid() ? 0 : 6;
+    return parent.isValid() ? 0 : 7;
 }
 
 QVariant SensorModel::data(const QModelIndex& index, int role) const {
@@ -15,6 +17,8 @@ QVariant SensorModel::data(const QModelIndex& index, int role) const {
         return {};
     }
     const auto& row = m_rows.at(index.row());
+    if (role == Qt::UserRole)
+        return row.chip + "/" + row.label;
     if (role == Qt::DisplayRole) {
         switch (index.column()) {
         case 0:
@@ -29,22 +33,13 @@ QVariant SensorModel::data(const QModelIndex& index, int role) const {
             return row.critical > 0.0 ? QString::number(row.critical, 'f', 1) : QStringLiteral("-");
         case 5:
             return row.status;
+        case 6:
+            return row.unit;
         default:
             return {};
         }
     }
-    if (role == Qt::UserRole) {
-        switch (index.column()) {
-        case 2:
-            return row.current;
-        case 3:
-            return row.high;
-        case 4:
-            return row.critical;
-        default:
-            return {};
-        }
-    }
+
     return {};
 }
 
@@ -53,8 +48,7 @@ QVariant SensorModel::headerData(int section, Qt::Orientation orientation, int r
         return {};
     }
     static const QStringList headers{
-        QStringLiteral("Chip/device"), QStringLiteral("Sensor label"), QStringLiteral("Current"),
-        QStringLiteral("High"),        QStringLiteral("Critical"),     QStringLiteral("Status"),
+        tr("Chip/device"), tr("Sensor label"), tr("Current"), tr("High"), tr("Critical"), tr("Status"), tr("Unit"),
     };
     return headers.value(section);
 }

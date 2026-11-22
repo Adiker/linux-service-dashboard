@@ -1,28 +1,22 @@
-# linux-service-dashboard — roadmap
+# System center delivery
 
-Most MVP hardening milestones have been completed on the integration branch. Remaining follow-up work focuses on packaging polish, deeper integration testing, and optional desktop enhancements.
+The seven implementation increments are complete in the system-center PR series:
 
----
+1. Identifiable builds, current baseline and documentation.
+2. Grouped module navigation, shared snapshots, search, favorites and language infrastructure.
+3. Scoped systemd services/tasks and Compose hierarchy/inventories.
+4. Backup evidence, schedules, synchronization and cloud/local mounts.
+5. Multi-source tunnel evidence, network/firewall/ports and shared local-server views.
+6. Hardware/session metrics, XDG/native/Flatpak catalogs and VM/tool inventories.
+7. Bounded events, diagnostic projection, notifications, full UI translations, palette/layout refinement and regression/platform validation.
 
-## Completed Milestones
+Each PR targets main. Dependent increments include previous commits until preceding
+PRs merge; inspect the increment commits for focused review. Preserve ancestry with
+ordered merge commits, or update later branches against main when using squash merges.
+No published history rewrite or branch deletion is needed.
 
-- Provider parser, device rule, settings store, and `AlertMonitor` unit tests (`provider-parser-tests`)
-- Shared `ServiceRegistry` (eliminating duplicate provider execution) and deduplicated `ProviderParsers` / `SmartDeviceRules`
-- Asynchronous DBus queries for systemd and NetworkManager (with `systemctl` / `nmcli` fallbacks)
-- Safer command error classification (`CommandErrorKind`), `StatusBanner`, and `DiagnosticsDialog`
-- Module toggles wired into sidebar, Overview cards, and refresh scheduling
-- Persistent table layouts, sorting (`TableFilterProxyModel`), search/state filters, and context menus across all tables
-- Mount profiles, `/etc/fstab` display, mount/unmount actions, and profile removal
-- SMART history with opt-in scheduled refresh, CSV export, and NVMe health log support
-- Edge-triggered tray notifications, dynamic tray tooltip, and window geometry/tray lifecycle settings
-- Centralized `ThemeManager` (`System`, `Light`, `Dark`, `OLED`), `StatusBadgeDelegate`, clickable `OverviewCard`, and scrollable `SettingsPage`
-- Distro packaging recipes (`packaging/PKGBUILD`, CPack `.deb`/`.rpm`) and CI workflow
-
----
-
-## Next Potential Improvements
-
-- Automated Qt widget/integration tests covering page interactions and proxy filtering
-- Optional AppImage packaging recipe
-- `clang-tidy` CI check with warning tracking
-- Screenshots in `README.md` across Light, Dark, and OLED themes
+Further work is deliberately separate: native synchronization progress, backup verification,
+advanced hardware configuration, remote monitoring and additional distro packaging.
+Those capabilities need their own interfaces and acceptance criteria. Current views do
+not infer successful transfers, verified backups, reachable VPNs or healthy VM guests
+from process/service presence.

@@ -9,12 +9,12 @@ struct DiskRow {
     QString serial;
     QString size;
     QString transport;
-    QString smartHealth = "Unknown";
+    QString smartHealth = "Not checked";
     QString temperature = "-";
     QString reallocated = "-";
     QString pending = "-";
-    QString powerOnHours = "-";
     QString lastCheck = "Never";
+    QString smartDetail;
 };
 
 class DiskModel : public QAbstractTableModel {

@@ -101,113 +101,54 @@ QString buildStyleSheet(const ThemePalette& p) {
             background: transparent;
             color: @text;
         }
-        QListWidget#sidebar {
+        QTreeWidget#sidebar {
             background: @sidebar;
             border: 0;
             border-right: 1px solid @border;
             padding: 16px 10px;
         }
-        QListWidget#sidebar::item {
+        QTreeWidget#sidebar::item {
             border-radius: 6px;
-            padding: 10px 12px;
-            margin: 3px 0;
+            padding: 6px 8px;
+            margin: 1px 0;
             color: @muted;
             border: 1px solid transparent;
         }
-        QListWidget#sidebar::item:hover {
+        QTreeWidget#sidebar::item:hover {
             background: @surfaceAlt;
             color: @text;
         }
-        QListWidget#sidebar::item:selected {
+        QTreeWidget#sidebar::item:selected {
             background: @accentSoft;
             color: @text;
             border-color: @accent;
             font-weight: 700;
         }
         QLabel#pageTitle {
-            font-size: 20pt;
+            font-size: 21pt;
             font-weight: 700;
-            padding: 10px 4px 10px 4px;
+            padding: 14px 4px 12px 4px;
         }
         QLabel#sectionTitle {
             color: @muted;
             font-weight: 700;
-            padding: 4px 4px 0 4px;
+            padding: 2px 4px 0 4px;
         }
         QWidget#card, QFrame#settingsSection {
             background: @surface;
             border: 1px solid @border;
             border-radius: 8px;
-            padding: 14px;
+            padding: 0px;
         }
-        QWidget#card[clickable="true"]:hover {
-            border-color: @accent;
-            background: @surfaceAlt;
-        }
-        QLabel#cardHeader {
-            font-weight: 700;
+        QLabel#cardNote, QLabel#smartHint {
+            font-size: 9pt;
             color: @muted;
         }
         QLabel#cardValue {
-            font-size: 17pt;
+            font-size: 18pt;
             font-weight: 700;
-            color: @text;
         }
-        QLabel#cardSubtitle {
-            font-size: 9.5pt;
-            color: @muted;
-        }
-        QLabel#statusDot {
-            min-width: 10px;
-            max-width: 10px;
-            min-height: 10px;
-            max-height: 10px;
-            border-radius: 5px;
-            background: @mutedStatus;
-        }
-        QLabel#statusDot[state="ok"] {
-            background: @ok;
-        }
-        QLabel#statusDot[state="warn"] {
-            background: @warn;
-        }
-        QLabel#statusDot[state="error"] {
-            background: @error;
-        }
-        QFrame#statusBanner {
-            background: @surface;
-            border: 1px solid @border;
-            border-radius: 6px;
-            padding: 6px 10px;
-        }
-        QFrame#statusBanner[severity="ok"] {
-            background: @okBg;
-            border-color: @ok;
-        }
-        QFrame#statusBanner[severity="warning"] {
-            background: @warnBg;
-            border-color: @warn;
-        }
-        QFrame#statusBanner[severity="error"] {
-            background: @errorBg;
-            border-color: @error;
-        }
-        QLabel#statusBannerText {
-            color: @text;
-        }
-        QFrame#statusBanner[severity="ok"] QLabel#statusBannerText {
-            color: @ok;
-            font-weight: 600;
-        }
-        QFrame#statusBanner[severity="warning"] QLabel#statusBannerText {
-            color: @warn;
-            font-weight: 600;
-        }
-        QFrame#statusBanner[severity="error"] QLabel#statusBannerText {
-            color: @error;
-            font-weight: 600;
-        }
-        QTableView, QTableWidget {
+        QTableView, QTreeView, QTableWidget {
             background: @surface;
             alternate-background-color: @surfaceAlt;
             gridline-color: @border;
@@ -232,7 +173,7 @@ QString buildStyleSheet(const ThemePalette& p) {
             border-right: 1px solid @border;
         }
         QTableView::item, QTableWidget::item {
-            padding: 5px 6px;
+            padding: 5px;
         }
         QTableView::item:selected, QTableWidget::item:selected {
             background: @accentSoft;
@@ -243,23 +184,7 @@ QString buildStyleSheet(const ThemePalette& p) {
             color: @text;
             border: 1px solid @border;
             border-radius: 6px;
-            padding: 7px 10px;
-        }
-        QPushButton#primaryButton {
-            background: @accentSoft;
-            border-color: @accent;
-            font-weight: 700;
-        }
-        QPushButton#statusBarButton {
-            background: transparent;
-            border: 1px solid transparent;
-            padding: 3px 8px;
-            color: @muted;
-        }
-        QPushButton#statusBarButton:hover {
-            border-color: @border;
-            color: @text;
-            background: @surfaceAlt;
+            padding: 7px 9px;
         }
         QLineEdit, QSpinBox, QComboBox, QPlainTextEdit {
             selection-background-color: @accent;
@@ -274,8 +199,6 @@ QString buildStyleSheet(const ThemePalette& p) {
         }
         QPushButton:disabled, QLineEdit:disabled, QSpinBox:disabled, QComboBox:disabled {
             color: @muted;
-            border-color: @border;
-            background: @window;
         }
         QLineEdit:focus, QSpinBox:focus, QComboBox:focus, QPlainTextEdit:focus, QPushButton:focus {
             border-color: @accent;
@@ -358,16 +281,11 @@ QString buildStyleSheet(const ThemePalette& p) {
         QStatusBar, QStatusBar QLabel {
             background: @window;
             color: @muted;
-            border-top: 1px solid @border;
         }
         QToolTip {
             background: @surface;
             color: @text;
             border: 1px solid @border;
-        }
-        QLabel#dirtyHint {
-            color: @warn;
-            font-weight: 600;
         }
     )");
 
@@ -377,23 +295,36 @@ QString buildStyleSheet(const ThemePalette& p) {
     qss.replace(QStringLiteral("@surface"), p.surface);
     qss.replace(QStringLiteral("@border"), p.border);
     qss.replace(QStringLiteral("@text"), p.text);
-    qss.replace(QStringLiteral("@mutedStatus"), p.mutedStatus.name());
     qss.replace(QStringLiteral("@muted"), p.muted);
     qss.replace(QStringLiteral("@accentSoft"), p.accentSoft);
     qss.replace(QStringLiteral("@accent"), p.accent);
-    qss.replace(QStringLiteral("@okBg"), p.okBg.name());
-    qss.replace(QStringLiteral("@ok"), p.ok.name());
-    qss.replace(QStringLiteral("@warnBg"), p.warnBg.name());
-    qss.replace(QStringLiteral("@warn"), p.warn.name());
-    qss.replace(QStringLiteral("@errorBg"), p.errorBg.name());
-    qss.replace(QStringLiteral("@error"), p.error.name());
     return qss;
 }
 
 void applyToApplication(const QString& preference, const QPalette& systemPalette) {
-    activePaletteStorage() = paletteForPreference(preference, systemPalette);
+    const ThemePalette p = paletteForPreference(preference, systemPalette);
+    activePaletteStorage() = p;
+
+    QPalette colors = systemPalette;
+    colors.setColor(QPalette::Window, QColor(p.window));
+    colors.setColor(QPalette::WindowText, QColor(p.text));
+    colors.setColor(QPalette::Base, QColor(p.surface));
+    colors.setColor(QPalette::AlternateBase, QColor(p.surfaceAlt));
+    colors.setColor(QPalette::Text, QColor(p.text));
+    colors.setColor(QPalette::Button, QColor(p.surface));
+    colors.setColor(QPalette::ButtonText, QColor(p.text));
+    colors.setColor(QPalette::ToolTipBase, QColor(p.surface));
+    colors.setColor(QPalette::ToolTipText, QColor(p.text));
+    colors.setColor(QPalette::Highlight, QColor(p.accent));
+    colors.setColor(QPalette::HighlightedText, p.isDark ? QColor("#101010") : QColor("#ffffff"));
+    colors.setColor(QPalette::Mid, QColor(p.border));
+    colors.setColor(QPalette::Disabled, QPalette::Text, QColor(p.muted));
+    colors.setColor(QPalette::Disabled, QPalette::WindowText, QColor(p.muted));
+    colors.setColor(QPalette::Disabled, QPalette::ButtonText, QColor(p.muted));
+    QApplication::setPalette(colors);
+
     if (qApp) {
-        qApp->setStyleSheet(buildStyleSheet(activePaletteStorage()));
+        qApp->setStyleSheet(buildStyleSheet(p));
     }
 }
 

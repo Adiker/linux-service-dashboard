@@ -12,7 +12,6 @@ SensorProvider::SensorProvider(QObject* parent) : QObject(parent) {
                     emit sensorsReady(rows, QString());
                     return;
                 }
-                // JSON parse failed (e.g. partial/non-JSON output); try plain text fallback.
                 runTextFallback();
                 return;
             }
@@ -20,7 +19,6 @@ SensorProvider::SensorProvider(QObject* parent) : QObject(parent) {
                 emit sensorsReady({}, QStringLiteral("sensors not found. Install lm_sensors and run sensors-detect if needed."));
                 return;
             }
-            // Older lm_sensors versions may not support -j; fall back to plain text output.
             runTextFallback();
         } else if (context == QStringLiteral("sensors-text")) {
             QString error;
@@ -37,11 +35,9 @@ SensorProvider::SensorProvider(QObject* parent) : QObject(parent) {
 }
 
 void SensorProvider::refreshSensors() {
-    m_runner.run(QStringLiteral("sensors"), {QStringLiteral("-j")}, 15000, QStringLiteral("sensors-json"),
-                 /*deduplicateContext=*/true);
+    m_runner.run(QStringLiteral("sensors"), {QStringLiteral("-j")}, 15000, QStringLiteral("sensors-json"));
 }
 
 void SensorProvider::runTextFallback() {
-    m_runner.run(QStringLiteral("sensors"), {}, 15000, QStringLiteral("sensors-text"),
-                 /*deduplicateContext=*/true);
+    m_runner.run(QStringLiteral("sensors"), {}, 15000, QStringLiteral("sensors-text"));
 }

@@ -7,7 +7,6 @@
 
 class QCheckBox;
 class QComboBox;
-class QLabel;
 class QPlainTextEdit;
 class QPushButton;
 class QSpinBox;
@@ -22,6 +21,12 @@ class SettingsPage : public QWidget {
     void settingsChanged();
 
   private:
+    QHash<QString, QCheckBox*> m_extraModules;
+    QComboBox* m_language = nullptr;
+    QCheckBox* m_notifications = nullptr;
+    QCheckBox* m_closeToTray = nullptr;
+    QCheckBox* m_startMinimizedToTray = nullptr;
+    QPushButton* m_deleteGroupButton = nullptr;
     void load();
     void save();
     void reloadGroups();
@@ -29,13 +34,11 @@ class SettingsPage : public QWidget {
     void addGroup();
     void renameGroup();
     void deleteGroup();
-    void markDirty();
     QStringList editorServices() const;
     void stageCurrentEditor();
 
     QSpinBox* m_refreshInterval = nullptr;
     QComboBox* m_serviceGroup = nullptr;
-    QPushButton* m_deleteGroupButton = nullptr;
     QString m_loadedGroup;
     QHash<QString, QStringList> m_stagedGroupEdits;
     QPlainTextEdit* m_services = nullptr;
@@ -47,10 +50,5 @@ class SettingsPage : public QWidget {
     QCheckBox* m_smart = nullptr;
     QCheckBox* m_smartScheduled = nullptr;
     QSpinBox* m_smartIntervalMinutes = nullptr;
-    QCheckBox* m_notificationsEnabled = nullptr;
-    QCheckBox* m_closeToTray = nullptr;
-    QCheckBox* m_startMinimizedToTray = nullptr;
     QComboBox* m_theme = nullptr;
-    QLabel* m_dirtyLabel = nullptr;
-    bool m_loading = false;
 };

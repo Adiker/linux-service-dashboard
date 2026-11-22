@@ -1,7 +1,6 @@
 #include "SmartProvider.h"
 
 #include "../helpers/SmartDeviceRules.h"
-#include "../parsers/ProviderParsers.h"
 #include "../utils/JsonUtils.h"
 #include "../utils/TimeUtils.h"
 
@@ -84,6 +83,11 @@ bool isHelperSupportedRow(const DiskRow& row) {
 }
 
 constexpr int smartCheckPerDiskTimeoutMs = 30000;
+// The pkexec timeout starts the moment pkexec launches, so it also covers the time
+// the user spends at the polkit authentication prompt. Give a generous fixed budget
+// for that interactive step on top of the per-disk work; the helper enforces its own
+// 30s timeout per smartctl invocation, so this outer value is only a backstop against
+// a hung pkexec rather than the real per-device guard.
 constexpr int smartHelperAuthOverheadMs = 180000;
 
 QString smartHelperPath() {
@@ -128,7 +132,16 @@ struct SmartParseResult {
 
 SmartParseResult parseSmartResult(const CommandResult& result) {
     SmartParseResult parsed;
+    parsed.row.smartHealth = QStringLiteral("Unknown");
     parsed.row.lastCheck = currentTimestamp();
+
+    if (result.timedOut || result.outputTruncated) {
+        parsed.row.smartHealth = QStringLiteral("Check failed");
+        parsed.error = result.timedOut ? QCoreApplication::translate("SmartProvider", "SMART read timed out.")
+                                       : QCoreApplication::translate("SmartProvider", "SMART output exceeded the size limit.");
+        parsed.row.smartDetail = parsed.error;
+        return parsed;
+    }
 
     QString parseError;
     const QJsonDocument document = parseJsonDocument(result.standardOutput, &parseError);
@@ -144,7 +157,41 @@ SmartParseResult parseSmartResult(const CommandResult& result) {
             parsed.error = permissionAwareError(jsonMessage);
             parsed.row.smartHealth = smartHealthFromError(jsonMessage);
         }
-        ProviderParsers::parseSmartctlJson(root, &parsed.row);
+        const QJsonValue passed = root.value(QStringLiteral("smart_status")).toObject().value(QStringLiteral("passed"));
+        if (passed.isBool()) {
+            parsed.row.smartHealth = passed.toBool() ? QStringLiteral("PASSED") : QStringLiteral("FAILED/Warning");
+        }
+        const QJsonValue temp = root.value(QStringLiteral("temperature")).toObject().value(QStringLiteral("current"));
+        if (!temp.isUndefined()) {
+            parsed.row.temperature = QStringLiteral("%1 C").arg(temp.toInt());
+        }
+        const QJsonArray table = root.value(QStringLiteral("ata_smart_attributes")).toObject().value(QStringLiteral("table")).toArray();
+        for (const QJsonValue& attributeValue : table) {
+            const QJsonObject attribute = attributeValue.toObject();
+            const QString name = attribute.value(QStringLiteral("name")).toString();
+            const QString raw =
+                QString::number(attribute.value(QStringLiteral("raw")).toObject().value(QStringLiteral("value")).toVariant().toLongLong());
+            if (name == QStringLiteral("Reallocated_Sector_Ct")) {
+                parsed.row.reallocated = raw;
+            } else if (name == QStringLiteral("Current_Pending_Sector")) {
+                parsed.row.pending = raw;
+            }
+        }
+        const QJsonObject nvmeLog = root.value(QStringLiteral("nvme_smart_health_information_log")).toObject();
+        if (!nvmeLog.isEmpty()) {
+            if (parsed.row.temperature == QStringLiteral("-") && nvmeLog.contains(QStringLiteral("temperature"))) {
+                parsed.row.temperature = QStringLiteral("%1 C").arg(nvmeLog.value(QStringLiteral("temperature")).toInt());
+            }
+            if (nvmeLog.contains(QStringLiteral("percentage_used"))) {
+                parsed.row.reallocated = QStringLiteral("%1% wear").arg(nvmeLog.value(QStringLiteral("percentage_used")).toInt());
+            }
+            if (nvmeLog.contains(QStringLiteral("media_errors"))) {
+                parsed.row.pending = QStringLiteral("%1 err").arg(nvmeLog.value(QStringLiteral("media_errors")).toVariant().toLongLong());
+            }
+            if (nvmeLog.value(QStringLiteral("critical_warning")).toInt(0) != 0) {
+                parsed.row.smartHealth = QStringLiteral("FAILED/Warning");
+            }
+        }
         if (!parseError.isEmpty()) {
             parsed.error = QStringLiteral("Could not parse smartctl JSON: %1").arg(parseError);
         }
@@ -160,6 +207,18 @@ SmartParseResult parseSmartResult(const CommandResult& result) {
         parsed.row.smartHealth = smartHealthFromError(parsed.error);
     }
 
+    if (parsed.row.smartHealth == QStringLiteral("Unknown")) {
+        if (parsed.error.isEmpty()) {
+            parsed.row.smartHealth = QStringLiteral("Health unavailable");
+            parsed.error = jsonMessage.isEmpty()
+                               ? QCoreApplication::translate("SmartProvider", "smartctl did not report a SMART health result.")
+                               : permissionAwareError(jsonMessage);
+        } else
+            parsed.row.smartHealth = smartHealthFromError(parsed.error);
+    }
+    if (!parsed.error.isEmpty() && parsed.row.smartHealth == QStringLiteral("PASSED"))
+        parsed.row.smartHealth = QStringLiteral("Check failed");
+    parsed.row.smartDetail = parsed.error.isEmpty() ? jsonMessage : parsed.error;
     return parsed;
 }
 
@@ -192,8 +251,11 @@ SmartParseResult helperFailureResult(const CommandResult& result) {
             parsed.error = result.errorString.trimmed();
         }
     }
+    if (parsed.error.isEmpty())
+        parsed.error = QCoreApplication::translate("SmartProvider", "SMART helper returned no usable result.");
     parsed.error = permissionAwareError(parsed.error);
     parsed.row.smartHealth = smartHealthFromError(parsed.error);
+    parsed.row.smartDetail = parsed.error;
     return parsed;
 }
 
@@ -255,8 +317,7 @@ SmartProvider::SmartProvider(QObject* parent) : QObject(parent) {
 void SmartProvider::refreshDisks() {
     m_runner.run(QStringLiteral("lsblk"),
                  {QStringLiteral("-J"), QStringLiteral("-o"), QStringLiteral("NAME,PATH,SIZE,TYPE,MODEL,SERIAL,TRAN,MOUNTPOINTS")}, 15000,
-                 QStringLiteral("disk-list"),
-                 /*deduplicateContext=*/true);
+                 QStringLiteral("disk-list"));
 }
 
 void SmartProvider::checkSmart(const QString& devicePath) {
