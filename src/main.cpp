@@ -4,6 +4,10 @@
 
 #include <QApplication>
 #include <QCoreApplication>
+#include <QLibraryInfo>
+#include <QLocale>
+#include <QSettings>
+#include <QTranslator>
 #include <cstdio>
 #include <cstring>
 
@@ -23,6 +27,15 @@ int main(int argc, char* argv[]) {
     QApplication::setStyle(QStringLiteral("Fusion"));
     QApplication::setWindowIcon(serviceDashboardIcon());
 
+    QTranslator translator, qtTranslator;
+    const QString preference = QSettings().value("ui/language", "System").toString();
+    const bool polish = preference == "pl" || (preference == "System" && QLocale::system().language() == QLocale::Polish);
+    if (polish) {
+        if (translator.load(":/i18n/dashboard_pl.qm"))
+            app.installTranslator(&translator);
+        if (qtTranslator.load("qtbase_pl", QLibraryInfo::path(QLibraryInfo::TranslationsPath)))
+            app.installTranslator(&qtTranslator);
+    }
     MainWindow window;
     window.show();
 

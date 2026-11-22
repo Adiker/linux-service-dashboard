@@ -16,7 +16,7 @@
 #include <QTableView>
 #include <QVBoxLayout>
 
-SystemdPage::SystemdPage(QWidget* parent) : QWidget(parent) {
+SystemdPage::SystemdPage(SystemdServiceProvider& provider, QWidget* parent) : QWidget(parent), m_provider(provider) {
     auto* layout = new QVBoxLayout(this);
     auto* header = new QHBoxLayout;
     auto* title = new QLabel(QStringLiteral("Systemd Services"), this);
@@ -79,13 +79,9 @@ SystemdPage::SystemdPage(QWidget* parent) : QWidget(parent) {
         }
     });
     connect(&m_provider, &SystemdServiceProvider::servicesReady, this, [this](const QVector<ServiceRow>& rows, const QString& error) {
-        m_model->setRows(rows);
+        if (error.isEmpty())
+            m_model->setRows(rows);
         m_status->setText(error.isEmpty() ? QStringLiteral("%1 services").arg(rows.size()) : error);
-    });
-    connect(&m_provider, &SystemdServiceProvider::logsReady, this, [this](const QString& title, const QString& text) {
-        auto* dialog = new LogViewerDialog(title, text, this);
-        dialog->setAttribute(Qt::WA_DeleteOnClose);
-        dialog->show();
     });
     connect(&m_provider, &SystemdServiceProvider::actionFinished, this, [this](const QString& message, const QString& details) {
         QMessageBox::information(this, QStringLiteral("systemd"), details.isEmpty() ? message : message + QStringLiteral("\n\n") + details);

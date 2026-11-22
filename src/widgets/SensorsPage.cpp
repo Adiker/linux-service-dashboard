@@ -8,7 +8,7 @@
 #include <QTableView>
 #include <QVBoxLayout>
 
-SensorsPage::SensorsPage(QWidget* parent) : QWidget(parent) {
+SensorsPage::SensorsPage(SensorProvider& provider, QWidget* parent) : QWidget(parent), m_provider(provider) {
     auto* layout = new QVBoxLayout(this);
     auto* header = new QHBoxLayout;
     auto* title = new QLabel(QStringLiteral("Sensors"), this);
@@ -34,7 +34,8 @@ SensorsPage::SensorsPage(QWidget* parent) : QWidget(parent) {
 
     connect(refreshButton, &QPushButton::clicked, this, &SensorsPage::refresh);
     connect(&m_provider, &SensorProvider::sensorsReady, this, [this](const QVector<SensorRow>& rows, const QString& error) {
-        m_model->setRows(rows);
+        if (error.isEmpty())
+            m_model->setRows(rows);
         m_status->setText(error.isEmpty() ? QStringLiteral("%1 readings").arg(rows.size()) : error);
     });
 }

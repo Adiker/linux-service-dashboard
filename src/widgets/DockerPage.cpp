@@ -11,7 +11,7 @@
 #include <QTableView>
 #include <QVBoxLayout>
 
-DockerPage::DockerPage(QWidget* parent) : QWidget(parent) {
+DockerPage::DockerPage(DockerProvider& provider, QWidget* parent) : QWidget(parent), m_provider(provider) {
     auto* layout = new QVBoxLayout(this);
     auto* header = new QHBoxLayout;
     auto* title = new QLabel(QStringLiteral("Docker"), this);
@@ -60,13 +60,9 @@ DockerPage::DockerPage(QWidget* parent) : QWidget(parent) {
             m_provider.inspectContainer(row.id);
     });
     connect(&m_provider, &DockerProvider::containersReady, this, [this](const QVector<DockerContainerRow>& rows, const QString& error) {
-        m_model->setRows(rows);
+        if (error.isEmpty())
+            m_model->setRows(rows);
         m_status->setText(error.isEmpty() ? QStringLiteral("%1 containers").arg(rows.size()) : error);
-    });
-    connect(&m_provider, &DockerProvider::textReady, this, [this](const QString& title, const QString& text) {
-        auto* dialog = new LogViewerDialog(title, text, this);
-        dialog->setAttribute(Qt::WA_DeleteOnClose);
-        dialog->show();
     });
     connect(&m_provider, &DockerProvider::actionFinished, this, [this](const QString& message, const QString& details) {
         QMessageBox::information(this, QStringLiteral("Docker"), details.isEmpty() ? message : message + QStringLiteral("\n\n") + details);

@@ -11,17 +11,17 @@ class QTableView;
 class MountsPage : public QWidget {
     Q_OBJECT
 
-public:
-    explicit MountsPage(QWidget *parent = nullptr);
+  public:
+    explicit MountsPage(MountProvider& provider, QWidget* parent = nullptr);
 
-public slots:
+  public slots:
     void refresh();
 
-private:
+  private:
     MountRow selectedRow() const;
 
-    MountModel *m_model = nullptr;
-    QTableView *m_table = nullptr;
-    QLabel *m_status = nullptr;
-    MountProvider m_provider;
+    MountModel* m_model = nullptr;
+    QTableView* m_table = nullptr;
+    QLabel* m_status = nullptr;
+    MountProvider& m_provider;
 };

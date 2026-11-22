@@ -11,18 +11,18 @@ class QTableView;
 class DockerPage : public QWidget {
     Q_OBJECT
 
-public:
-    explicit DockerPage(QWidget *parent = nullptr);
+  public:
+    explicit DockerPage(DockerProvider& provider, QWidget* parent = nullptr);
 
-public slots:
+  public slots:
     void refresh();
 
-private:
+  private:
     DockerContainerRow selectedRow() const;
-    void runAction(const QString &action);
+    void runAction(const QString& action);
 
-    DockerContainerModel *m_model = nullptr;
-    QTableView *m_table = nullptr;
-    QLabel *m_status = nullptr;
-    DockerProvider m_provider;
+    DockerContainerModel* m_model = nullptr;
+    QTableView* m_table = nullptr;
+    QLabel* m_status = nullptr;
+    DockerProvider& m_provider;
 };

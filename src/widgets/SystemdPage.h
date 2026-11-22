@@ -15,7 +15,7 @@ class SystemdPage : public QWidget {
     Q_OBJECT
 
   public:
-    explicit SystemdPage(QWidget* parent = nullptr);
+    explicit SystemdPage(SystemdServiceProvider& provider, QWidget* parent = nullptr);
 
   public slots:
     void refresh();
@@ -32,5 +32,5 @@ class SystemdPage : public QWidget {
     QLineEdit* m_filter = nullptr;
     QComboBox* m_groupSelector = nullptr;
     QLabel* m_status = nullptr;
-    SystemdServiceProvider m_provider;
+    SystemdServiceProvider& m_provider;
 };
