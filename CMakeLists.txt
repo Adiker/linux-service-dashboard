@@ -52,6 +52,8 @@ qt_add_executable(linux-service-dashboard
     src/AppIcon.h
     src/MainWindow.cpp
     src/MainWindow.h
+    src/core/AlertMonitor.cpp
+    src/core/AlertMonitor.h
     src/core/CommandResult.h
     src/core/CommandRunner.cpp
     src/core/CommandRunner.h
@@ -63,6 +65,8 @@ qt_add_executable(linux-service-dashboard
     src/core/MountProfileStore.h
     src/core/ServiceGroupSettings.cpp
     src/core/ServiceGroupSettings.h
+    src/core/ServiceRegistry.cpp
+    src/core/ServiceRegistry.h
     src/core/SmartHistoryStore.cpp
     src/core/SmartHistoryStore.h
     src/core/SmartRefreshScheduler.cpp
@@ -77,6 +81,8 @@ qt_add_executable(linux-service-dashboard
     src/models/SensorModel.h
     src/models/DiskModel.cpp
     src/models/DiskModel.h
+    src/models/TableFilterProxyModel.cpp
+    src/models/TableFilterProxyModel.h
     src/services/SystemdServiceProvider.cpp
     src/services/SystemdServiceProvider.h
     src/services/DockerProvider.cpp
@@ -109,6 +115,16 @@ qt_add_executable(linux-service-dashboard
     src/widgets/LogViewerDialog.h
     src/widgets/ConfirmActionDialog.cpp
     src/widgets/ConfirmActionDialog.h
+    src/widgets/DiagnosticsDialog.cpp
+    src/widgets/DiagnosticsDialog.h
+    src/widgets/SmartHistoryDialog.cpp
+    src/widgets/SmartHistoryDialog.h
+    src/widgets/StatusBanner.cpp
+    src/widgets/StatusBanner.h
+    src/ui/StatusBadgeDelegate.cpp
+    src/ui/StatusBadgeDelegate.h
+    src/ui/ThemeManager.cpp
+    src/ui/ThemeManager.h
     src/utils/JsonUtils.cpp
     src/utils/JsonUtils.h
     src/utils/TimeUtils.cpp
@@ -129,6 +145,9 @@ target_compile_definitions(linux-service-dashboard PRIVATE SMART_HELPER_RELATIVE
 qt_add_executable(provider-parser-tests
     tests/test_provider_parsers.cpp
     src/parsers/ProviderParsers.cpp
+    src/core/AlertMonitor.cpp
+    src/core/MountProfileStore.cpp
+    src/core/ServiceGroupSettings.cpp
     src/utils/JsonUtils.cpp
     src/utils/StatusUtils.cpp
 )

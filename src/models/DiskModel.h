@@ -13,6 +13,7 @@ struct DiskRow {
     QString temperature = "-";
     QString reallocated = "-";
     QString pending = "-";
+    QString powerOnHours = "-";
     QString lastCheck = "Never";
 };
 

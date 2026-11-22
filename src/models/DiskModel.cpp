@@ -1,8 +1,40 @@
 #include "DiskModel.h"
 
-#include <QBrush>
+#include <QFontDatabase>
+#include <QRegularExpression>
 
 #include <utility>
+
+namespace {
+
+double parseHumanSizeBytes(const QString &sizeText)
+{
+    static const QRegularExpression re(QStringLiteral(R"(^\s*(\d+(?:[.,]\d+)?)\s*([KMGTPE]?)i?B?\s*$)"),
+                                       QRegularExpression::CaseInsensitiveOption);
+    const QRegularExpressionMatch match = re.match(sizeText);
+    if (!match.hasMatch()) {
+        return -1.0;
+    }
+    QString numberStr = match.captured(1);
+    numberStr.replace(QLatin1Char(','), QLatin1Char('.'));
+    double value = numberStr.toDouble();
+    const QString unit = match.captured(2).toUpper();
+    if (unit == QStringLiteral("K")) value *= 1024.0;
+    else if (unit == QStringLiteral("M")) value *= 1024.0 * 1024.0;
+    else if (unit == QStringLiteral("G")) value *= 1024.0 * 1024.0 * 1024.0;
+    else if (unit == QStringLiteral("T")) value *= 1024.0 * 1024.0 * 1024.0 * 1024.0;
+    else if (unit == QStringLiteral("P")) value *= 1024.0 * 1024.0 * 1024.0 * 1024.0 * 1024.0;
+    return value;
+}
+
+double parseNumericLeading(const QString &text, double fallback)
+{
+    static const QRegularExpression re(QStringLiteral(R"((-?\d+(?:\.\d+)?))"));
+    const QRegularExpressionMatch match = re.match(text);
+    return match.hasMatch() ? match.captured(1).toDouble() : fallback;
+}
+
+} // namespace
 
 DiskModel::DiskModel(QObject *parent)
     : QAbstractTableModel(parent)
@@ -16,7 +48,7 @@ int DiskModel::rowCount(const QModelIndex &parent) const
 
 int DiskModel::columnCount(const QModelIndex &parent) const
 {
-    return parent.isValid() ? 0 : 10;
+    return parent.isValid() ? 0 : 11;
 }
 
 QVariant DiskModel::data(const QModelIndex &index, int role) const
@@ -36,15 +68,23 @@ QVariant DiskModel::data(const QModelIndex &index, int role) const
         case 6: return row.temperature;
         case 7: return row.reallocated;
         case 8: return row.pending;
-        case 9: return row.lastCheck;
+        case 9: return row.powerOnHours;
+        case 10: return row.lastCheck;
         default: return {};
         }
     }
-    if (role == Qt::ForegroundRole && index.column() == 5) {
-        const QString health = row.smartHealth.toLower();
-        if (health.contains(QStringLiteral("passed")) || health.contains(QStringLiteral("ok"))) return QBrush(QColor(QStringLiteral("#8fd694")));
-        if (health.contains(QStringLiteral("fail")) || health.contains(QStringLiteral("error"))) return QBrush(QColor(QStringLiteral("#ff8a80")));
-        return QBrush(QColor(QStringLiteral("#aeb7c2")));
+    if (role == Qt::UserRole) {
+        switch (index.column()) {
+        case 3: return parseHumanSizeBytes(row.size);
+        case 6: return parseNumericLeading(row.temperature, -999.0);
+        case 7: return parseNumericLeading(row.reallocated, -1.0);
+        case 8: return parseNumericLeading(row.pending, -1.0);
+        case 9: return parseNumericLeading(row.powerOnHours, -1.0);
+        default: return {};
+        }
+    }
+    if (role == Qt::FontRole && (index.column() == 0 || index.column() == 2)) {
+        return QFontDatabase::systemFont(QFontDatabase::FixedFont);
     }
     return {};
 }
@@ -62,8 +102,9 @@ QVariant DiskModel::headerData(int section, Qt::Orientation orientation, int rol
         QStringLiteral("Transport"),
         QStringLiteral("SMART health"),
         QStringLiteral("Temp"),
-        QStringLiteral("Reallocated"),
-        QStringLiteral("Pending"),
+        QStringLiteral("Reallocated / Wear"),
+        QStringLiteral("Pending / Media Err"),
+        QStringLiteral("Power-on"),
         QStringLiteral("Last check"),
     };
     return headers.value(section);
@@ -72,14 +113,6 @@ QVariant DiskModel::headerData(int section, Qt::Orientation orientation, int rol
 void DiskModel::setRows(const QVector<DiskRow> &rows)
 {
     beginResetModel();
-    // Refreshing the inventory re-runs lsblk, which carries no SMART data. Carry
-    // previously fetched SMART values over to disks that are still present so a
-    // refresh does not blank the table and force the user to re-authenticate.
-    //
-    // Match by device path first, since the path uniquely identifies a row in a
-    // single lsblk snapshot. Only fall back to the serial when it is non-empty
-    // and unique in both the old and new inventories; disks that report a shared
-    // or duplicated serial must never inherit another device's SMART data.
     const auto serialOccurrences = [](const QVector<DiskRow> &list, const QString &serial) {
         int count = 0;
         for (const DiskRow &row : list) {
@@ -114,6 +147,7 @@ void DiskModel::setRows(const QVector<DiskRow> &rows)
             row.temperature = match->temperature;
             row.reallocated = match->reallocated;
             row.pending = match->pending;
+            row.powerOnHours = match->powerOnHours;
             row.lastCheck = match->lastCheck;
         }
     }
@@ -129,8 +163,9 @@ void DiskModel::updateSmart(const QString &path, const DiskRow &smartRow)
             m_rows[i].temperature = smartRow.temperature;
             m_rows[i].reallocated = smartRow.reallocated;
             m_rows[i].pending = smartRow.pending;
+            m_rows[i].powerOnHours = smartRow.powerOnHours;
             m_rows[i].lastCheck = smartRow.lastCheck;
-            emit dataChanged(index(i, 5), index(i, 9));
+            emit dataChanged(index(i, 5), index(i, 10));
             return;
         }
     }

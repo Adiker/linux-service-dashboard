@@ -1,6 +1,6 @@
 #include "DockerContainerModel.h"
 
-#include <QBrush>
+#include <QFontDatabase>
 
 DockerContainerModel::DockerContainerModel(QObject *parent)
     : QAbstractTableModel(parent)
@@ -35,8 +35,8 @@ QVariant DockerContainerModel::data(const QModelIndex &index, int role) const
         default: return {};
         }
     }
-    if (role == Qt::ForegroundRole && index.column() == 3) {
-        return QBrush(row.state == QStringLiteral("running") ? QColor(QStringLiteral("#8fd694")) : QColor(QStringLiteral("#f0c36d")));
+    if (role == Qt::FontRole && index.column() == 6) {
+        return QFontDatabase::systemFont(QFontDatabase::FixedFont);
     }
     return {};
 }

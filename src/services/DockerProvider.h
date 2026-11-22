@@ -11,9 +11,11 @@ class DockerProvider : public QObject {
 public:
     explicit DockerProvider(QObject *parent = nullptr);
     void refreshContainers();
-    void containerLogs(const QString &container);
+    void containerLogs(const QString &container, int tailLines = 300);
     void inspectContainer(const QString &container);
     void controlContainer(const QString &container, const QString &action);
+
+    [[nodiscard]] CommandRunner *commandRunner() { return &m_runner; }
 
 signals:
     void containersReady(const QVector<DockerContainerRow> &rows, const QString &error);

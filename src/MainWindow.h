@@ -1,6 +1,8 @@
 #pragma once
 
+#include "core/AlertMonitor.h"
 #include "core/RefreshScheduler.h"
+#include "core/ServiceRegistry.h"
 #include "widgets/DisksPage.h"
 #include "widgets/DockerPage.h"
 #include "widgets/MountsPage.h"
@@ -13,6 +15,7 @@
 #include <QMainWindow>
 
 class QListWidget;
+class QPushButton;
 class QStackedWidget;
 class QSystemTrayIcon;
 
@@ -21,6 +24,7 @@ class MainWindow : public QMainWindow {
 
 public:
     explicit MainWindow(QWidget *parent = nullptr);
+    [[nodiscard]] bool shouldStartMinimized() const;
 
 public slots:
     void refreshAll();
@@ -34,6 +38,10 @@ private:
     void applyTheme();
     void reloadSettings();
     void applyModuleVisibility();
+    void openDiagnostics();
+    void updateDiagnosticsBadge();
+    void saveWindowGeometry();
+    void restoreWindowGeometry();
 
     enum PageIndex {
         PageOverview = 0,
@@ -49,7 +57,11 @@ private:
     QListWidget *m_sidebar = nullptr;
     QStackedWidget *m_stack = nullptr;
     QSystemTrayIcon *m_tray = nullptr;
+    QPushButton *m_diagnosticsButton = nullptr;
     RefreshScheduler m_scheduler;
+    ServiceRegistry *m_registry = nullptr;
+    AlertMonitor *m_alertMonitor = nullptr;
+    bool m_closeToTray = true;
 
     OverviewPage *m_overview = nullptr;
     SystemdPage *m_systemd = nullptr;

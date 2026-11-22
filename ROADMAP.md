@@ -1,72 +1,28 @@
 # linux-service-dashboard — roadmap
 
-The project is a functional Qt6 MVP. The next work should make it safer, easier to package, and easier to validate.
+Most MVP hardening milestones have been completed on the integration branch. Remaining follow-up work focuses on packaging polish, deeper integration testing, and optional desktop enhancements.
 
 ---
 
-## Priority 1 — Stability and Safety
+## Completed Milestones
 
-### Provider tests
-
-Add focused tests for parsers and provider error handling:
-
-- systemd unit parsing
-- Docker row parsing
-- `nmcli` VPN parsing
-- `sensors -j` and text fallback parsing
-- `lsblk -J` and SMART JSON parsing
-
-### Safer command reporting
-
-Improve status/error surfaces so permission errors, missing tools, and empty command output are visually distinct.
-
-### Module toggles
-
-The settings page persists module toggles, but pages are not hidden/disabled yet. Wire these toggles into the sidebar and refresh scheduler.
+- Provider parser, device rule, settings store, and `AlertMonitor` unit tests (`provider-parser-tests`)
+- Shared `ServiceRegistry` (eliminating duplicate provider execution) and deduplicated `ProviderParsers` / `SmartDeviceRules`
+- Asynchronous DBus queries for systemd and NetworkManager (with `systemctl` / `nmcli` fallbacks)
+- Safer command error classification (`CommandErrorKind`), `StatusBanner`, and `DiagnosticsDialog`
+- Module toggles wired into sidebar, Overview cards, and refresh scheduling
+- Persistent table layouts, sorting (`TableFilterProxyModel`), search/state filters, and context menus across all tables
+- Mount profiles, `/etc/fstab` display, mount/unmount actions, and profile removal
+- SMART history with opt-in scheduled refresh, CSV export, and NVMe health log support
+- Edge-triggered tray notifications, dynamic tray tooltip, and window geometry/tray lifecycle settings
+- Centralized `ThemeManager` (`System`, `Light`, `Dark`, `OLED`), `StatusBadgeDelegate`, clickable `OverviewCard`, and scrollable `SettingsPage`
+- Distro packaging recipes (`packaging/PKGBUILD`, CPack `.deb`/`.rpm`) and CI workflow
 
 ---
 
-## Priority 2 — Desktop Integration
+## Next Potential Improvements
 
-### Packaging
-
-Add distro packaging:
-
-- Arch PKGBUILD
-- CPack `.deb` / `.rpm`
-- optional AppImage
-
-### CI
-
-Add GitHub Actions for:
-
-- Debug and Release build
-- changed-file `clang-format`
-- optional warning-only `clang-tidy`
-
-### Wayland/X11 smoke checks
-
-Document manual verification on KDE Plasma Wayland and X11/XWayland. If practical, add a small scripted startup smoke test using Qt's `offscreen` and `minimal` QPA plugins.
-
----
-
-## Priority 3 — Feature Growth
-
-### Direct DBus providers
-
-Replace shell parsing with DBus where it materially improves reliability:
-
-- systemd DBus
-- NetworkManager DBus
-
-### Mount profiles
-
-Add saved mount profiles and fstab-aware display.
-
-### Persistent table layouts
-
-Persist sort order, column widths, and visible columns per page.
-
-### SMART history
-
-Add opt-in SMART history with conservative polling and clear permission handling.
+- Automated Qt widget/integration tests covering page interactions and proxy filtering
+- Optional AppImage packaging recipe
+- `clang-tidy` CI check with warning tracking
+- Screenshots in `README.md` across Light, Dark, and OLED themes

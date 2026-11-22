@@ -1,6 +1,6 @@
 #include "ServiceModel.h"
 
-#include <QBrush>
+#include <QFontDatabase>
 
 ServiceModel::ServiceModel(QObject *parent)
     : QAbstractTableModel(parent)
@@ -34,10 +34,8 @@ QVariant ServiceModel::data(const QModelIndex &index, int role) const
         default: return {};
         }
     }
-    if (role == Qt::ForegroundRole && index.column() == 2) {
-        if (row.activeState == QStringLiteral("active")) return QBrush(QColor(QStringLiteral("#8fd694")));
-        if (row.activeState == QStringLiteral("failed")) return QBrush(QColor(QStringLiteral("#ff8a80")));
-        return QBrush(QColor(QStringLiteral("#f0c36d")));
+    if (role == Qt::FontRole && index.column() == 0) {
+        return QFontDatabase::systemFont(QFontDatabase::FixedFont);
     }
     return {};
 }

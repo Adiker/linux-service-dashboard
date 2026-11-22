@@ -11,7 +11,10 @@ class MountProvider : public QObject {
 public:
     explicit MountProvider(QObject *parent = nullptr);
     void refreshMounts(bool includeConfigured = false);
+    void mount(const QString &target);
     void unmount(const QString &target);
+
+    [[nodiscard]] CommandRunner *commandRunner() { return &m_runner; }
 
 signals:
     void mountsReady(const QVector<MountRow> &rows, const QString &error);

@@ -4,17 +4,17 @@ Linux Service Dashboard is a local Qt 6 Widgets desktop application for monitori
 
 ## Features
 
-- Overview cards for Docker, systemd, VPN, mounts, sensors, and disk health.
-- systemd service table with filtering, refresh, start, stop, restart, and journal viewing.
-- Docker container table using the Docker CLI, with start, stop, restart, logs, and inspect JSON actions.
-- NetworkManager VPN/tunnel status via its DBus interface (asynchronous, with a short timeout), falling back to `nmcli` when the system bus is unavailable; external `tun` links such as OpenConnect are included.
-- CIFS/NFS/sshfs mount listing with file manager open and confirmed unmount.
-- Network shares from `/etc/fstab` and saved mount profiles are shown alongside live mounts; unmount is limited to currently mounted entries.
-- Temperature/sensor display using `sensors -j` with a text fallback.
-- Disk inventory via `lsblk -J` and manual SMART checks via `smartctl -j`, with an installed polkit helper for permission-gated SMART reads.
-- QSettings-backed refresh interval, watched services, user-defined systemd service groups, module toggles, and theme preference.
-- Light, Dark, and OLED themes with system-theme auto mode.
-- System tray menu with Show Dashboard, Refresh Now, and Quit.
+- Clickable Overview cards for Docker, systemd, VPN, mounts, sensors, and disk/SMART health with live status indicators.
+- systemd service table with search/state filtering, sortable columns, service groups (add/rename/delete), "All services" toggle, context menu, start/stop/restart, and enhanced journal log viewing.
+- Docker container table using the Docker CLI, with search/state filtering, sortable columns, context menu, start/stop/restart, refreshable logs, and JSON inspection.
+- NetworkManager VPN/tunnel monitoring via asynchronous DBus (with `nmcli` fallback), multi-tunnel reporting, configured VPN profile list, and connect/disconnect actions; external `tun` links such as OpenConnect are included.
+- CIFS/NFS/sshfs mount listing alongside `/etc/fstab` entries and saved mount profiles, with file manager open, mount, confirmed unmount, and save/remove profile actions.
+- Temperature/sensor display using `sensors -j` with automatic plain-text fallback, search/warning filter, and numeric sorting.
+- Disk inventory via `lsblk -J` and manual or opt-in scheduled SMART checks via `smartctl -j` (supporting both ATA attributes and NVMe health logs), with an installed polkit helper and SMART history dialog (CSV export and clear).
+- Enhanced log viewer (`Ctrl+F` search, monospace font, word-wrap toggle, copy/save, live refresh with selectable tail size) and Command Diagnostics dialog for failed commands.
+- Edge-triggered system tray notifications (failed services, high sensors, SMART warnings, VPN disconnects), dynamic tray tooltip, remembered window geometry, and close-to-tray / start-minimized options.
+- QSettings-backed refresh interval, watched service groups, module toggles, persistent table layouts/sorting, and theme preference.
+- Light, Dark, and OLED themes with system-theme auto mode and theme-aware status badges.
 - Embedded application icon plus installable desktop entry for KDE Plasma Wayland/X11 taskbar matching.
 
 Podman, remote monitoring, web servers, authentication, and cloud sync are intentionally out of scope for this MVP.
@@ -86,12 +86,12 @@ OLED uses a black-first palette with brighter contrast for OLED displays and dar
 
 ## Known Limitations
 
-- systemd listing uses the systemd1 DBus interface with a `systemctl list-units --plain` fallback; service control actions still run through `systemctl`.
+- systemd listing uses asynchronous systemd1 DBus calls with a `systemctl list-units --plain` fallback; service control actions still run through `systemctl`.
 - SMART checks are manual by default and cached by the UI. An opt-in scheduled refresh (Settings → SMART scheduling, minimum 5-minute interval) can re-run checks automatically; it is skipped while a check is already in progress. The polkit helper covers normal installed use, but unusual USB bridges may still require bridge-specific `smartctl -d` options.
-- VPN detection queries NetworkManager over DBus (with an `nmcli` fallback) and treats VPN-like tunnel types such as `vpn`, `tun`, `wireguard`, and `ppp` as connected.
-- Mount profiles and fstab entries are read-only here: the app lists them and can save profiles, but does not mount them or edit `/etc/fstab`.
+- VPN detection queries NetworkManager over asynchronous DBus (with an `nmcli` fallback) and treats VPN-like tunnel types such as `vpn`, `tun`, `wireguard`, and `ppp` as connected.
+- Mounting configured fstab/profile entries runs `mount <target>` without `sudo`; shares that do not specify `user`/`users` in `/etc/fstab` will report a permission error, and the app does not edit `/etc/fstab`.
 - Module toggles hide a page from the sidebar and skip its scheduled refresh; the Overview and Settings pages are always available.
-- Provider parsers have unit tests (`ctest --test-dir build`); UI behavior and provider command execution are still validated by manual build and smoke tests.
+- Core parsers, device validation rules, settings stores, and alert transitions have unit tests (`ctest --test-dir build`); UI behavior and live system commands are validated by Qt QPA smoke tests and manual sessions.
 
 ## Screenshots
 

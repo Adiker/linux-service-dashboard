@@ -18,6 +18,8 @@ public:
     void checkSmart(const QVector<DiskRow> &rows);
     bool isSmartCheckBusy() const;
 
+    [[nodiscard]] CommandRunner *commandRunner() { return &m_runner; }
+
 signals:
     void disksReady(const QVector<DiskRow> &rows, const QString &error);
     void smartReady(const QString &devicePath, const DiskRow &smartRow, const QString &error);

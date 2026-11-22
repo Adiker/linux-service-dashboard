@@ -105,4 +105,23 @@ void renameGroup(const QString &from, const QString &to)
     }
 }
 
+bool deleteGroup(const QString &group)
+{
+    ensureDefaultGroup();
+    QSettings settings;
+    QStringList groups = settings.value(QStringLiteral("systemd/groups")).toStringList();
+    if (groups.size() <= 1 || !groups.contains(group)) {
+        return false;
+    }
+    groups.removeAll(group);
+    settings.setValue(QStringLiteral("systemd/groups"), groups);
+    settings.remove(groupKey(group));
+    if (activeGroup() == group) {
+        const QString nextActive = groups.first();
+        settings.setValue(QStringLiteral("systemd/activeGroup"), nextActive);
+        settings.setValue(QStringLiteral("systemd/watchedServices"), servicesForGroup(nextActive));
+    }
+    return true;
+}
+
 } // namespace ServiceGroupSettings

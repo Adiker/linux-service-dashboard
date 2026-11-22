@@ -33,17 +33,28 @@ linux-service-dashboard/
 │   ├── main.cpp
 │   ├── MainWindow.h/cpp
 │   ├── helpers/
+│   │   ├── SmartDeviceRules.h
 │   │   └── SmartHelper.cpp
 │   ├── core/
+│   │   ├── AlertMonitor.h/cpp
 │   │   ├── CommandResult.h
 │   │   ├── CommandRunner.h/cpp
-│   │   └── RefreshScheduler.h/cpp
+│   │   ├── ModuleSettings.h/cpp
+│   │   ├── MountProfileStore.h/cpp
+│   │   ├── RefreshScheduler.h/cpp
+│   │   ├── ServiceGroupSettings.h/cpp
+│   │   ├── ServiceRegistry.h/cpp
+│   │   ├── SmartHistoryStore.h/cpp
+│   │   └── SmartRefreshScheduler.h/cpp
 │   ├── models/
 │   │   ├── ServiceModel.h/cpp
 │   │   ├── DockerContainerModel.h/cpp
 │   │   ├── MountModel.h/cpp
 │   │   ├── SensorModel.h/cpp
-│   │   └── DiskModel.h/cpp
+│   │   ├── DiskModel.h/cpp
+│   │   └── TableFilterProxyModel.h/cpp
+│   ├── parsers/
+│   │   └── ProviderParsers.h/cpp
 │   ├── services/
 │   │   ├── SystemdServiceProvider.h/cpp
 │   │   ├── DockerProvider.h/cpp
@@ -51,6 +62,9 @@ linux-service-dashboard/
 │   │   ├── MountProvider.h/cpp
 │   │   ├── SensorProvider.h/cpp
 │   │   └── SmartProvider.h/cpp
+│   ├── ui/
+│   │   ├── StatusBadgeDelegate.h/cpp
+│   │   └── ThemeManager.h/cpp
 │   ├── widgets/
 │   │   ├── OverviewPage.h/cpp
 │   │   ├── SystemdPage.h/cpp
@@ -60,11 +74,16 @@ linux-service-dashboard/
 │   │   ├── SensorsPage.h/cpp
 │   │   ├── DisksPage.h/cpp
 │   │   ├── SettingsPage.h/cpp
+│   │   ├── StatusBanner.h/cpp
 │   │   ├── ConfirmActionDialog.h/cpp
-│   │   └── LogViewerDialog.h/cpp
+│   │   ├── DiagnosticsDialog.h/cpp
+│   │   ├── LogViewerDialog.h/cpp
+│   │   └── SmartHistoryDialog.h/cpp
 │   └── utils/
+│       ├── FstabParser.h/cpp
 │       ├── JsonUtils.h/cpp
 │       ├── StatusUtils.h/cpp
+│       ├── TableLayoutPersistence.h/cpp
 │       └── TimeUtils.h/cpp
 ├── AGENTS.md
 ├── CLAUDE.md
@@ -79,12 +98,12 @@ linux-service-dashboard/
 ## Runtime Flow
 
 1. `main.cpp` creates `QApplication`, sets organization/application metadata, sets the KDE/Wayland desktop file name, applies Fusion style, and sets the application icon.
-2. `MainWindow` builds the sidebar/stack UI and the system tray icon/menu.
+2. `MainWindow` creates a single `ServiceRegistry` (shared across `OverviewPage`, feature pages, and `AlertMonitor`), builds the sidebar/stack/status bar UI, restores saved window geometry, and configures the system tray icon/menu.
 3. `SettingsPage::settingsChanged` triggers `MainWindow::reloadSettings()`.
 4. `RefreshScheduler` emits periodic refresh requests based on `refresh/intervalSeconds`.
-5. `MainWindow::refreshAll()` fans out to all pages.
-6. Pages call providers in `src/services/`.
-7. Providers run system commands through `CommandRunner` and emit parsed rows/status back to the UI.
+5. `MainWindow::refreshAll()` fans out once per enabled module through the shared `ServiceRegistry` providers so Overview and detail pages stay synchronized without duplicate command execution.
+6. Providers run asynchronous DBus queries or system commands through `CommandRunner` (with context deduplication and ring-buffered failure logging) and parse output through `ProviderParsers`.
+7. `AlertMonitor` observes provider signals and raises edge-triggered tray notifications plus live tray tooltip updates.
 
 ---
 
@@ -108,12 +127,16 @@ Known keys:
 | `modules/sensors` | bool | `true` | Show the Sensors page and include it in refresh scheduling |
 | `modules/smart` | bool | `true` | Show the Disks/SMART page and include it in refresh scheduling |
 | `mounts/profileNames` | string list | – | Names of saved mount profiles |
-| `mounts/profiles/<name>/{source,target,filesystemType,options}` | string | – | Saved mount profile fields |
+| `mounts/profiles/<encoded>/{source,target,filesystemType,options}` | string | – | Saved mount profile fields (percent-encoded profile name) |
 | `smart/scheduledRefreshEnabled` | bool | `false` | Enable the opt-in scheduled SMART refresh |
 | `smart/scheduledRefreshMinutes` | int | `30` | Scheduled SMART refresh interval in minutes (minimum 5) |
 | `smart/history/serial/*`, `smart/history/path/*` | string list | – | Per-disk SMART history entries (keyed by serial, else device path) |
+| `notifications/enabled` | bool | `true` | Enable edge-triggered desktop tray alerts |
+| `window/closeToTray` | bool | `true` | Hide to system tray on window close instead of quitting |
+| `window/startMinimizedToTray` | bool | `false` | Start hidden in system tray when tray is available |
+| `window/geometry` | byte array | – | Saved main window size and position |
 | `theme/preference` | string | `System` | `System`, `Light`, `Dark`, or `OLED` |
-| `tables/<page>/headerState` | byte array | – | Saved column sizes/order per table (`systemd`, `docker`, `mounts`, `sensors`, `disks`); sort order is persisted only for the proxy-backed systemd table |
+| `tables/<page>/headerState` | byte array | – | Saved column sizes, order, and sort state per proxy-backed table (`systemd`, `docker`, `mounts`, `sensors`, `disks`) |
 
 Module toggles drive sidebar visibility and refresh scheduling: `MainWindow::applyModuleVisibility()` hides disabled pages and `refreshAll()` skips their providers, while the Overview page hides the matching cards. The Overview and Settings pages are always shown.
 
@@ -138,33 +161,34 @@ The app does not force Wayland or X11. Qt chooses the platform plugin from the u
 
 ## Theme System
 
-`MainWindow::applyTheme()` owns the central stylesheet.
+`MainWindow::applyTheme()` delegates stylesheet generation and palette selection to `ThemeManager` (`src/ui/ThemeManager.h/cpp`).
 
 Supported preferences:
 
 - `System`: Light or Dark based on the current palette
-- `Light`: explicit light theme
+- `Light`: explicit light theme with high-contrast semantic status tones
 - `Dark`: explicit dark theme
 - `OLED`: black-first high-contrast dark theme
 
-Pages should use shared object names instead of local styles:
+Pages use shared object names and delegates instead of local styles:
 
 - `pageTitle` for page headings
-- `card` for overview/VPN panels
-- `cardValue` for overview card values
+- `card`, `cardHeader`, `cardValue`, `cardSubtitle`, `statusDot` for clickable overview cards and VPN panel
+- `statusBanner` (`StatusBanner`) for classified info/warning/error feedback
+- `StatusBadgeDelegate` for theme-aware status pills across tables
 
 ---
 
 ## Providers
 
-Providers own command execution and parsing:
+Providers own command execution and parsing, and are owned once by `ServiceRegistry`:
 
-- `SystemdServiceProvider`: systemd1 DBus (`ListUnits`/`ListUnitsFiltered`, bounded timeout) for listing with a `systemctl` fallback; `journalctl` for logs; start/stop/restart actions still use `systemctl`
+- `SystemdServiceProvider`: asynchronous systemd1 DBus (`ListUnits`/`ListUnitsFiltered`, bounded timeout) with a `systemctl` fallback; `journalctl` for logs (configurable tail lines); start/stop/restart actions use `systemctl`
 - `DockerProvider`: `docker ps`, `docker start/stop/restart/logs/inspect`
-- `NetworkProvider`: NetworkManager DBus (`org.freedesktop.NetworkManager`) for active VPN-like connections (`vpn`, `tun`, `wireguard`, `ppp`), with an `nmcli` fallback when the system bus is unavailable. The `ActiveConnections` query is asynchronous; per-connection property reads use a bounded (5s) timeout.
-- `MountProvider`: mount listing and unmount commands
-- `SensorProvider`: `sensors -j` with text fallback
-- `SmartProvider`: `lsblk -J`, `smartctl -j`, and `pkexec` fallback to the installed SMART helper
+- `NetworkProvider`: fully asynchronous NetworkManager DBus (`org.freedesktop.NetworkManager`) reporting all active VPN-like tunnels (`vpn`, `tun`, `wireguard`, `ppp`), with an `nmcli` fallback, plus `nmcli` profile listing and `up`/`down` actions
+- `MountProvider`: `findmnt --json` parsed via `ProviderParsers`, `/etc/fstab` + `MountProfileStore` merging, and `mount`/`umount` commands
+- `SensorProvider`: `sensors -j` with automatic plain-text `sensors` fallback (`ProviderParsers::parseSensorsText`)
+- `SmartProvider`: `lsblk -J`, `smartctl -j` supporting both ATA attributes and NVMe health logs (`ProviderParsers::parseSmartctlJson`), shared device rules in `SmartDeviceRules.h`, and `pkexec` fallback to the installed SMART helper
 
 UI pages should stay thin: trigger provider methods, update models/status labels, and show confirmations/dialogs.
 
@@ -258,8 +282,9 @@ QT_QPA_PLATFORM=xcb build/linux-service-dashboard
 
 ## Known Limitations
 
-- systemd listing uses the systemd1 DBus interface (linking `Qt6::DBus`) with a `systemctl` fallback; service control (start/stop/restart) still uses `systemctl`. The DBus list calls are synchronous with a bounded timeout.
-- VPN status uses the NetworkManager DBus interface (linking `Qt6::DBus`), with an `nmcli` fallback when the system bus is unavailable. Active VPN-like tunnel types (`vpn`, `tun`, `wireguard`, `ppp`) are treated as connected so externally created tunnels such as OpenConnect are visible.
+- systemd listing uses asynchronous systemd1 DBus calls (linking `Qt6::DBus`) with a `systemctl` fallback; service control (start/stop/restart) still uses `systemctl`.
+- VPN detection uses asynchronous NetworkManager DBus queries (with an `nmcli` fallback) and lists configured VPN profiles via `nmcli`; active VPN-like tunnel types (`vpn`, `tun`, `wireguard`, `ppp`) are included so externally created tunnels such as OpenConnect are visible.
+- Mounting configured entries from the Mounts page runs `mount <target>` without elevation; entries without `user`/`users` in `/etc/fstab` will report a permission error.
 - SMART checks are manual by default (with an opt-in scheduled refresh, minimum 5 minutes) and permission-dependent; installed builds use the polkit helper for authorized read-only SMART access.
-- Disabling a module hides its page and skips its scheduled refresh, but the underlying provider classes are still constructed.
-- Automated coverage is limited to the provider parser unit tests (`provider-parser-tests`); UI and provider command execution are still validated manually.
+- Disabling a module hides its page and skips its scheduled refresh, while the shared provider instance stays managed by `ServiceRegistry`.
+- Automated coverage focuses on parsers, rules, stores, and `AlertMonitor` (`provider-parser-tests`); UI rendering and live system commands are validated via Qt QPA smoke tests and manual sessions.

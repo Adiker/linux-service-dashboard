@@ -12,9 +12,13 @@ public:
     explicit SensorProvider(QObject *parent = nullptr);
     void refreshSensors();
 
+    [[nodiscard]] CommandRunner *commandRunner() { return &m_runner; }
+
 signals:
     void sensorsReady(const QVector<SensorRow> &rows, const QString &error);
 
 private:
+    void runTextFallback();
+
     CommandRunner m_runner;
 };

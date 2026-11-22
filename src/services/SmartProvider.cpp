@@ -1,5 +1,7 @@
 #include "SmartProvider.h"
 
+#include "../helpers/SmartDeviceRules.h"
+#include "../parsers/ProviderParsers.h"
 #include "../utils/JsonUtils.h"
 #include "../utils/TimeUtils.h"
 
@@ -8,7 +10,6 @@
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonObject>
-#include <QRegularExpression>
 
 #include <utility>
 
@@ -61,29 +62,6 @@ QString smartHealthFromError(const QString &message)
     return QStringLiteral("Check failed");
 }
 
-QString nvmeControllerPath(const QString &devicePath)
-{
-    static const QRegularExpression namespacePath(QStringLiteral(R"(^(/dev/nvme\d+)n\d+$)"));
-    const QRegularExpressionMatch match = namespacePath.match(devicePath);
-    return match.hasMatch() ? match.captured(1) : devicePath;
-}
-
-QStringList smartctlArgumentsForRow(const DiskRow &row)
-{
-    QString devicePath = row.path;
-    QStringList arguments{QStringLiteral("-j"), QStringLiteral("-H"), QStringLiteral("-A")};
-
-    if (row.transport == QStringLiteral("nvme")) {
-        devicePath = nvmeControllerPath(devicePath);
-        arguments.append({QStringLiteral("-d"), QStringLiteral("nvme")});
-    } else if (row.transport == QStringLiteral("usb")) {
-        arguments.append({QStringLiteral("-d"), QStringLiteral("sat")});
-    }
-
-    arguments.append(devicePath);
-    return arguments;
-}
-
 QString smartCheckContext(const QString &mode, const QString &devicePath)
 {
     return QStringLiteral("smart-check:%1:%2").arg(mode, devicePath);
@@ -110,38 +88,13 @@ QString smartHelperBatchContext()
     return QStringLiteral("smart-helper-batch");
 }
 
-bool isHelperSupportedDevicePath(const QString &devicePath)
-{
-    static const QRegularExpression pattern(
-        QStringLiteral(R"(^/dev/(sd[a-z]+|hd[a-z]+|vd[a-z]+|xvd[a-z]+|nvme\d+(n\d+)?|mmcblk\d+)$)"));
-    return pattern.match(devicePath).hasMatch();
-}
-
-bool isHelperSupportedTransport(const QString &transport)
-{
-    static const QStringList transports{
-        QString(),
-        QStringLiteral("ata"),
-        QStringLiteral("sata"),
-        QStringLiteral("sas"),
-        QStringLiteral("scsi"),
-        QStringLiteral("usb"),
-        QStringLiteral("nvme"),
-    };
-    return transports.contains(transport);
-}
-
 bool isHelperSupportedRow(const DiskRow &row)
 {
-    return isHelperSupportedDevicePath(row.path) && isHelperSupportedTransport(row.transport);
+    return SmartDeviceRules::isSupportedDevicePath(row.path)
+        && SmartDeviceRules::isSupportedTransport(row.transport);
 }
 
 constexpr int smartCheckPerDiskTimeoutMs = 30000;
-// The pkexec timeout starts the moment pkexec launches, so it also covers the time
-// the user spends at the polkit authentication prompt. Give a generous fixed budget
-// for that interactive step on top of the per-disk work; the helper enforces its own
-// 30s timeout per smartctl invocation, so this outer value is only a backstop against
-// a hung pkexec rather than the real per-device guard.
 constexpr int smartHelperAuthOverheadMs = 180000;
 
 QString smartHelperPath()
@@ -204,25 +157,7 @@ SmartParseResult parseSmartResult(const CommandResult &result)
             parsed.error = permissionAwareError(jsonMessage);
             parsed.row.smartHealth = smartHealthFromError(jsonMessage);
         }
-        const QJsonValue passed = root.value(QStringLiteral("smart_status")).toObject().value(QStringLiteral("passed"));
-        if (!passed.isUndefined()) {
-            parsed.row.smartHealth = passed.toBool() ? QStringLiteral("PASSED") : QStringLiteral("FAILED/Warning");
-        }
-        const QJsonValue temp = root.value(QStringLiteral("temperature")).toObject().value(QStringLiteral("current"));
-        if (!temp.isUndefined()) {
-            parsed.row.temperature = QStringLiteral("%1 C").arg(temp.toInt());
-        }
-        const QJsonArray table = root.value(QStringLiteral("ata_smart_attributes")).toObject().value(QStringLiteral("table")).toArray();
-        for (const QJsonValue &attributeValue : table) {
-            const QJsonObject attribute = attributeValue.toObject();
-            const QString name = attribute.value(QStringLiteral("name")).toString();
-            const QString raw = QString::number(attribute.value(QStringLiteral("raw")).toObject().value(QStringLiteral("value")).toVariant().toLongLong());
-            if (name == QStringLiteral("Reallocated_Sector_Ct")) {
-                parsed.row.reallocated = raw;
-            } else if (name == QStringLiteral("Current_Pending_Sector")) {
-                parsed.row.pending = raw;
-            }
-        }
+        ProviderParsers::parseSmartctlJson(root, &parsed.row);
         if (!parseError.isEmpty()) {
             parsed.error = QStringLiteral("Could not parse smartctl JSON: %1").arg(parseError);
         }
@@ -338,7 +273,8 @@ void SmartProvider::refreshDisks()
     m_runner.run(QStringLiteral("lsblk"),
                  {QStringLiteral("-J"), QStringLiteral("-o"), QStringLiteral("NAME,PATH,SIZE,TYPE,MODEL,SERIAL,TRAN,MOUNTPOINTS")},
                  15000,
-                 QStringLiteral("disk-list"));
+                 QStringLiteral("disk-list"),
+                 /*deduplicateContext=*/true);
 }
 
 void SmartProvider::checkSmart(const QString &devicePath)
@@ -381,7 +317,10 @@ void SmartProvider::startNextSmartCheck()
 
 void SmartProvider::runDirectSmartCheck(const DiskRow &row)
 {
-    m_runner.run(QStringLiteral("smartctl"), smartctlArgumentsForRow(row), 30000, smartCheckContext(QStringLiteral("direct"), row.path));
+    m_runner.run(QStringLiteral("smartctl"),
+                 SmartDeviceRules::smartctlArguments(row.path, row.transport),
+                 30000,
+                 smartCheckContext(QStringLiteral("direct"), row.path));
 }
 
 bool SmartProvider::runPrivilegedSmartChecks(const DiskRow &firstRow)

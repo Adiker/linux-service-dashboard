@@ -1,5 +1,7 @@
 #include "CommandRunner.h"
 
+#include "../utils/TimeUtils.h"
+
 #include <QProcess>
 #include <QTimer>
 #include <QUuid>
@@ -15,9 +17,18 @@ CommandRunner::CommandRunner(QObject *parent)
 QString CommandRunner::run(const QString &program,
                            const QStringList &arguments,
                            int timeoutMs,
-                           const QString &context)
+                           const QString &context,
+                           bool deduplicateContext)
 {
+    if (deduplicateContext && !context.isEmpty() && m_activeContexts.contains(context)) {
+        return {};
+    }
+
     const QString id = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    if (deduplicateContext && !context.isEmpty()) {
+        m_activeContexts.insert(context);
+    }
+
     auto *process = new QProcess(this);
     auto *timer = new QTimer(process);
     timer->setSingleShot(true);
@@ -27,12 +38,16 @@ QString CommandRunner::run(const QString &program,
     result->program = program;
     result->arguments = arguments;
 
-    std::function<void(int)> finishOnce = [this, process, timer, result, completed, id, context](int exitCode) {
+    std::function<void(int)> finishOnce = [this, process, timer, result, completed, id, context, deduplicateContext](int exitCode) {
         if (*completed) {
             return;
         }
         *completed = true;
         timer->stop();
+        if (deduplicateContext && !context.isEmpty()) {
+            m_activeContexts.remove(context);
+        }
+
         result->exitCode = exitCode;
         result->standardOutput = QString::fromLocal8Bit(process->readAllStandardOutput());
         result->standardError = QString::fromLocal8Bit(process->readAllStandardError());
@@ -42,7 +57,22 @@ QString CommandRunner::run(const QString &program,
 
         const CommandResult value = *result;
         if (!value.ok()) {
-            m_failedCommandLog.append(QStringLiteral("%1: %2").arg(value.commandLine(), value.standardError.trimmed()));
+            QString detail = value.standardError.trimmed();
+            if (detail.isEmpty()) {
+                detail = value.timedOut ? QStringLiteral("Command timed out.") : value.errorString.trimmed();
+            }
+            FailedCommandEntry entry;
+            entry.timestamp = currentTimestamp();
+            entry.commandLine = value.commandLine();
+            entry.context = context;
+            entry.message = detail;
+            entry.errorKind = value.errorKind();
+
+            m_failedCommands.append(entry);
+            while (m_failedCommands.size() > kMaxFailedLogEntries) {
+                m_failedCommands.removeFirst();
+            }
+            emit failedCommandRecorded(entry);
         }
         emit commandFinished(id, value, context);
         process->deleteLater();
@@ -79,7 +109,27 @@ QString CommandRunner::run(const QString &program,
     return id;
 }
 
+bool CommandRunner::isContextActive(const QString &context) const
+{
+    return m_activeContexts.contains(context);
+}
+
 QStringList CommandRunner::failedCommandLog() const
 {
-    return m_failedCommandLog;
+    QStringList lines;
+    lines.reserve(m_failedCommands.size());
+    for (const FailedCommandEntry &entry : m_failedCommands) {
+        lines.append(QStringLiteral("[%1] %2: %3").arg(entry.timestamp, entry.commandLine, entry.message));
+    }
+    return lines;
+}
+
+QVector<FailedCommandEntry> CommandRunner::failedCommands() const
+{
+    return m_failedCommands;
+}
+
+void CommandRunner::clearFailedCommands()
+{
+    m_failedCommands.clear();
 }

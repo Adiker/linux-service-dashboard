@@ -15,7 +15,9 @@ int main(int argc, char *argv[])
     QApplication::setWindowIcon(serviceDashboardIcon());
 
     MainWindow window;
-    window.show();
+    if (!window.shouldStartMinimized()) {
+        window.show();
+    }
 
     return app.exec();
 }

@@ -1,7 +1,5 @@
 #include "SensorModel.h"
 
-#include <QBrush>
-
 SensorModel::SensorModel(QObject *parent)
     : QAbstractTableModel(parent)
 {
@@ -34,10 +32,13 @@ QVariant SensorModel::data(const QModelIndex &index, int role) const
         default: return {};
         }
     }
-    if (role == Qt::ForegroundRole && index.column() == 5) {
-        if (row.status == QStringLiteral("Critical")) return QBrush(QColor(QStringLiteral("#ff8a80")));
-        if (row.status == QStringLiteral("Warning")) return QBrush(QColor(QStringLiteral("#f0c36d")));
-        if (row.status == QStringLiteral("OK")) return QBrush(QColor(QStringLiteral("#8fd694")));
+    if (role == Qt::UserRole) {
+        switch (index.column()) {
+        case 2: return row.current;
+        case 3: return row.high;
+        case 4: return row.critical;
+        default: return {};
+        }
     }
     return {};
 }

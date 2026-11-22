@@ -2,6 +2,8 @@
 
 #include "AppIcon.h"
 #include "core/ModuleSettings.h"
+#include "ui/ThemeManager.h"
+#include "widgets/DiagnosticsDialog.h"
 
 #include <QAction>
 #include <QApplication>
@@ -13,8 +15,10 @@
 #include <QListWidget>
 #include <QListWidgetItem>
 #include <QMenu>
+#include <QPushButton>
 #include <QSettings>
 #include <QStackedWidget>
+#include <QStatusBar>
 #include <QStyle>
 #include <QSystemTrayIcon>
 
@@ -25,11 +29,30 @@ MainWindow::MainWindow(QWidget *parent)
     setWindowIcon(serviceDashboardIcon());
     resize(1200, 800);
     m_modules = loadModuleSettings();
+    m_registry = new ServiceRegistry(this);
+    m_alertMonitor = new AlertMonitor(this);
+    m_registry->bindAlertMonitor(m_alertMonitor);
     buildUi();
     buildTray();
+    restoreWindowGeometry();
     reloadSettings();
 
     connect(&m_scheduler, &RefreshScheduler::refreshRequested, this, &MainWindow::refreshAll);
+    connect(qApp, &QApplication::aboutToQuit, this, &MainWindow::saveWindowGeometry);
+    connect(m_alertMonitor, &AlertMonitor::summaryChanged, this, [this](const QString &tooltip) {
+        if (m_tray) {
+            m_tray->setToolTip(tooltip);
+        }
+    });
+    connect(m_alertMonitor, &AlertMonitor::alertRaised, this, [this](const QString &title, const QString &message, AlertSeverity severity) {
+        if (!m_tray || !m_tray->isVisible()) {
+            return;
+        }
+        const auto icon = severity == AlertSeverity::Critical
+            ? QSystemTrayIcon::Critical
+            : (severity == AlertSeverity::Warning ? QSystemTrayIcon::Warning : QSystemTrayIcon::Information);
+        m_tray->showMessage(title, message, icon, 6000);
+    });
 }
 
 void MainWindow::buildUi()
@@ -63,21 +86,31 @@ void MainWindow::buildUi()
         QStringLiteral("drive-harddisk-solidstate"),
         QStringLiteral("settings-configure"),
     };
+    const QStyle::StandardPixmap fallbacks[]{
+        QStyle::SP_DesktopIcon,
+        QStyle::SP_FileDialogDetailedView,
+        QStyle::SP_ComputerIcon,
+        QStyle::SP_DriveNetIcon,
+        QStyle::SP_DirIcon,
+        QStyle::SP_MessageBoxInformation,
+        QStyle::SP_DriveHDIcon,
+        QStyle::SP_FileDialogContentsView,
+    };
     for (int i = 0; i < items.size(); ++i) {
-        auto *entry = new QListWidgetItem(QIcon::fromTheme(icons.value(i)), items.at(i), m_sidebar);
+        auto *entry = new QListWidgetItem(ThemeManager::themedIcon(icons.value(i), fallbacks[i]), items.at(i), m_sidebar);
         entry->setSizeHint(QSize(0, 42));
     }
     layout->addWidget(m_sidebar);
 
     m_stack = new QStackedWidget(central);
     m_stack->setObjectName(QStringLiteral("contentStack"));
-    m_overview = new OverviewPage(m_stack);
-    m_systemd = new SystemdPage(m_stack);
-    m_docker = new DockerPage(m_stack);
-    m_vpn = new VpnPage(m_stack);
-    m_mounts = new MountsPage(m_stack);
-    m_sensors = new SensorsPage(m_stack);
-    m_disks = new DisksPage(m_stack);
+    m_overview = new OverviewPage(m_registry, m_stack);
+    m_systemd = new SystemdPage(m_registry->systemd(), m_stack);
+    m_docker = new DockerPage(m_registry->docker(), m_stack);
+    m_vpn = new VpnPage(m_registry->network(), m_stack);
+    m_mounts = new MountsPage(m_registry->mounts(), m_stack);
+    m_sensors = new SensorsPage(m_registry->sensors(), m_stack);
+    m_disks = new DisksPage(m_registry->smart(), m_stack);
     m_settings = new SettingsPage(m_stack);
 
     for (QWidget *page : {static_cast<QWidget *>(m_overview), static_cast<QWidget *>(m_systemd), static_cast<QWidget *>(m_docker),
@@ -89,9 +122,24 @@ void MainWindow::buildUi()
     setCentralWidget(central);
 
     connect(m_sidebar, &QListWidget::currentRowChanged, m_stack, &QStackedWidget::setCurrentIndex);
+    connect(m_overview, &OverviewPage::refreshRequested, this, &MainWindow::refreshAll);
+    connect(m_overview, &OverviewPage::navigateRequested, this, [this](int pageIndex) {
+        if (QListWidgetItem *item = m_sidebar->item(pageIndex); item && !item->isHidden()) {
+            m_sidebar->setCurrentRow(pageIndex);
+        }
+    });
     connect(m_settings, &SettingsPage::settingsChanged, this, &MainWindow::reloadSettings);
     connect(m_settings, &SettingsPage::settingsChanged, m_systemd, &SystemdPage::reloadGroupSelector);
     m_sidebar->setCurrentRow(0);
+
+    m_diagnosticsButton = new QPushButton(QStringLiteral("Diagnostics (0)"), this);
+    m_diagnosticsButton->setObjectName(QStringLiteral("statusBarButton"));
+    m_diagnosticsButton->setFlat(true);
+    statusBar()->addPermanentWidget(m_diagnosticsButton);
+    connect(m_diagnosticsButton, &QPushButton::clicked, this, &MainWindow::openDiagnostics);
+    connect(m_registry, &ServiceRegistry::failedCommandRecorded, this, &MainWindow::updateDiagnosticsBadge);
+    connect(m_registry, &ServiceRegistry::failedCommandsCleared, this, &MainWindow::updateDiagnosticsBadge);
+    updateDiagnosticsBadge();
 }
 
 void MainWindow::buildTray()
@@ -100,6 +148,7 @@ void MainWindow::buildTray()
     auto *menu = new QMenu(this);
     auto *showAction = menu->addAction(QStringLiteral("Show Dashboard"));
     auto *refreshAction = menu->addAction(QStringLiteral("Refresh Now"));
+    auto *diagnosticsAction = menu->addAction(QStringLiteral("Diagnostics..."));
     menu->addSeparator();
     auto *quitAction = menu->addAction(QStringLiteral("Quit"));
     connect(showAction, &QAction::triggered, this, [this]() {
@@ -108,6 +157,7 @@ void MainWindow::buildTray()
         activateWindow();
     });
     connect(refreshAction, &QAction::triggered, this, &MainWindow::refreshAll);
+    connect(diagnosticsAction, &QAction::triggered, this, &MainWindow::openDiagnostics);
     connect(quitAction, &QAction::triggered, qApp, &QApplication::quit);
     connect(m_tray, &QSystemTrayIcon::activated, this, [this](QSystemTrayIcon::ActivationReason reason) {
         if (reason == QSystemTrayIcon::Trigger) {
@@ -127,6 +177,10 @@ void MainWindow::reloadSettings()
     m_scheduler.setIntervalSeconds(settings.value(QStringLiteral("refresh/intervalSeconds"), 30).toInt());
     m_scheduler.start();
     m_modules = loadModuleSettings();
+    m_closeToTray = settings.value(QStringLiteral("window/closeToTray"), true).toBool();
+    if (m_alertMonitor) {
+        m_alertMonitor->setEnabled(settings.value(QStringLiteral("notifications/enabled"), true).toBool());
+    }
     applyModuleVisibility();
     applyTheme();
     m_disks->reloadSmartSchedule();
@@ -160,222 +214,10 @@ void MainWindow::applyTheme()
 {
     QSettings settings;
     const QString preference = settings.value(QStringLiteral("theme/preference"), QStringLiteral("System")).toString();
-    const bool systemDark = palette().color(QPalette::Window).lightness() < 128;
-    const bool oled = preference == QStringLiteral("OLED");
-    const bool dark = oled || preference == QStringLiteral("Dark") || (preference == QStringLiteral("System") && systemDark);
-
-    const QString window = oled ? QStringLiteral("#000000") : (dark ? QStringLiteral("#161a20") : QStringLiteral("#f6f7f9"));
-    const QString sidebar = oled ? QStringLiteral("#000000") : (dark ? QStringLiteral("#11161d") : QStringLiteral("#eef1f4"));
-    const QString surface = oled ? QStringLiteral("#000000") : (dark ? QStringLiteral("#20262e") : QStringLiteral("#ffffff"));
-    const QString surfaceAlt = oled ? QStringLiteral("#080808") : (dark ? QStringLiteral("#29313a") : QStringLiteral("#f1f4f7"));
-    const QString border = oled ? QStringLiteral("#2a2a2a") : (dark ? QStringLiteral("#38424d") : QStringLiteral("#d9dee5"));
-    const QString text = oled ? QStringLiteral("#f3f5f7") : (dark ? QStringLiteral("#eef2f5") : QStringLiteral("#202832"));
-    const QString muted = oled ? QStringLiteral("#a7adb4") : (dark ? QStringLiteral("#aeb8c2") : QStringLiteral("#5f6b78"));
-    const QString accent = oled ? QStringLiteral("#32d296") : (dark ? QStringLiteral("#5db6a3") : QStringLiteral("#2d7f86"));
-    const QString accentSoft = oled ? QStringLiteral("#113428") : (dark ? QStringLiteral("#243f3f") : QStringLiteral("#dcefeb"));
-    qApp->setStyleSheet(QStringLiteral(R"(
-        QWidget {
-            font-size: 10.5pt;
-        }
-        QMainWindow, QDialog, QMessageBox, QWidget#appRoot, QStackedWidget#contentStack {
-            background: %1;
-            color: %6;
-        }
-        QLabel, QCheckBox, QRadioButton {
-            background: transparent;
-            color: %6;
-        }
-        QListWidget#sidebar {
-            background: %2;
-            border: 0;
-            padding: 16px 10px;
-        }
-        QListWidget#sidebar::item {
-            border-radius: 6px;
-            padding: 10px 12px;
-            margin: 3px 0;
-            color: %7;
-            border: 1px solid transparent;
-        }
-        QListWidget#sidebar::item:hover {
-            background: %4;
-            color: %6;
-        }
-        QListWidget#sidebar::item:selected {
-            background: %9;
-            color: %6;
-            border-color: %8;
-            font-weight: 700;
-        }
-        QLabel#pageTitle {
-            font-size: 21pt;
-            font-weight: 700;
-            padding: 14px 4px 12px 4px;
-        }
-        QLabel#sectionTitle {
-            color: %7;
-            font-weight: 700;
-            padding: 2px 4px 0 4px;
-        }
-        QWidget#card, QFrame#settingsSection {
-            background: %3;
-            border: 1px solid %5;
-            border-radius: 8px;
-            padding: 14px;
-        }
-        QLabel#cardValue {
-            font-size: 18pt;
-            font-weight: 700;
-        }
-        QTableView {
-            background: %3;
-            alternate-background-color: %4;
-            gridline-color: %5;
-            selection-background-color: %9;
-            selection-color: %6;
-            border: 1px solid %5;
-            border-radius: 6px;
-            outline: 0;
-        }
-        QHeaderView::section {
-            background: %4;
-            color: %6;
-            border: 0;
-            border-bottom: 1px solid %5;
-            padding: 8px;
-            font-weight: 700;
-        }
-        QTableCornerButton::section {
-            background: %4;
-            border: 0;
-            border-bottom: 1px solid %5;
-            border-right: 1px solid %5;
-        }
-        QTableView::item {
-            padding: 5px;
-        }
-        QTableView::item:selected {
-            background: %9;
-            color: %6;
-        }
-        QPushButton, QLineEdit, QSpinBox, QComboBox, QPlainTextEdit, QMenu {
-            background: %3;
-            color: %6;
-            border: 1px solid %5;
-            border-radius: 6px;
-            padding: 7px 9px;
-        }
-        QLineEdit, QSpinBox, QComboBox, QPlainTextEdit {
-            selection-background-color: %8;
-            selection-color: %1;
-        }
-        QPushButton:hover {
-            background: %4;
-            border-color: %8;
-        }
-        QPushButton:pressed {
-            background: %9;
-        }
-        QPushButton:disabled, QLineEdit:disabled, QSpinBox:disabled, QComboBox:disabled {
-            color: %7;
-        }
-        QLineEdit:focus, QSpinBox:focus, QComboBox:focus, QPlainTextEdit:focus {
-            border-color: %8;
-        }
-        QCheckBox {
-            spacing: 8px;
-            padding: 4px 2px;
-            font-weight: 400;
-        }
-        QCheckBox:hover {
-            color: %6;
-        }
-        QCheckBox::indicator {
-            width: 16px;
-            height: 16px;
-            border: 1px solid %5;
-            border-radius: 4px;
-            background: %3;
-        }
-        QCheckBox::indicator:hover {
-            border-color: %8;
-        }
-        QCheckBox::indicator:checked {
-            background: %9;
-            border-color: %8;
-            image: url(:/qt-project.org/styles/commonstyle/images/standardbutton-apply-16.png);
-        }
-        QComboBox::drop-down {
-            border: 0;
-            width: 24px;
-        }
-        QComboBox QAbstractItemView {
-            background: %3;
-            color: %6;
-            selection-background-color: %9;
-            selection-color: %6;
-            border: 1px solid %5;
-            outline: 0;
-        }
-        QAbstractSpinBox::up-button, QAbstractSpinBox::down-button {
-            background: %4;
-            border: 0;
-            width: 18px;
-        }
-        QAbstractSpinBox::up-button:hover, QAbstractSpinBox::down-button:hover {
-            background: %9;
-        }
-        QScrollBar:vertical {
-            background: %1;
-            width: 12px;
-            margin: 0;
-        }
-        QScrollBar:horizontal {
-            background: %1;
-            height: 12px;
-            margin: 0;
-        }
-        QScrollBar::handle:vertical {
-            background: %5;
-            border-radius: 6px;
-            min-height: 28px;
-        }
-        QScrollBar::handle:horizontal {
-            background: %5;
-            border-radius: 6px;
-            min-width: 28px;
-        }
-        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical,
-        QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
-            height: 0;
-            width: 0;
-        }
-        QMenu::item {
-            padding: 7px 22px;
-            border-radius: 4px;
-        }
-        QMenu::item:selected {
-            background: %9;
-        }
-        QStatusBar, QStatusBar QLabel {
-            background: %1;
-            color: %7;
-        }
-        QToolTip {
-            background: %3;
-            color: %6;
-            border: 1px solid %5;
-        }
-    )")
-        .arg(window)
-        .arg(sidebar)
-        .arg(surface)
-        .arg(surfaceAlt)
-        .arg(border)
-        .arg(text)
-        .arg(muted)
-        .arg(accent)
-        .arg(accentSoft));
+    ThemeManager::applyToApplication(preference, palette());
+    for (QWidget *widget : findChildren<QWidget *>()) {
+        widget->update();
+    }
 }
 
 void MainWindow::refreshAll()
@@ -401,12 +243,54 @@ void MainWindow::refreshAll()
     }
 }
 
+void MainWindow::openDiagnostics()
+{
+    auto *dialog = new DiagnosticsDialog(m_registry, this);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    dialog->show();
+}
+
+void MainWindow::updateDiagnosticsBadge()
+{
+    if (!m_diagnosticsButton || !m_registry) {
+        return;
+    }
+    const int count = m_registry->failedCommands().size();
+    m_diagnosticsButton->setText(QStringLiteral("Diagnostics (%1)").arg(count));
+}
+
+bool MainWindow::shouldStartMinimized() const
+{
+    QSettings settings;
+    return settings.value(QStringLiteral("window/startMinimizedToTray"), false).toBool()
+        && QSystemTrayIcon::isSystemTrayAvailable()
+        && m_tray
+        && m_tray->isVisible();
+}
+
+void MainWindow::saveWindowGeometry()
+{
+    QSettings settings;
+    settings.setValue(QStringLiteral("window/geometry"), saveGeometry());
+}
+
+void MainWindow::restoreWindowGeometry()
+{
+    QSettings settings;
+    const QByteArray geometry = settings.value(QStringLiteral("window/geometry")).toByteArray();
+    if (!geometry.isEmpty()) {
+        restoreGeometry(geometry);
+    }
+}
+
 void MainWindow::closeEvent(QCloseEvent *event)
 {
-    if (m_tray && m_tray->isVisible()) {
+    saveWindowGeometry();
+    if (m_closeToTray && m_tray && m_tray->isVisible()) {
         hide();
         event->ignore();
         return;
     }
     QMainWindow::closeEvent(event);
+    qApp->quit();
 }

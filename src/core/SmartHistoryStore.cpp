@@ -66,4 +66,10 @@ QVector<SmartHistoryEntry> entriesForDisk(const QString &serial, const QString &
     return entries;
 }
 
+void clearEntriesForDisk(const QString &serial, const QString &path)
+{
+    QSettings settings;
+    settings.remove(diskIdentityKey(serial, path));
+}
+
 } // namespace SmartHistoryStore
