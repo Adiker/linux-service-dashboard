@@ -1,28 +1,7 @@
 #pragma once
-
-#include "../models/DockerContainerModel.h"
-#include "../services/DockerProvider.h"
-
-#include <QWidget>
-
-class QLabel;
-class QTableView;
-
-class DockerPage : public QWidget {
+#include "CenterPage.h"
+class DockerPage : public CenterPage {
     Q_OBJECT
-
   public:
-    explicit DockerPage(DockerProvider& provider, QWidget* parent = nullptr);
-
-  public slots:
-    void refresh();
-
-  private:
-    DockerContainerRow selectedRow() const;
-    void runAction(const QString& action);
-
-    DockerContainerModel* m_model = nullptr;
-    QTableView* m_table = nullptr;
-    QLabel* m_status = nullptr;
-    DockerProvider& m_provider;
+    explicit DockerPage(SystemCenter* center, QWidget* parent = nullptr);
 };

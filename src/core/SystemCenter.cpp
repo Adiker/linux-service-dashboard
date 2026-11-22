@@ -8,20 +8,54 @@
 #include <QUrl>
 
 SystemCenter::SystemCenter(QObject* parent) : QObject(parent) {
+    connect(this, &SystemCenter::requestRefresh, &inventory, &InventoryProvider::refresh);
+    connect(&inventory, &InventoryProvider::ready, this,
+            [this](const QString& id, const QStringList& headers, const auto& rows, const QString& error) {
+                if (id == "dockerStats") {
+                    if (!error.isEmpty())
+                        return;
+                    auto s = snapshot("docker");
+                    if (!s.error.isEmpty())
+                        return;
+                    for (auto& r : s.rows) {
+                        while (r.cells.size() < 7)
+                            r.cells.append("-");
+                        for (const auto& stat : rows)
+                            if (r.id.startsWith(stat.id) || stat.id.startsWith(r.id)) {
+                                r.cells[5] = stat.cells.value(1);
+                                r.cells[6] = stat.cells.value(2);
+                            }
+                    }
+                    publish("docker", {tr("Name"), tr("State"), tr("Health"), tr("Image"), tr("Ports"), tr("CPU"), tr("Memory")}, s.rows);
+                    return;
+                }
+                publish(id, headers, rows, error);
+            });
     QSettings settings;
     if (settings.value("schema/version", 1).toInt() < 2)
         settings.setValue("schema/version", 2);
     connect(&docker, &DockerProvider::containersReady, this, [this](const auto& rows, const QString& error) {
         QVector<CenterRecord> records;
         for (const auto& r : rows)
-            records.append({r.id, {r.name, r.state, r.image, r.ports}, {}, {{"container", r.id}}, r.status.contains("unhealthy")});
-        publish("docker", {tr("Name"), tr("State"), tr("Image"), tr("Ports")}, records, error);
+            records.append({r.id,
+                            {r.name, r.state, r.health, r.image, r.ports},
+                            {r.project.isEmpty() ? tr("Standalone containers") : r.project,
+                             r.composeService.isEmpty() ? tr("Containers") : r.composeService},
+                            {{"container", r.id}},
+                            r.health == "unhealthy"});
+        publish("docker", {tr("Name"), tr("State"), tr("Health"), tr("Image"), tr("Ports")}, records, error);
     });
     connect(&systemd, &SystemdServiceProvider::servicesReady, this, [this](const auto& rows, const QString& error) {
         QVector<CenterRecord> records;
-        for (const auto& r : rows)
-            records.append({r.unit, {r.unit, r.activeState, r.description}, {}, {{"unit", r.unit}}, r.activeState == "failed"});
-        publish("systemd", {tr("Unit"), tr("State"), tr("Description")}, records, error);
+        for (const auto& r : rows) {
+            const QString scope = r.scope == ServiceScope::User ? "user" : "system";
+            records.append({scope + ":" + r.unit,
+                            {r.unit, r.activeState, r.description, scope, r.unitFileState},
+                            {r.scope == ServiceScope::User ? tr("User") : tr("System")},
+                            {{"unit", r.unit}, {"scope", scope}},
+                            r.activeState == "failed"});
+        }
+        publish("systemd", {tr("Unit"), tr("State"), tr("Description"), tr("Scope"), tr("Unit file state")}, records, error);
     });
     connect(&mounts, &MountProvider::mountsReady, this, [this](const auto& rows, const QString& error) {
         QVector<CenterRecord> records;
@@ -125,7 +159,7 @@ void SystemCenter::open(const CenterRecord& r) {
 }
 void SystemCenter::logs(const CenterRecord& r) {
     if (r.meta.contains("unit"))
-        systemd.serviceLogs(r.meta.value("unit").toString());
+        systemd.serviceLogs(r.meta.value("unit").toString(), r.meta.value("scope") == "user" ? ServiceScope::User : ServiceScope::System);
     if (r.meta.contains("container"))
         docker.containerLogs(r.meta.value("container").toString());
 }

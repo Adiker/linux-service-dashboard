@@ -7,208 +7,161 @@
 #include <QDBusConnection>
 #include <QDBusMessage>
 #include <QDBusObjectPath>
-#include <QDBusReply>
-#include <QSet>
+#include <QDBusPendingCallWatcher>
+#include <QFileInfo>
+#include <QRegularExpression>
 
 namespace {
-
-// Bound the synchronous systemd1 DBus calls so a stuck systemd cannot freeze the
-// GUI thread for the default ~25s timeout before the async systemctl fallback runs.
-constexpr int kDBusTimeoutMs = 3000;
-
-struct UnitInfo {
-    QString name;
-    QString description;
-    QString loadState;
-    QString activeState;
-    QString subState;
-};
-
-void parseUnitStructure(const QDBusArgument& argument, UnitInfo* unit) {
-    // The argument must be const so the const (demarshalling) overloads of
-    // beginStructure()/operator>> are selected; the non-const overloads marshal
-    // (write) and silently no-op on a received, read-only reply, which leaves the
-    // iterator parked on the struct and aborts when the uint job id is read.
-    argument.beginStructure();
-    argument >> unit->name >> unit->description >> unit->loadState >> unit->activeState >> unit->subState;
-    QString following;
-    QDBusObjectPath unitPath;
-    quint32 jobId = 0;
-    QString jobType;
-    QDBusObjectPath jobPath;
-    argument >> following >> unitPath >> jobId >> jobType >> jobPath;
-    argument.endStructure();
+QDBusConnection busFor(ServiceScope s) {
+    return s == ServiceScope::User ? QDBusConnection::sessionBus() : QDBusConnection::systemBus();
 }
-
-QVector<UnitInfo> listUnitsViaDBus(QString* error) {
-    QVector<UnitInfo> units;
-    QDBusConnection bus = QDBusConnection::systemBus();
-    if (!bus.isConnected()) {
-        if (error) {
-            *error = QStringLiteral("System DBus unavailable.");
-        }
-        return units;
-    }
-
-    QDBusMessage message =
-        QDBusMessage::createMethodCall(QStringLiteral("org.freedesktop.systemd1"), QStringLiteral("/org/freedesktop/systemd1"),
-                                       QStringLiteral("org.freedesktop.systemd1.Manager"), QStringLiteral("ListUnits"));
-    const QDBusMessage reply = bus.call(message, QDBus::Block, kDBusTimeoutMs);
-    if (reply.type() != QDBusMessage::ReplyMessage) {
-        if (error) {
-            *error = reply.errorMessage();
-        }
-        return units;
-    }
-
-    const QDBusArgument argument = reply.arguments().at(0).value<QDBusArgument>();
-    argument.beginArray();
-    while (!argument.atEnd()) {
-        UnitInfo unit;
-        parseUnitStructure(argument, &unit);
-        units.append(unit);
-    }
-    argument.endArray();
-    return units;
+QStringList scopeArgs(ServiceScope s) {
+    return s == ServiceScope::User ? QStringList{"--user"} : QStringList{};
 }
-
-QVector<UnitInfo> listFailedUnitsViaDBus(QString* error) {
-    QDBusConnection bus = QDBusConnection::systemBus();
-    if (!bus.isConnected()) {
-        if (error) {
-            *error = QStringLiteral("System DBus unavailable.");
-        }
-        return {};
-    }
-
-    QDBusMessage message =
-        QDBusMessage::createMethodCall(QStringLiteral("org.freedesktop.systemd1"), QStringLiteral("/org/freedesktop/systemd1"),
-                                       QStringLiteral("org.freedesktop.systemd1.Manager"), QStringLiteral("ListUnitsFiltered"));
-    message << QStringList{QStringLiteral("failed")};
-    const QDBusMessage reply = bus.call(message, QDBus::Block, kDBusTimeoutMs);
-    if (reply.type() != QDBusMessage::ReplyMessage) {
-        if (error) {
-            *error = reply.errorMessage();
-        }
-        return {};
-    }
-
-    QVector<UnitInfo> units;
-    const QDBusArgument argument = reply.arguments().at(0).value<QDBusArgument>();
-    argument.beginArray();
-    while (!argument.atEnd()) {
-        UnitInfo unit;
-        parseUnitStructure(argument, &unit);
-        units.append(unit);
-    }
-    argument.endArray();
-    return units;
+QDBusMessage message(const QString& method) {
+    return QDBusMessage::createMethodCall("org.freedesktop.systemd1", "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager",
+                                          method);
 }
-
-QVector<ServiceRow> buildServiceRows(const QVector<UnitInfo>& units, const QStringList& watchedServices, const QString& timestamp) {
-    QVector<ServiceRow> rows;
-    QSet<QString> seen;
-    for (const UnitInfo& unit : units) {
-        if (!unit.name.endsWith(QStringLiteral(".service"))) {
-            continue;
-        }
-        if (!watchedServices.isEmpty() && !watchedServices.contains(unit.name)) {
-            continue;
-        }
-        ServiceRow row;
-        row.unit = unit.name;
-        row.loadState = unit.loadState;
-        row.activeState = unit.activeState;
-        row.subState = unit.subState;
-        row.description = unit.description;
-        row.lastRefresh = timestamp;
-        rows.append(row);
-        seen.insert(unit.name);
-    }
-    for (const QString& unit : watchedServices) {
-        if (!seen.contains(unit)) {
-            rows.append(ServiceRow{unit, QStringLiteral("unavailable"), QStringLiteral("unknown"), QStringLiteral("-"),
-                                   QStringLiteral("Unit not found"), timestamp});
-        }
-    }
-    return rows;
-}
-
 } // namespace
-
 SystemdServiceProvider::SystemdServiceProvider(QObject* parent) : QObject(parent) {
-    connect(&m_runner, &CommandRunner::commandFinished, this, [this](const QString&, const CommandResult& result, const QString& context) {
-        if (context == QStringLiteral("systemd-list")) {
-            QString error;
-            QVector<ServiceRow> rows;
-            if (result.ok()) {
-                rows = ProviderParsers::parseSystemdListUnits(result.standardOutput, m_watched, currentTimestamp(), nullptr);
-            } else {
-                error = result.startFailed ? QStringLiteral("systemctl not found or failed to start.") : result.standardError.trimmed();
-                rows = ProviderParsers::parseSystemdListUnits(QString(), m_watched, currentTimestamp(), nullptr);
+    connect(&m_runner, &CommandRunner::commandFinished, this, [this](const auto&, const CommandResult& r, const QString& context) {
+        const auto scope = context.section(':', 1, 1) == "user" ? ServiceScope::User : ServiceScope::System;
+        const int key = int(scope);
+        if (context.startsWith("list:")) {
+            if (!r.ok()) {
+                finishScope(scope, r.standardError);
+                return;
             }
-            emit servicesReady(rows, error);
-        } else if (context == QStringLiteral("systemd-failed")) {
-            QString error;
-            int count = 0;
-            if (result.ok() || result.exitCode == 1) {
-                count = ProviderParsers::parseSystemdFailedCount(result.standardOutput, nullptr);
-            } else {
-                error = result.startFailed ? QStringLiteral("systemctl not found.") : result.standardError.trimmed();
+            m_next[key] = ProviderParsers::parseSystemdListUnits(r.standardOutput, {}, currentTimestamp(), nullptr);
+            for (auto& row : m_next[key])
+                row.scope = scope;
+            listFiles(scope);
+        } else if (context.startsWith("files:")) {
+            if (!r.ok()) {
+                finishScope(scope, r.standardError);
+                return;
             }
-            emit failedCountReady(count, error);
-        } else if (context.startsWith(QStringLiteral("systemd-logs:"))) {
-            const QString unit = context.mid(QStringLiteral("systemd-logs:").size());
-            emit logsReady(QStringLiteral("journalctl -u %1").arg(unit), result.ok() ? result.standardOutput : result.standardError);
-        } else if (context.startsWith(QStringLiteral("systemd-action:"))) {
-            const QString action = context.section(':', 1, 1);
-            const QString unit = context.section(':', 2);
-            const QString message =
-                result.ok() ? QStringLiteral("%1 %2 succeeded.").arg(action, unit) : QStringLiteral("%1 %2 failed.").arg(action, unit);
-            emit actionFinished(message, result.ok() ? result.standardOutput : result.standardError);
+            for (const auto& line : r.standardOutput.split('\n', Qt::SkipEmptyParts)) {
+                const auto parts = line.simplified().split(' ');
+                if (parts.size() < 2 || !parts[0].endsWith(".service"))
+                    continue;
+                const auto unit = parts[0];
+                bool found = false;
+                for (auto& row : m_next[key])
+                    if (row.unit == unit) {
+                        row.unitFileState = parts[1];
+                        found = true;
+                        break;
+                    }
+                if (!found)
+                    m_next[key].append({unit, "not-loaded", "inactive", "-", unit, currentTimestamp(), scope, parts[1]});
+            }
+            finishScope(scope);
+        } else if (context.startsWith("logs:"))
+            emit logsReady(context.mid(5), r.ok() ? r.standardOutput : r.standardError);
+        else if (context.startsWith("action:")) {
+            emit actionFinished(r.ok() ? tr("Action completed") : tr("Action failed"), r.ok() ? r.standardOutput : r.standardError);
+            refreshServices({});
         }
     });
 }
-
-void SystemdServiceProvider::refreshServices(const QStringList& watchedServices) {
-    m_watched = watchedServices;
-    QString error;
-    const QVector<UnitInfo> units = listUnitsViaDBus(&error);
-    if (!units.isEmpty() || error.isEmpty()) {
-        emit servicesReady(buildServiceRows(units, watchedServices, currentTimestamp()), QString());
+void SystemdServiceProvider::refreshServices(const QStringList&) {
+    if (!m_pending.isEmpty())
+        return;
+    m_errors.clear();
+    m_pending = {int(ServiceScope::System), int(ServiceScope::User)};
+    listScope(ServiceScope::System);
+    listScope(ServiceScope::User);
+}
+void SystemdServiceProvider::listScope(ServiceScope scope) {
+    const int key = int(scope);
+    m_next[key].clear();
+    auto fallback = [this, scope]() {
+        auto args = scopeArgs(scope);
+        args << "list-units" << "--type=service" << "--all" << "--no-pager" << "--no-legend" << "--plain";
+        m_runner.run("systemctl", args, 10000, "list:" + QString(scope == ServiceScope::User ? "user" : "system"));
+    };
+    auto bus = busFor(scope);
+    if (!bus.isConnected()) {
+        fallback();
         return;
     }
-
-    m_runner.run(QStringLiteral("systemctl"),
-                 {QStringLiteral("list-units"), QStringLiteral("--type=service"), QStringLiteral("--all"), QStringLiteral("--no-pager"),
-                  QStringLiteral("--plain")},
-                 15000, QStringLiteral("systemd-list"));
-}
-
-void SystemdServiceProvider::refreshFailedCount() {
-    QString error;
-    const QVector<UnitInfo> units = listFailedUnitsViaDBus(&error);
-    if (!units.isEmpty() || error.isEmpty()) {
-        int count = 0;
-        for (const UnitInfo& unit : units) {
-            if (unit.name.endsWith(QStringLiteral(".service"))) {
-                ++count;
-            }
+    auto* watcher = new QDBusPendingCallWatcher(bus.asyncCall(message("ListUnits"), 5000), this);
+    connect(watcher, &QDBusPendingCallWatcher::finished, this, [this, scope, key, fallback](QDBusPendingCallWatcher* w) {
+        const auto reply = w->reply();
+        w->deleteLater();
+        if (reply.type() == QDBusMessage::ErrorMessage || reply.arguments().isEmpty()) {
+            fallback();
+            return;
         }
-        emit failedCountReady(count, QString());
+        const QDBusArgument a = reply.arguments()[0].value<QDBusArgument>();
+        a.beginArray();
+        while (!a.atEnd()) {
+            QString name, description, load, active, sub, following, jobType;
+            QDBusObjectPath path, jobPath;
+            quint32 job;
+            a.beginStructure();
+            a >> name >> description >> load >> active >> sub >> following >> path >> job >> jobType >> jobPath;
+            a.endStructure();
+            if (name.endsWith(".service"))
+                m_next[key].append({name, load, active, sub, description, currentTimestamp(), scope, {}});
+        }
+        a.endArray();
+        listFiles(scope);
+    });
+}
+void SystemdServiceProvider::listFiles(ServiceScope scope) {
+    // CLI fallback also enumerates not-loaded units. It is asynchronous and locale-stable.
+    auto args = scopeArgs(scope);
+    args << "list-unit-files" << "--type=service" << "--no-pager" << "--no-legend";
+    m_runner.run("systemctl", args, 10000, "files:" + QString(scope == ServiceScope::User ? "user" : "system"));
+}
+void SystemdServiceProvider::finishScope(ServiceScope scope, const QString& error) {
+    const int key = int(scope);
+    if (error.isEmpty())
+        m_rows[key] = m_next[key];
+    else
+        m_errors[key] = (scope == ServiceScope::User ? "User: " : "System: ") + error;
+    m_pending.remove(key);
+    if (!m_pending.isEmpty())
+        return;
+    auto rows = m_rows.value(0);
+    rows += m_rows.value(1);
+    const auto errors = m_errors.values().join("\n");
+    int failed = 0;
+    for (const auto& row : rows)
+        if (row.activeState == "failed")
+            ++failed;
+    emit servicesReady(rows, errors);
+    emit failedCountReady(failed, errors);
+}
+void SystemdServiceProvider::refreshFailedCount() {
+    refreshServices({});
+}
+bool SystemdServiceProvider::isProtectedUnit(const QString& unit) {
+    static const QStringList critical{"dbus.service",
+                                      "dbus-broker.service",
+                                      "sddm.service",
+                                      "systemd-logind.service",
+                                      "systemd-udevd.service",
+                                      "plasma-kwin_wayland.service",
+                                      "plasma-kwin_x11.service",
+                                      "plasma-plasmashell.service",
+                                      "plasma-ksmserver.service"};
+    return critical.contains(unit);
+}
+void SystemdServiceProvider::serviceLogs(const QString& unit, ServiceScope scope) {
+    auto args = scopeArgs(scope);
+    args << "-u" << unit << "-n" << "300" << "--no-pager";
+    m_runner.run("journalctl", args, 15000, "logs:" + QString(scope == ServiceScope::User ? "user:" : "system:") + unit);
+}
+void SystemdServiceProvider::controlService(const QString& unit, const QString& action, ServiceScope scope) {
+    static const QRegularExpression name(R"(^[A-Za-z0-9_@.\\:\-]+\.service$)");
+    if (isProtectedUnit(unit) || !name.match(unit).hasMatch() || !QStringList{"start", "stop", "restart"}.contains(action)) {
+        emit actionFinished(tr("Read-only service"), unit);
         return;
     }
-
-    m_runner.run(QStringLiteral("systemctl"), {QStringLiteral("--failed"), QStringLiteral("--no-pager")}, 12000,
-                 QStringLiteral("systemd-failed"));
-}
-
-void SystemdServiceProvider::serviceLogs(const QString& unit) {
-    m_runner.run(QStringLiteral("journalctl"),
-                 {QStringLiteral("-u"), unit, QStringLiteral("-n"), QStringLiteral("300"), QStringLiteral("--no-pager")}, 20000,
-                 QStringLiteral("systemd-logs:%1").arg(unit));
-}
-
-void SystemdServiceProvider::controlService(const QString& unit, const QString& action) {
-    m_runner.run(QStringLiteral("systemctl"), {action, unit}, 30000, QStringLiteral("systemd-action:%1:%2").arg(action, unit));
+    auto args = scopeArgs(scope);
+    args << "--no-ask-password" << action << "--" << unit;
+    m_runner.run("systemctl", args, 30000, "action:" + QString(scope == ServiceScope::User ? "user:" : "system:") + action + ":" + unit);
 }
