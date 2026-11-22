@@ -209,3 +209,31 @@ foreach(icon_size 16 22 24 32 48 64 128 256)
         RENAME io.github.Adiker.LinuxServiceDashboard.png
     )
 endforeach()
+
+set(CPACK_PACKAGE_NAME linux-service-dashboard)
+set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
+set(CPACK_PACKAGE_CONTACT "Adiker")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Local Qt6 dashboard for Linux services and system health")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
+set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://github.com/Adiker/linux-service-dashboard")
+set(CPACK_GENERATOR "DEB;RPM")
+# Qt shared libraries come from dpkg-shlibdeps so the package names match the
+# distro (libqt6widgets6 vs libqt6widgets6t64). CLI tools are not linked, so
+# they stay explicit. policykit-1 is a transitional dummy that Debian 13
+# removed; polkitd and pkexec are the installable runtime packages.
+set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "smartmontools, polkitd, pkexec, util-linux, lm-sensors, network-manager")
+# qt6-qtbase does not ship Qt Widgets. qt6-qtbase-gui does, and it depends on qt6-qtbase.
+set(CPACK_RPM_PACKAGE_URL "https://github.com/Adiker/linux-service-dashboard")
+set(CPACK_RPM_PACKAGE_LICENSE "Unknown")
+set(CPACK_RPM_PACKAGE_REQUIRES "smartmontools, polkit, util-linux, lm_sensors, NetworkManager, qt6-qtbase-gui")
+if(EXISTS "/etc/debian_version")
+    find_program(LSD_DPKG_SHLIBDEPS dpkg-shlibdeps)
+    find_program(LSD_FILE_EXECUTABLE file)
+    if(NOT LSD_DPKG_SHLIBDEPS OR NOT LSD_FILE_EXECUTABLE)
+        message(WARNING
+            "cpack -G DEB needs both 'dpkg-shlibdeps' (Debian package dpkg-dev) and 'file'. "
+            "CPACK_DEBIAN_PACKAGE_SHLIBDEPS is ON, so those tools must be installed before packaging.")
+    endif()
+endif()
+include(CPack)
