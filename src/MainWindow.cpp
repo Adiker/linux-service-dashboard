@@ -6,6 +6,7 @@
 #include <QAction>
 #include <QApplication>
 #include <QCloseEvent>
+#include <QCoreApplication>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QIcon>
@@ -13,6 +14,7 @@
 #include <QListWidget>
 #include <QListWidgetItem>
 #include <QMenu>
+#include <QMessageBox>
 #include <QSettings>
 #include <QStackedWidget>
 #include <QStyle>
@@ -90,6 +92,12 @@ void MainWindow::buildTray() {
     auto* menu = new QMenu(this);
     auto* showAction = menu->addAction(QStringLiteral("Show Dashboard"));
     auto* refreshAction = menu->addAction(QStringLiteral("Refresh Now"));
+    auto* aboutAction = menu->addAction(tr("About"));
+    connect(aboutAction, &QAction::triggered, this, [this]() {
+        QMessageBox::about(this, tr("About Linux Service Dashboard"),
+                           tr("Linux Service Dashboard %1\nLocal system center, built with Qt %2.")
+                               .arg(QCoreApplication::applicationVersion(), QString::fromLatin1(qVersion())));
+    });
     menu->addSeparator();
     auto* quitAction = menu->addAction(QStringLiteral("Quit"));
     connect(showAction, &QAction::triggered, this, [this]() {
