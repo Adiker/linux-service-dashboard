@@ -117,11 +117,12 @@ SystemCenter::SystemCenter(QObject* parent) : QObject(parent) {
         m_diskIdentity = currentIdentities;
         for (const auto& r : rows) {
             const auto checked = m_smartHealth.value(r.path);
-            records.append({r.path,
-                            {r.path, r.model, r.size, checked.path.isEmpty() ? tr("Not checked") : checked.smartHealth, checked.lastCheck},
-                            {},
-                            {},
-                            checked.smartHealth.startsWith("FAILED")});
+            records.append(
+                {r.path,
+                 {r.path, r.model, r.size, checked.path.isEmpty() ? tr("Not checked") : checked.smartHealth, checked.lastCheck},
+                 {},
+                 {},
+                 checked.smartHealth.startsWith("FAILED") || (!checked.smartDetail.isEmpty() && checked.smartHealth != "PASSED")});
         }
         publish("smart", {tr("Device"), tr("Model"), tr("Size"), tr("Health"), tr("Last check")}, records, error);
     });
@@ -129,7 +130,7 @@ SystemCenter::SystemCenter(QObject* parent) : QObject(parent) {
         auto result = row;
         result.path = path;
         if (!error.isEmpty())
-            result.smartHealth = tr("Unknown");
+            result.smartDetail = error;
         m_smartHealth[path] = result;
         auto s = snapshot("smart");
         for (auto& r : s.rows)
@@ -138,7 +139,8 @@ SystemCenter::SystemCenter(QObject* parent) : QObject(parent) {
                     r.cells.append("-");
                 r.cells[3] = result.smartHealth;
                 r.cells[4] = result.lastCheck;
-                r.attention = error.isEmpty() && result.smartHealth.startsWith("FAILED");
+                r.meta["smartDetail"] = result.smartDetail;
+                r.attention = !error.isEmpty() || result.smartHealth.startsWith("FAILED");
             }
         publish("smart", s.headers, s.rows, s.error);
     });

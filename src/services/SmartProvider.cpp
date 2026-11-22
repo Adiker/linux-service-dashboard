@@ -171,7 +171,16 @@ struct SmartParseResult {
 
 SmartParseResult parseSmartResult(const CommandResult& result) {
     SmartParseResult parsed;
+    parsed.row.smartHealth = QStringLiteral("Unknown");
     parsed.row.lastCheck = currentTimestamp();
+
+    if (result.timedOut || result.outputTruncated) {
+        parsed.row.smartHealth = QStringLiteral("Check failed");
+        parsed.error = result.timedOut ? QCoreApplication::translate("SmartProvider", "SMART read timed out.")
+                                       : QCoreApplication::translate("SmartProvider", "SMART output exceeded the size limit.");
+        parsed.row.smartDetail = parsed.error;
+        return parsed;
+    }
 
     QString parseError;
     const QJsonDocument document = parseJsonDocument(result.standardOutput, &parseError);
@@ -188,7 +197,7 @@ SmartParseResult parseSmartResult(const CommandResult& result) {
             parsed.row.smartHealth = smartHealthFromError(jsonMessage);
         }
         const QJsonValue passed = root.value(QStringLiteral("smart_status")).toObject().value(QStringLiteral("passed"));
-        if (!passed.isUndefined()) {
+        if (passed.isBool()) {
             parsed.row.smartHealth = passed.toBool() ? QStringLiteral("PASSED") : QStringLiteral("FAILED/Warning");
         }
         const QJsonValue temp = root.value(QStringLiteral("temperature")).toObject().value(QStringLiteral("current"));
@@ -222,6 +231,18 @@ SmartParseResult parseSmartResult(const CommandResult& result) {
         parsed.row.smartHealth = smartHealthFromError(parsed.error);
     }
 
+    if (parsed.row.smartHealth == QStringLiteral("Unknown")) {
+        if (parsed.error.isEmpty()) {
+            parsed.row.smartHealth = QStringLiteral("Health unavailable");
+            parsed.error = jsonMessage.isEmpty()
+                               ? QCoreApplication::translate("SmartProvider", "smartctl did not report a SMART health result.")
+                               : permissionAwareError(jsonMessage);
+        } else
+            parsed.row.smartHealth = smartHealthFromError(parsed.error);
+    }
+    if (!parsed.error.isEmpty() && parsed.row.smartHealth == QStringLiteral("PASSED"))
+        parsed.row.smartHealth = QStringLiteral("Check failed");
+    parsed.row.smartDetail = parsed.error.isEmpty() ? jsonMessage : parsed.error;
     return parsed;
 }
 
@@ -254,8 +275,11 @@ SmartParseResult helperFailureResult(const CommandResult& result) {
             parsed.error = result.errorString.trimmed();
         }
     }
+    if (parsed.error.isEmpty())
+        parsed.error = QCoreApplication::translate("SmartProvider", "SMART helper returned no usable result.");
     parsed.error = permissionAwareError(parsed.error);
     parsed.row.smartHealth = smartHealthFromError(parsed.error);
+    parsed.row.smartDetail = parsed.error;
     return parsed;
 }
 

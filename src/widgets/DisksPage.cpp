@@ -26,6 +26,12 @@ DisksPage::DisksPage(SmartProvider& provider, QWidget* parent)
     header->addWidget(refreshButton);
     layout->addLayout(header);
 
+    auto* smartHint =
+        new QLabel(tr("SMART is read manually. Use Check SMART or Check All SMART; Refresh only updates the disk list."), this);
+    smartHint->setWordWrap(true);
+    smartHint->setObjectName(QStringLiteral("smartHint"));
+    layout->addWidget(smartHint);
+
     m_model = new DiskModel(this);
     m_table = new QTableView(this);
     m_table->setModel(m_model);
@@ -110,7 +116,10 @@ DisksPage::DisksPage(SmartProvider& provider, QWidget* parent)
         m_status->setText(error.isEmpty() ? tr("%1 disks").arg(rows.size()) : error);
     });
     connect(&m_provider, &SmartProvider::smartReady, this, [this](const QString& path, const DiskRow& smartRow, const QString& error) {
-        m_model->updateSmart(path, smartRow);
+        auto displayed = smartRow;
+        if (!error.isEmpty())
+            displayed.smartDetail = error;
+        m_model->updateSmart(path, displayed);
         if (error.isEmpty()) {
             QString serial = smartRow.serial;
             if (serial.trimmed().isEmpty()) {
