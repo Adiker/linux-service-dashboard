@@ -6,8 +6,7 @@
 
 namespace TableLayoutPersistence {
 
-void restore(QTableView *table, const QString &settingsKey)
-{
+void restore(QTableView* table, const QString& settingsKey) {
     if (!table || !table->horizontalHeader()) {
         return;
     }
@@ -18,8 +17,7 @@ void restore(QTableView *table, const QString &settingsKey)
     }
 }
 
-void save(QTableView *table, const QString &settingsKey)
-{
+void save(QTableView* table, const QString& settingsKey) {
     if (!table || !table->horizontalHeader()) {
         return;
     }
@@ -27,13 +25,12 @@ void save(QTableView *table, const QString &settingsKey)
     settings.setValue(settingsKey, table->horizontalHeader()->saveState());
 }
 
-void bind(QTableView *table, const QString &settingsKey, bool persistSortOrder)
-{
+void bind(QTableView* table, const QString& settingsKey, bool persistSortOrder) {
     if (!table || !table->horizontalHeader()) {
         return;
     }
     restore(table, settingsKey);
-    QHeaderView *header = table->horizontalHeader();
+    QHeaderView* header = table->horizontalHeader();
     if (!persistSortOrder) {
         header->setSortIndicator(-1, Qt::AscendingOrder);
     } else if (table->isSortingEnabled() && header->sortIndicatorSection() >= 0) {

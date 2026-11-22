@@ -13,20 +13,14 @@ namespace ProviderParsers {
 
 namespace {
 
-bool isNetworkFilesystem(const QString &type)
-{
+bool isNetworkFilesystem(const QString& type) {
     static const QSet<QString> types{
-        QStringLiteral("cifs"),
-        QStringLiteral("nfs"),
-        QStringLiteral("nfs4"),
-        QStringLiteral("sshfs"),
-        QStringLiteral("fuse.sshfs"),
+        QStringLiteral("cifs"), QStringLiteral("nfs"), QStringLiteral("nfs4"), QStringLiteral("sshfs"), QStringLiteral("fuse.sshfs"),
     };
     return types.contains(type);
 }
 
-QString decodeFstabField(const QString &field)
-{
+QString decodeFstabField(const QString& field) {
     QString decoded;
     decoded.reserve(field.size());
     for (int i = 0; i < field.size(); ++i) {
@@ -52,9 +46,8 @@ QString decodeFstabField(const QString &field)
     return decoded;
 }
 
-void collectMountsRecursive(const QJsonArray &array, QVector<MountRow> *networkRows, QSet<QString> *allTargets)
-{
-    for (const QJsonValue &value : array) {
+void collectMountsRecursive(const QJsonArray& array, QVector<MountRow>* networkRows, QSet<QString>* allTargets) {
+    for (const QJsonValue& value : array) {
         const QJsonObject object = value.toObject();
         const QString type = object.value(QStringLiteral("fstype")).toString();
         const QString target = object.value(QStringLiteral("target")).toString();
@@ -87,19 +80,13 @@ void collectMountsRecursive(const QJsonArray &array, QVector<MountRow> *networkR
 
 } // namespace
 
-bool isVpnLikeConnectionType(const QString &type)
-{
-    return type == QStringLiteral("vpn")
-        || type == QStringLiteral("tun")
-        || type == QStringLiteral("wireguard")
-        || type == QStringLiteral("ppp");
+bool isVpnLikeConnectionType(const QString& type) {
+    return type == QStringLiteral("vpn") || type == QStringLiteral("tun") || type == QStringLiteral("wireguard") ||
+           type == QStringLiteral("ppp");
 }
 
-QVector<ServiceRow> parseSystemdListUnits(const QString &output,
-                                          const QStringList &watchedServices,
-                                          const QString &timestamp,
-                                          QString *error)
-{
+QVector<ServiceRow> parseSystemdListUnits(const QString& output, const QStringList& watchedServices, const QString& timestamp,
+                                          QString* error) {
     QVector<ServiceRow> rows;
     if (error) {
         error->clear();
@@ -107,7 +94,7 @@ QVector<ServiceRow> parseSystemdListUnits(const QString &output,
     static const QRegularExpression lineExpression(QStringLiteral(R"(^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(.*)$)"));
     QSet<QString> seen;
     const QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
-    for (const QString &line : lines) {
+    for (const QString& line : lines) {
         const auto match = lineExpression.match(line.trimmed());
         if (!match.hasMatch() || !match.captured(1).endsWith(QStringLiteral(".service"))) {
             continue;
@@ -124,22 +111,22 @@ QVector<ServiceRow> parseSystemdListUnits(const QString &output,
             seen.insert(row.unit);
         }
     }
-    for (const QString &unit : watchedServices) {
+    for (const QString& unit : watchedServices) {
         if (!seen.contains(unit)) {
-            rows.append(ServiceRow{unit, QStringLiteral("unavailable"), QStringLiteral("unknown"), QStringLiteral("-"), QStringLiteral("Unit not found"), timestamp});
+            rows.append(ServiceRow{unit, QStringLiteral("unavailable"), QStringLiteral("unknown"), QStringLiteral("-"),
+                                   QStringLiteral("Unit not found"), timestamp});
         }
     }
     return rows;
 }
 
-int parseSystemdFailedCount(const QString &output, QString *error)
-{
+int parseSystemdFailedCount(const QString& output, QString* error) {
     if (error) {
         error->clear();
     }
     int count = 0;
     const QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
-    for (const QString &line : lines) {
+    for (const QString& line : lines) {
         if (line.trimmed().startsWith(QStringLiteral("UNIT "))) {
             continue;
         }
@@ -150,14 +137,13 @@ int parseSystemdFailedCount(const QString &output, QString *error)
     return count;
 }
 
-QVector<DockerContainerRow> parseDockerContainerLines(const QString &output, QString *error)
-{
+QVector<DockerContainerRow> parseDockerContainerLines(const QString& output, QString* error) {
     QVector<DockerContainerRow> rows;
     if (error) {
         error->clear();
     }
     const QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
-    for (const QString &line : lines) {
+    for (const QString& line : lines) {
         QString parseError;
         const QJsonDocument document = parseJsonDocument(line, &parseError);
         if (!document.isObject()) {
@@ -177,14 +163,13 @@ QVector<DockerContainerRow> parseDockerContainerLines(const QString &output, QSt
     return rows;
 }
 
-QVector<VpnStatus> parseNmcliActiveVpnList(const QString &output, const QString &timestamp, QString *error)
-{
+QVector<VpnStatus> parseNmcliActiveVpnList(const QString& output, const QString& timestamp, QString* error) {
     if (error) {
         error->clear();
     }
     QVector<VpnStatus> result;
     const QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
-    for (const QString &line : lines) {
+    for (const QString& line : lines) {
         const QStringList fields = line.split(QLatin1Char(':'));
         if (fields.size() >= 4 && isVpnLikeConnectionType(fields.at(1))) {
             VpnStatus status;
@@ -199,8 +184,7 @@ QVector<VpnStatus> parseNmcliActiveVpnList(const QString &output, const QString 
     return result;
 }
 
-VpnStatus parseNmcliActiveVpnConnections(const QString &output, const QString &timestamp, QString *error)
-{
+VpnStatus parseNmcliActiveVpnConnections(const QString& output, const QString& timestamp, QString* error) {
     const QVector<VpnStatus> list = parseNmcliActiveVpnList(output, timestamp, error);
     if (!list.isEmpty()) {
         return list.first();
@@ -212,14 +196,13 @@ VpnStatus parseNmcliActiveVpnConnections(const QString &output, const QString &t
     return status;
 }
 
-QVector<VpnProfile> parseNmcliVpnProfiles(const QString &output, QString *error)
-{
+QVector<VpnProfile> parseNmcliVpnProfiles(const QString& output, QString* error) {
     if (error) {
         error->clear();
     }
     QVector<VpnProfile> profiles;
     const QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
-    for (const QString &line : lines) {
+    for (const QString& line : lines) {
         const QStringList fields = line.split(QLatin1Char(':'));
         if (fields.size() >= 2 && isVpnLikeConnectionType(fields.at(1))) {
             VpnProfile profile;
@@ -234,8 +217,7 @@ QVector<VpnProfile> parseNmcliVpnProfiles(const QString &output, QString *error)
     return profiles;
 }
 
-void parseSmartctlJson(const QJsonObject &root, DiskRow *row)
-{
+void parseSmartctlJson(const QJsonObject& root, DiskRow* row) {
     if (!row || root.isEmpty()) {
         return;
     }
@@ -256,10 +238,11 @@ void parseSmartctlJson(const QJsonObject &root, DiskRow *row)
     }
 
     const QJsonArray table = root.value(QStringLiteral("ata_smart_attributes")).toObject().value(QStringLiteral("table")).toArray();
-    for (const QJsonValue &attributeValue : table) {
+    for (const QJsonValue& attributeValue : table) {
         const QJsonObject attribute = attributeValue.toObject();
         const QString name = attribute.value(QStringLiteral("name")).toString();
-        const QString raw = QString::number(attribute.value(QStringLiteral("raw")).toObject().value(QStringLiteral("value")).toVariant().toLongLong());
+        const QString raw =
+            QString::number(attribute.value(QStringLiteral("raw")).toObject().value(QStringLiteral("value")).toVariant().toLongLong());
         if (name == QStringLiteral("Reallocated_Sector_Ct")) {
             row->reallocated = raw;
         } else if (name == QStringLiteral("Current_Pending_Sector")) {
@@ -289,11 +272,7 @@ void parseSmartctlJson(const QJsonObject &root, DiskRow *row)
     }
 }
 
-void parseFindmntSnapshot(const QString &output,
-                          QVector<MountRow> *networkRows,
-                          QSet<QString> *allTargets,
-                          QString *error)
-{
+void parseFindmntSnapshot(const QString& output, QVector<MountRow>* networkRows, QSet<QString>* allTargets, QString* error) {
     if (error) {
         error->clear();
     }
@@ -308,15 +287,13 @@ void parseFindmntSnapshot(const QString &output,
     collectMountsRecursive(document.object().value(QStringLiteral("filesystems")).toArray(), networkRows, allTargets);
 }
 
-QVector<MountRow> parseFindmntJson(const QString &output, QString *error)
-{
+QVector<MountRow> parseFindmntJson(const QString& output, QString* error) {
     QVector<MountRow> rows;
     parseFindmntSnapshot(output, &rows, nullptr, error);
     return rows;
 }
 
-QVector<SensorRow> parseSensorsJson(const QString &output, QString *error)
-{
+QVector<SensorRow> parseSensorsJson(const QString& output, QString* error) {
     QVector<SensorRow> rows;
     if (error) {
         error->clear();
@@ -357,21 +334,19 @@ QVector<SensorRow> parseSensorsJson(const QString &output, QString *error)
     return rows;
 }
 
-QVector<SensorRow> parseSensorsText(const QString &output, QString *error)
-{
+QVector<SensorRow> parseSensorsText(const QString& output, QString* error) {
     QVector<SensorRow> rows;
     if (error) {
         error->clear();
     }
 
-    static const QRegularExpression readingRe(
-        QStringLiteral(R"(^([^:]+):\s*([+-]?\d+(?:\.\d+)?)\s*(?:°|C|°C|RPM|V|W|A|mW|%)(.*)$)"));
+    static const QRegularExpression readingRe(QStringLiteral(R"(^([^:]+):\s*([+-]?\d+(?:\.\d+)?)\s*(?:°|C|°C|RPM|V|W|A|mW|%)(.*)$)"));
     static const QRegularExpression highRe(QStringLiteral(R"(\b(?:high|max)\s*=\s*([+-]?\d+(?:\.\d+)?))"));
     static const QRegularExpression critRe(QStringLiteral(R"(\bcrit\s*=\s*([+-]?\d+(?:\.\d+)?))"));
 
     QString currentChip;
     const QStringList lines = output.split(QLatin1Char('\n'));
-    for (const QString &rawLine : lines) {
+    for (const QString& rawLine : lines) {
         const QString line = rawLine.trimmed();
         if (line.isEmpty()) {
             currentChip.clear();
@@ -413,15 +388,14 @@ QVector<SensorRow> parseSensorsText(const QString &output, QString *error)
     return rows;
 }
 
-QVector<FstabEntry> parseFstab(const QString &content, QString *error)
-{
+QVector<FstabEntry> parseFstab(const QString& content, QString* error) {
     QVector<FstabEntry> entries;
     if (error) {
         error->clear();
     }
     static const QRegularExpression whitespaceRe(QStringLiteral("\\s+"));
     const QStringList lines = content.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
-    for (const QString &rawLine : lines) {
+    for (const QString& rawLine : lines) {
         const QString line = rawLine.trimmed();
         if (line.isEmpty() || line.startsWith(QLatin1Char('#'))) {
             continue;
@@ -449,15 +423,13 @@ QVector<FstabEntry> parseFstab(const QString &content, QString *error)
     return entries;
 }
 
-QVector<MountRow> parseFstabNetworkMounts(const QString &content, QString *error)
-{
+QVector<MountRow> parseFstabNetworkMounts(const QString& content, QString* error) {
     QVector<MountRow> rows;
     const QVector<FstabEntry> entries = parseFstab(content, error);
-    for (const FstabEntry &entry : entries) {
+    for (const FstabEntry& entry : entries) {
         // Legacy SSHFS fstab form: "sshfs#user@host:/path /mnt fuse ...", where the
         // type is the generic "fuse" and the source carries the sshfs# prefix.
-        const bool isSshfsFuse = entry.filesystemType == QStringLiteral("fuse")
-            && entry.device.startsWith(QStringLiteral("sshfs#"));
+        const bool isSshfsFuse = entry.filesystemType == QStringLiteral("fuse") && entry.device.startsWith(QStringLiteral("sshfs#"));
         if (!isNetworkFilesystem(entry.filesystemType) && !isSshfsFuse) {
             continue;
         }

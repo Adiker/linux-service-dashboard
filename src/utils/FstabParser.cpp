@@ -6,8 +6,7 @@
 
 namespace FstabParser {
 
-QVector<MountRow> parseFile(const QString &path, QString *error)
-{
+QVector<MountRow> parseFile(const QString& path, QString* error) {
     if (error) {
         error->clear();
     }

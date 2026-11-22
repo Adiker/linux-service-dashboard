@@ -21,24 +21,19 @@
 #include <QTextDocument>
 #include <QVBoxLayout>
 
-LogViewerDialog::LogViewerDialog(const QString &title,
-                                 const QString &text,
-                                 QWidget *parent,
-                                 RefreshCallback refreshCallback)
-    : QDialog(parent)
-    , m_refreshCallback(std::move(refreshCallback))
-{
+LogViewerDialog::LogViewerDialog(const QString& title, const QString& text, QWidget* parent, RefreshCallback refreshCallback)
+    : QDialog(parent), m_refreshCallback(std::move(refreshCallback)) {
     setWindowTitle(title);
     resize(960, 640);
 
-    auto *layout = new QVBoxLayout(this);
+    auto* layout = new QVBoxLayout(this);
 
-    auto *toolbar = new QHBoxLayout;
+    auto* toolbar = new QHBoxLayout;
     m_searchEdit = new QLineEdit(this);
     m_searchEdit->setPlaceholderText(QStringLiteral("Find in output (Ctrl+F)..."));
     m_searchEdit->setClearButtonEnabled(true);
-    auto *prevButton = new QPushButton(QStringLiteral("Prev"), this);
-    auto *nextButton = new QPushButton(QStringLiteral("Next"), this);
+    auto* prevButton = new QPushButton(QStringLiteral("Prev"), this);
+    auto* nextButton = new QPushButton(QStringLiteral("Next"), this);
     m_matchLabel = new QLabel(this);
     m_matchLabel->setMinimumWidth(72);
 
@@ -76,10 +71,10 @@ LogViewerDialog::LogViewerDialog(const QString &title,
     m_textEdit->setPlainText(text);
     layout->addWidget(m_textEdit, 1);
 
-    auto *bottomRow = new QHBoxLayout;
-    auto *copyButton = new QPushButton(QIcon::fromTheme(QStringLiteral("edit-copy")), QStringLiteral("Copy all"), this);
-    auto *saveButton = new QPushButton(QIcon::fromTheme(QStringLiteral("document-save")), QStringLiteral("Save to file..."), this);
-    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Close, this);
+    auto* bottomRow = new QHBoxLayout;
+    auto* copyButton = new QPushButton(QIcon::fromTheme(QStringLiteral("edit-copy")), QStringLiteral("Copy all"), this);
+    auto* saveButton = new QPushButton(QIcon::fromTheme(QStringLiteral("document-save")), QStringLiteral("Save to file..."), this);
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Close, this);
     bottomRow->addWidget(copyButton);
     bottomRow->addWidget(saveButton);
     bottomRow->addStretch();
@@ -88,20 +83,19 @@ LogViewerDialog::LogViewerDialog(const QString &title,
 
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
     connect(copyButton, &QPushButton::clicked, this, [this]() {
-        if (QClipboard *cb = QApplication::clipboard()) {
+        if (QClipboard* cb = QApplication::clipboard()) {
             cb->setText(m_textEdit->toPlainText());
         }
     });
     connect(saveButton, &QPushButton::clicked, this, &LogViewerDialog::saveToFile);
-    connect(m_wrapCheck, &QCheckBox::toggled, this, [this](bool wrap) {
-        m_textEdit->setLineWrapMode(wrap ? QPlainTextEdit::WidgetWidth : QPlainTextEdit::NoWrap);
-    });
+    connect(m_wrapCheck, &QCheckBox::toggled, this,
+            [this](bool wrap) { m_textEdit->setLineWrapMode(wrap ? QPlainTextEdit::WidgetWidth : QPlainTextEdit::NoWrap); });
     connect(nextButton, &QPushButton::clicked, this, [this]() { findNext(false); });
     connect(prevButton, &QPushButton::clicked, this, [this]() { findNext(true); });
     connect(m_searchEdit, &QLineEdit::returnPressed, this, [this]() { findNext(false); });
     connect(m_searchEdit, &QLineEdit::textChanged, this, &LogViewerDialog::updateMatchCount);
 
-    auto *findShortcut = new QShortcut(QKeySequence::Find, this);
+    auto* findShortcut = new QShortcut(QKeySequence::Find, this);
     connect(findShortcut, &QShortcut::activated, this, [this]() {
         m_searchEdit->setFocus();
         m_searchEdit->selectAll();
@@ -110,8 +104,7 @@ LogViewerDialog::LogViewerDialog(const QString &title,
     updateMatchCount();
 }
 
-void LogViewerDialog::setContent(const QString &text)
-{
+void LogViewerDialog::setContent(const QString& text) {
     m_textEdit->setPlainText(text);
     if (m_refreshButton) {
         m_refreshButton->setEnabled(true);
@@ -119,8 +112,7 @@ void LogViewerDialog::setContent(const QString &text)
     updateMatchCount();
 }
 
-void LogViewerDialog::findNext(bool backwards)
-{
+void LogViewerDialog::findNext(bool backwards) {
     const QString query = m_searchEdit->text();
     if (query.isEmpty()) {
         return;
@@ -137,8 +129,7 @@ void LogViewerDialog::findNext(bool backwards)
     }
 }
 
-void LogViewerDialog::updateMatchCount()
-{
+void LogViewerDialog::updateMatchCount() {
     const QString query = m_searchEdit->text();
     if (query.isEmpty()) {
         m_matchLabel->clear();
@@ -154,9 +145,9 @@ void LogViewerDialog::updateMatchCount()
     m_matchLabel->setText(QStringLiteral("%1 matches").arg(count));
 }
 
-void LogViewerDialog::saveToFile()
-{
-    const QString path = QFileDialog::getSaveFileName(this, QStringLiteral("Save output"), QStringLiteral("output.log"), QStringLiteral("Log files (*.log *.txt *.json);;All files (*)"));
+void LogViewerDialog::saveToFile() {
+    const QString path = QFileDialog::getSaveFileName(this, QStringLiteral("Save output"), QStringLiteral("output.log"),
+                                                      QStringLiteral("Log files (*.log *.txt *.json);;All files (*)"));
     if (path.isEmpty()) {
         return;
     }

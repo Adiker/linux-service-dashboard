@@ -5,21 +5,13 @@
 #include <QProcess>
 #include <QTimer>
 #include <QUuid>
-
 #include <functional>
 #include <memory>
 
-CommandRunner::CommandRunner(QObject *parent)
-    : QObject(parent)
-{
-}
+CommandRunner::CommandRunner(QObject* parent) : QObject(parent) {}
 
-QString CommandRunner::run(const QString &program,
-                           const QStringList &arguments,
-                           int timeoutMs,
-                           const QString &context,
-                           bool deduplicateContext)
-{
+QString CommandRunner::run(const QString& program, const QStringList& arguments, int timeoutMs, const QString& context,
+                           bool deduplicateContext) {
     if (deduplicateContext && !context.isEmpty() && m_activeContexts.contains(context)) {
         return {};
     }
@@ -29,8 +21,8 @@ QString CommandRunner::run(const QString &program,
         m_activeContexts.insert(context);
     }
 
-    auto *process = new QProcess(this);
-    auto *timer = new QTimer(process);
+    auto* process = new QProcess(this);
+    auto* timer = new QTimer(process);
     timer->setSingleShot(true);
 
     auto result = std::make_shared<CommandResult>();
@@ -95,12 +87,8 @@ QString CommandRunner::run(const QString &program,
         }
     });
 
-    connect(process,
-            qOverload<int, QProcess::ExitStatus>(&QProcess::finished),
-            this,
-            [finishOnce](int exitCode, QProcess::ExitStatus) {
-                finishOnce(exitCode);
-            });
+    connect(process, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this,
+            [finishOnce](int exitCode, QProcess::ExitStatus) { finishOnce(exitCode); });
 
     process->setProgram(program);
     process->setArguments(arguments);
@@ -109,27 +97,23 @@ QString CommandRunner::run(const QString &program,
     return id;
 }
 
-bool CommandRunner::isContextActive(const QString &context) const
-{
+bool CommandRunner::isContextActive(const QString& context) const {
     return m_activeContexts.contains(context);
 }
 
-QStringList CommandRunner::failedCommandLog() const
-{
+QStringList CommandRunner::failedCommandLog() const {
     QStringList lines;
     lines.reserve(m_failedCommands.size());
-    for (const FailedCommandEntry &entry : m_failedCommands) {
+    for (const FailedCommandEntry& entry : m_failedCommands) {
         lines.append(QStringLiteral("[%1] %2: %3").arg(entry.timestamp, entry.commandLine, entry.message));
     }
     return lines;
 }
 
-QVector<FailedCommandEntry> CommandRunner::failedCommands() const
-{
+QVector<FailedCommandEntry> CommandRunner::failedCommands() const {
     return m_failedCommands;
 }
 
-void CommandRunner::clearFailedCommands()
-{
+void CommandRunner::clearFailedCommands() {
     m_failedCommands.clear();
 }

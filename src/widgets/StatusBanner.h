@@ -8,7 +8,7 @@ class QLabel;
 class StatusBanner : public QFrame {
     Q_OBJECT
 
-public:
+  public:
     enum class Severity {
         Info,
         Ok,
@@ -16,12 +16,12 @@ public:
         Error,
     };
 
-    explicit StatusBanner(QWidget *parent = nullptr);
+    explicit StatusBanner(QWidget* parent = nullptr);
 
-    void setMessage(const QString &text, Severity severity = Severity::Info);
-    void setResultMessage(const QString &summaryText, const QString &errorText = {});
+    void setMessage(const QString& text, Severity severity = Severity::Info);
+    void setResultMessage(const QString& summaryText, const QString& errorText = {});
 
-private:
-    QLabel *m_iconLabel = nullptr;
-    QLabel *m_textLabel = nullptr;
+  private:
+    QLabel* m_iconLabel = nullptr;
+    QLabel* m_textLabel = nullptr;
 };

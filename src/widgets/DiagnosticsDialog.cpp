@@ -14,16 +14,13 @@
 #include <QTableWidget>
 #include <QVBoxLayout>
 
-DiagnosticsDialog::DiagnosticsDialog(ServiceRegistry *registry, QWidget *parent)
-    : QDialog(parent)
-    , m_registry(registry)
-{
+DiagnosticsDialog::DiagnosticsDialog(ServiceRegistry* registry, QWidget* parent) : QDialog(parent), m_registry(registry) {
     setWindowTitle(QStringLiteral("Command Diagnostics"));
     resize(920, 520);
 
-    auto *layout = new QVBoxLayout(this);
+    auto* layout = new QVBoxLayout(this);
 
-    auto *topRow = new QHBoxLayout;
+    auto* topRow = new QHBoxLayout;
     topRow->addWidget(new QLabel(QStringLiteral("Filter by type:"), this));
     m_kindFilter = new QComboBox(this);
     m_kindFilter->addItem(QStringLiteral("All errors"), -1);
@@ -52,10 +49,10 @@ DiagnosticsDialog::DiagnosticsDialog(ServiceRegistry *registry, QWidget *parent)
     m_table->verticalHeader()->hide();
     layout->addWidget(m_table, 1);
 
-    auto *bottomRow = new QHBoxLayout;
-    auto *copyButton = new QPushButton(QIcon::fromTheme(QStringLiteral("edit-copy")), QStringLiteral("Copy report"), this);
-    auto *clearButton = new QPushButton(QIcon::fromTheme(QStringLiteral("edit-clear")), QStringLiteral("Clear"), this);
-    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Close, this);
+    auto* bottomRow = new QHBoxLayout;
+    auto* copyButton = new QPushButton(QIcon::fromTheme(QStringLiteral("edit-copy")), QStringLiteral("Copy report"), this);
+    auto* clearButton = new QPushButton(QIcon::fromTheme(QStringLiteral("edit-clear")), QStringLiteral("Clear"), this);
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Close, this);
     bottomRow->addWidget(copyButton);
     bottomRow->addWidget(clearButton);
     bottomRow->addStretch();
@@ -78,8 +75,7 @@ DiagnosticsDialog::DiagnosticsDialog(ServiceRegistry *registry, QWidget *parent)
     reloadTable();
 }
 
-void DiagnosticsDialog::reloadTable()
-{
+void DiagnosticsDialog::reloadTable() {
     m_table->setRowCount(0);
     if (!m_registry) {
         return;
@@ -87,7 +83,7 @@ void DiagnosticsDialog::reloadTable()
     const int filterKind = m_kindFilter->currentData().toInt();
     const QVector<FailedCommandEntry> entries = m_registry->failedCommands();
     for (int i = entries.size() - 1; i >= 0; --i) {
-        const FailedCommandEntry &entry = entries.at(i);
+        const FailedCommandEntry& entry = entries.at(i);
         if (filterKind >= 0 && static_cast<int>(entry.errorKind) != filterKind) {
             continue;
         }
@@ -102,17 +98,16 @@ void DiagnosticsDialog::reloadTable()
     m_table->resizeColumnsToContents();
 }
 
-void DiagnosticsDialog::copyReport()
-{
+void DiagnosticsDialog::copyReport() {
     if (!m_registry) {
         return;
     }
     QStringList lines;
-    for (const FailedCommandEntry &entry : m_registry->failedCommands()) {
+    for (const FailedCommandEntry& entry : m_registry->failedCommands()) {
         lines.append(QStringLiteral("[%1] (%2) %3 — %4 -> %5")
                          .arg(entry.timestamp, commandErrorKindLabel(entry.errorKind), entry.context, entry.commandLine, entry.message));
     }
-    if (QClipboard *cb = QApplication::clipboard()) {
+    if (QClipboard* cb = QApplication::clipboard()) {
         cb->setText(lines.isEmpty() ? QStringLiteral("No failed commands recorded.") : lines.join(QLatin1Char('\n')));
     }
 }

@@ -26,24 +26,24 @@ class QDBusPendingCallWatcher;
 class NetworkProvider : public QObject {
     Q_OBJECT
 
-public:
-    explicit NetworkProvider(QObject *parent = nullptr);
+  public:
+    explicit NetworkProvider(QObject* parent = nullptr);
     void refreshVpnStatus();
     void refreshVpnProfiles();
-    void connectVpn(const QString &connectionName);
-    void disconnectVpn(const QString &connectionName);
+    void connectVpn(const QString& connectionName);
+    void disconnectVpn(const QString& connectionName);
 
-    [[nodiscard]] CommandRunner *commandRunner() { return &m_runner; }
+    [[nodiscard]] CommandRunner* commandRunner() { return &m_runner; }
 
-signals:
-    void vpnStatusReady(const VpnStatus &status, const QString &error);
-    void activeVpnsReady(const QVector<VpnStatus> &activeVpns, const QString &error);
-    void vpnProfilesReady(const QVector<VpnProfile> &profiles, const QString &error);
-    void actionFinished(const QString &message, const QString &details);
+  signals:
+    void vpnStatusReady(const VpnStatus& status, const QString& error);
+    void activeVpnsReady(const QVector<VpnStatus>& activeVpns, const QString& error);
+    void vpnProfilesReady(const QVector<VpnProfile>& profiles, const QString& error);
+    void actionFinished(const QString& message, const QString& details);
 
-private:
+  private:
     void refreshVpnViaNmcli();
-    void handleActiveConnectionsReply(QDBusPendingCallWatcher *watcher);
+    void handleActiveConnectionsReply(QDBusPendingCallWatcher* watcher);
 
     CommandRunner m_runner;
     bool m_dbusQueryInFlight = false;

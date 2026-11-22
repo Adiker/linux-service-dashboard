@@ -2,7 +2,6 @@
 
 #include <QDialog>
 #include <QString>
-
 #include <functional>
 
 class QCheckBox;
@@ -15,26 +14,23 @@ class QPushButton;
 class LogViewerDialog : public QDialog {
     Q_OBJECT
 
-public:
+  public:
     using RefreshCallback = std::function<void(int tailLines)>;
 
-    explicit LogViewerDialog(const QString &title,
-                             const QString &text,
-                             QWidget *parent = nullptr,
-                             RefreshCallback refreshCallback = {});
+    explicit LogViewerDialog(const QString& title, const QString& text, QWidget* parent = nullptr, RefreshCallback refreshCallback = {});
 
-    void setContent(const QString &text);
+    void setContent(const QString& text);
 
-private:
+  private:
     void findNext(bool backwards = false);
     void updateMatchCount();
     void saveToFile();
 
-    QPlainTextEdit *m_textEdit = nullptr;
-    QLineEdit *m_searchEdit = nullptr;
-    QLabel *m_matchLabel = nullptr;
-    QCheckBox *m_wrapCheck = nullptr;
-    QComboBox *m_tailCombo = nullptr;
-    QPushButton *m_refreshButton = nullptr;
+    QPlainTextEdit* m_textEdit = nullptr;
+    QLineEdit* m_searchEdit = nullptr;
+    QLabel* m_matchLabel = nullptr;
+    QCheckBox* m_wrapCheck = nullptr;
+    QComboBox* m_tailCombo = nullptr;
+    QPushButton* m_refreshButton = nullptr;
     RefreshCallback m_refreshCallback;
 };

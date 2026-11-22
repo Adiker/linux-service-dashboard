@@ -11,7 +11,6 @@
 #include <QDBusPendingCallWatcher>
 #include <QDBusPendingReply>
 #include <QVariantMap>
-
 #include <memory>
 
 namespace {
@@ -20,8 +19,7 @@ constexpr int kDBusTimeoutMs = 5000;
 constexpr quint32 kStateActivating = 1;
 constexpr quint32 kStateActivated = 2;
 
-QString stateLabel(quint32 state)
-{
+QString stateLabel(quint32 state) {
     switch (state) {
     case kStateActivated:
         return QStringLiteral("activated");
@@ -46,10 +44,9 @@ struct ActiveConnectionsBatch {
     QVector<ActiveVpnCandidate> candidates;
 };
 
-QVector<VpnStatus> buildActiveVpnList(const QVector<ActiveVpnCandidate> &candidates, const QString &timestamp)
-{
+QVector<VpnStatus> buildActiveVpnList(const QVector<ActiveVpnCandidate>& candidates, const QString& timestamp) {
     QVector<VpnStatus> list;
-    for (const ActiveVpnCandidate &candidate : candidates) {
+    for (const ActiveVpnCandidate& candidate : candidates) {
         if (candidate.state != kStateActivated && candidate.state != kStateActivating) {
             continue;
         }
@@ -64,9 +61,8 @@ QVector<VpnStatus> buildActiveVpnList(const QVector<ActiveVpnCandidate> &candida
     return list;
 }
 
-VpnStatus selectPrimaryVpnStatus(const QVector<VpnStatus> &activeList, const QString &timestamp)
-{
-    for (const VpnStatus &status : activeList) {
+VpnStatus selectPrimaryVpnStatus(const QVector<VpnStatus>& activeList, const QString& timestamp) {
+    for (const VpnStatus& status : activeList) {
         if (status.connected) {
             return status;
         }
@@ -85,10 +81,8 @@ VpnStatus selectPrimaryVpnStatus(const QVector<VpnStatus> &activeList, const QSt
 
 } // namespace
 
-NetworkProvider::NetworkProvider(QObject *parent)
-    : QObject(parent)
-{
-    connect(&m_runner, &CommandRunner::commandFinished, this, [this](const QString &, const CommandResult &result, const QString &context) {
+NetworkProvider::NetworkProvider(QObject* parent) : QObject(parent) {
+    connect(&m_runner, &CommandRunner::commandFinished, this, [this](const QString&, const CommandResult& result, const QString& context) {
         if (context == QStringLiteral("vpn-active")) {
             QString error;
             QVector<VpnStatus> activeList;
@@ -98,7 +92,8 @@ NetworkProvider::NetworkProvider(QObject *parent)
                 activeList = ProviderParsers::parseNmcliActiveVpnList(result.standardOutput, timestamp, nullptr);
                 primary = selectPrimaryVpnStatus(activeList, timestamp);
             } else {
-                error = result.startFailed ? QStringLiteral("nmcli not found. Install NetworkManager CLI tools.") : result.standardError.trimmed();
+                error = result.startFailed ? QStringLiteral("nmcli not found. Install NetworkManager CLI tools.")
+                                           : result.standardError.trimmed();
                 primary.lastRefresh = timestamp;
                 primary.state = QStringLiteral("Unknown");
             }
@@ -110,22 +105,21 @@ NetworkProvider::NetworkProvider(QObject *parent)
             if (result.ok()) {
                 profiles = ProviderParsers::parseNmcliVpnProfiles(result.standardOutput, nullptr);
             } else {
-                error = result.startFailed ? QStringLiteral("nmcli not found. Install NetworkManager CLI tools.") : result.standardError.trimmed();
+                error = result.startFailed ? QStringLiteral("nmcli not found. Install NetworkManager CLI tools.")
+                                           : result.standardError.trimmed();
             }
             emit vpnProfilesReady(profiles, error);
         } else if (context.startsWith(QStringLiteral("vpn-action:"))) {
             const QString action = context.section(QLatin1Char(':'), 1, 1);
             const QString name = context.section(QLatin1Char(':'), 2);
-            const QString message = result.ok()
-                ? QStringLiteral("VPN %1 (%2) succeeded.").arg(action, name)
-                : QStringLiteral("VPN %1 (%2) failed.").arg(action, name);
+            const QString message = result.ok() ? QStringLiteral("VPN %1 (%2) succeeded.").arg(action, name)
+                                                : QStringLiteral("VPN %1 (%2) failed.").arg(action, name);
             emit actionFinished(message, result.ok() ? result.standardOutput : result.standardError);
         }
     });
 }
 
-void NetworkProvider::refreshVpnStatus()
-{
+void NetworkProvider::refreshVpnStatus() {
     QDBusConnection bus = QDBusConnection::systemBus();
     if (!bus.isConnected()) {
         refreshVpnViaNmcli();
@@ -136,19 +130,17 @@ void NetworkProvider::refreshVpnStatus()
     }
 
     m_dbusQueryInFlight = true;
-    QDBusMessage message = QDBusMessage::createMethodCall(QStringLiteral("org.freedesktop.NetworkManager"),
-                                                          QStringLiteral("/org/freedesktop/NetworkManager"),
-                                                          QStringLiteral("org.freedesktop.DBus.Properties"),
-                                                          QStringLiteral("Get"));
+    QDBusMessage message =
+        QDBusMessage::createMethodCall(QStringLiteral("org.freedesktop.NetworkManager"), QStringLiteral("/org/freedesktop/NetworkManager"),
+                                       QStringLiteral("org.freedesktop.DBus.Properties"), QStringLiteral("Get"));
     message << QStringLiteral("org.freedesktop.NetworkManager") << QStringLiteral("ActiveConnections");
 
     QDBusPendingCall pending = bus.asyncCall(message, kDBusTimeoutMs);
-    auto *watcher = new QDBusPendingCallWatcher(pending, this);
+    auto* watcher = new QDBusPendingCallWatcher(pending, this);
     connect(watcher, &QDBusPendingCallWatcher::finished, this, &NetworkProvider::handleActiveConnectionsReply);
 }
 
-void NetworkProvider::handleActiveConnectionsReply(QDBusPendingCallWatcher *watcher)
-{
+void NetworkProvider::handleActiveConnectionsReply(QDBusPendingCallWatcher* watcher) {
     QDBusPendingReply<QVariant> reply = *watcher;
     watcher->deleteLater();
     if (reply.isError()) {
@@ -182,15 +174,12 @@ void NetworkProvider::handleActiveConnectionsReply(QDBusPendingCallWatcher *watc
     };
 
     QDBusConnection bus = QDBusConnection::systemBus();
-    for (const QDBusObjectPath &path : paths) {
-        QDBusMessage propCall = QDBusMessage::createMethodCall(
-            QStringLiteral("org.freedesktop.NetworkManager"),
-            path.path(),
-            QStringLiteral("org.freedesktop.DBus.Properties"),
-            QStringLiteral("GetAll"));
+    for (const QDBusObjectPath& path : paths) {
+        QDBusMessage propCall = QDBusMessage::createMethodCall(QStringLiteral("org.freedesktop.NetworkManager"), path.path(),
+                                                               QStringLiteral("org.freedesktop.DBus.Properties"), QStringLiteral("GetAll"));
         propCall << QStringLiteral("org.freedesktop.NetworkManager.Connection.Active");
 
-        auto *propWatcher = new QDBusPendingCallWatcher(bus.asyncCall(propCall, kDBusTimeoutMs), this);
+        auto* propWatcher = new QDBusPendingCallWatcher(bus.asyncCall(propCall, kDBusTimeoutMs), this);
         connect(propWatcher, &QDBusPendingCallWatcher::finished, this, [this, propWatcher, batch, finishOne]() {
             QDBusPendingReply<QVariantMap> propReply = *propWatcher;
             propWatcher->deleteLater();
@@ -217,14 +206,11 @@ void NetworkProvider::handleActiveConnectionsReply(QDBusPendingCallWatcher *watc
 
             const int candidateIndex = batch->candidates.size();
             batch->candidates.append(candidate);
-            QDBusMessage devCall = QDBusMessage::createMethodCall(
-                QStringLiteral("org.freedesktop.NetworkManager"),
-                devices.first().path(),
-                QStringLiteral("org.freedesktop.DBus.Properties"),
-                QStringLiteral("Get"));
+            QDBusMessage devCall = QDBusMessage::createMethodCall(QStringLiteral("org.freedesktop.NetworkManager"), devices.first().path(),
+                                                                  QStringLiteral("org.freedesktop.DBus.Properties"), QStringLiteral("Get"));
             devCall << QStringLiteral("org.freedesktop.NetworkManager.Device") << QStringLiteral("Interface");
 
-            auto *devWatcher = new QDBusPendingCallWatcher(QDBusConnection::systemBus().asyncCall(devCall, kDBusTimeoutMs), this);
+            auto* devWatcher = new QDBusPendingCallWatcher(QDBusConnection::systemBus().asyncCall(devCall, kDBusTimeoutMs), this);
             connect(devWatcher, &QDBusPendingCallWatcher::finished, this, [devWatcher, batch, candidateIndex, finishOne]() {
                 QDBusPendingReply<QVariant> devReply = *devWatcher;
                 devWatcher->deleteLater();
@@ -240,36 +226,28 @@ void NetworkProvider::handleActiveConnectionsReply(QDBusPendingCallWatcher *watc
     }
 }
 
-void NetworkProvider::refreshVpnViaNmcli()
-{
+void NetworkProvider::refreshVpnViaNmcli() {
     m_runner.run(QStringLiteral("nmcli"),
-                 {QStringLiteral("-t"), QStringLiteral("-f"), QStringLiteral("NAME,TYPE,DEVICE,STATE"), QStringLiteral("connection"), QStringLiteral("show"), QStringLiteral("--active")},
-                 12000,
-                 QStringLiteral("vpn-active"),
+                 {QStringLiteral("-t"), QStringLiteral("-f"), QStringLiteral("NAME,TYPE,DEVICE,STATE"), QStringLiteral("connection"),
+                  QStringLiteral("show"), QStringLiteral("--active")},
+                 12000, QStringLiteral("vpn-active"),
                  /*deduplicateContext=*/true);
 }
 
-void NetworkProvider::refreshVpnProfiles()
-{
+void NetworkProvider::refreshVpnProfiles() {
     m_runner.run(QStringLiteral("nmcli"),
-                 {QStringLiteral("-t"), QStringLiteral("-f"), QStringLiteral("NAME,TYPE,DEVICE,STATE"), QStringLiteral("connection"), QStringLiteral("show")},
-                 12000,
-                 QStringLiteral("vpn-profiles"),
+                 {QStringLiteral("-t"), QStringLiteral("-f"), QStringLiteral("NAME,TYPE,DEVICE,STATE"), QStringLiteral("connection"),
+                  QStringLiteral("show")},
+                 12000, QStringLiteral("vpn-profiles"),
                  /*deduplicateContext=*/true);
 }
 
-void NetworkProvider::connectVpn(const QString &connectionName)
-{
-    m_runner.run(QStringLiteral("nmcli"),
-                 {QStringLiteral("connection"), QStringLiteral("up"), connectionName},
-                 30000,
+void NetworkProvider::connectVpn(const QString& connectionName) {
+    m_runner.run(QStringLiteral("nmcli"), {QStringLiteral("connection"), QStringLiteral("up"), connectionName}, 30000,
                  QStringLiteral("vpn-action:up:%1").arg(connectionName));
 }
 
-void NetworkProvider::disconnectVpn(const QString &connectionName)
-{
-    m_runner.run(QStringLiteral("nmcli"),
-                 {QStringLiteral("connection"), QStringLiteral("down"), connectionName},
-                 20000,
+void NetworkProvider::disconnectVpn(const QString& connectionName) {
+    m_runner.run(QStringLiteral("nmcli"), {QStringLiteral("connection"), QStringLiteral("down"), connectionName}, 20000,
                  QStringLiteral("vpn-action:down:%1").arg(connectionName));
 }

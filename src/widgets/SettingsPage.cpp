@@ -21,46 +21,44 @@
 #include <QStyle>
 #include <QVBoxLayout>
 
-SettingsPage::SettingsPage(QWidget *parent)
-    : QWidget(parent)
-{
-    auto *outerLayout = new QVBoxLayout(this);
+SettingsPage::SettingsPage(QWidget* parent) : QWidget(parent) {
+    auto* outerLayout = new QVBoxLayout(this);
     outerLayout->setSpacing(10);
 
-    auto *title = new QLabel(QStringLiteral("Settings"), this);
+    auto* title = new QLabel(QStringLiteral("Settings"), this);
     title->setObjectName(QStringLiteral("pageTitle"));
     outerLayout->addWidget(title);
 
-    auto *scrollArea = new QScrollArea(this);
+    auto* scrollArea = new QScrollArea(this);
     scrollArea->setWidgetResizable(true);
     scrollArea->setFrameShape(QFrame::NoFrame);
-    auto *scrollContent = new QWidget(scrollArea);
-    auto *layout = new QVBoxLayout(scrollContent);
+    auto* scrollContent = new QWidget(scrollArea);
+    auto* layout = new QVBoxLayout(scrollContent);
     layout->setContentsMargins(0, 0, 8, 8);
     layout->setSpacing(10);
 
-    auto *generalTitle = new QLabel(QStringLiteral("Refresh"), scrollContent);
+    auto* generalTitle = new QLabel(QStringLiteral("Refresh"), scrollContent);
     generalTitle->setObjectName(QStringLiteral("sectionTitle"));
     layout->addWidget(generalTitle);
-    auto *general = new QFrame(scrollContent);
+    auto* general = new QFrame(scrollContent);
     general->setObjectName(QStringLiteral("settingsSection"));
-    auto *form = new QFormLayout(general);
+    auto* form = new QFormLayout(general);
     m_refreshInterval = new QSpinBox(general);
     m_refreshInterval->setRange(5, 3600);
     m_refreshInterval->setSuffix(QStringLiteral(" seconds"));
     form->addRow(QStringLiteral("Refresh interval"), m_refreshInterval);
     layout->addWidget(general);
 
-    auto *servicesTitle = new QLabel(QStringLiteral("Watched systemd services"), scrollContent);
+    auto* servicesTitle = new QLabel(QStringLiteral("Watched systemd services"), scrollContent);
     servicesTitle->setObjectName(QStringLiteral("sectionTitle"));
     layout->addWidget(servicesTitle);
-    auto *servicesGroup = new QFrame(scrollContent);
+    auto* servicesGroup = new QFrame(scrollContent);
     servicesGroup->setObjectName(QStringLiteral("settingsSection"));
-    auto *servicesLayout = new QVBoxLayout(servicesGroup);
-    auto *groupRow = new QHBoxLayout;
+    auto* servicesLayout = new QVBoxLayout(servicesGroup);
+    auto* groupRow = new QHBoxLayout;
     m_serviceGroup = new QComboBox(servicesGroup);
-    auto *addGroupButton = new QPushButton(QStringLiteral("Add group"), servicesGroup);
-    auto *renameGroupButton = new QPushButton(QStringLiteral("Rename"), servicesGroup);
+    auto* addGroupButton = new QPushButton(QStringLiteral("Add group"), servicesGroup);
+    auto* renameGroupButton = new QPushButton(QStringLiteral("Rename"), servicesGroup);
     m_deleteGroupButton = new QPushButton(QStringLiteral("Delete"), servicesGroup);
     groupRow->addWidget(new QLabel(QStringLiteral("Group"), servicesGroup));
     groupRow->addWidget(m_serviceGroup, 1);
@@ -74,29 +72,29 @@ SettingsPage::SettingsPage(QWidget *parent)
     servicesLayout->addWidget(m_services);
     layout->addWidget(servicesGroup);
 
-    auto *modulesTitle = new QLabel(QStringLiteral("Modules"), scrollContent);
+    auto* modulesTitle = new QLabel(QStringLiteral("Modules"), scrollContent);
     modulesTitle->setObjectName(QStringLiteral("sectionTitle"));
     layout->addWidget(modulesTitle);
-    auto *modules = new QFrame(scrollContent);
+    auto* modules = new QFrame(scrollContent);
     modules->setObjectName(QStringLiteral("settingsSection"));
-    auto *modulesLayout = new QVBoxLayout(modules);
+    auto* modulesLayout = new QVBoxLayout(modules);
     m_systemd = new QCheckBox(QStringLiteral("Systemd"), modules);
     m_docker = new QCheckBox(QStringLiteral("Docker"), modules);
     m_vpn = new QCheckBox(QStringLiteral("VPN"), modules);
     m_mounts = new QCheckBox(QStringLiteral("Mounts"), modules);
     m_sensors = new QCheckBox(QStringLiteral("Sensors"), modules);
     m_smart = new QCheckBox(QStringLiteral("SMART"), modules);
-    for (QCheckBox *box : {m_systemd, m_docker, m_vpn, m_mounts, m_sensors, m_smart}) {
+    for (QCheckBox* box : {m_systemd, m_docker, m_vpn, m_mounts, m_sensors, m_smart}) {
         modulesLayout->addWidget(box);
     }
     layout->addWidget(modules);
 
-    auto *smartTitle = new QLabel(QStringLiteral("SMART scheduling"), scrollContent);
+    auto* smartTitle = new QLabel(QStringLiteral("SMART scheduling"), scrollContent);
     smartTitle->setObjectName(QStringLiteral("sectionTitle"));
     layout->addWidget(smartTitle);
-    auto *smartGroup = new QFrame(scrollContent);
+    auto* smartGroup = new QFrame(scrollContent);
     smartGroup->setObjectName(QStringLiteral("settingsSection"));
-    auto *smartLayout = new QFormLayout(smartGroup);
+    auto* smartLayout = new QFormLayout(smartGroup);
     m_smartScheduled = new QCheckBox(QStringLiteral("Enable scheduled SMART refresh"), smartGroup);
     smartLayout->addRow(m_smartScheduled);
     m_smartIntervalMinutes = new QSpinBox(smartGroup);
@@ -105,26 +103,27 @@ SettingsPage::SettingsPage(QWidget *parent)
     smartLayout->addRow(QStringLiteral("SMART interval"), m_smartIntervalMinutes);
     layout->addWidget(smartGroup);
 
-    auto *windowTitle = new QLabel(QStringLiteral("Window & notifications"), scrollContent);
+    auto* windowTitle = new QLabel(QStringLiteral("Window & notifications"), scrollContent);
     windowTitle->setObjectName(QStringLiteral("sectionTitle"));
     layout->addWidget(windowTitle);
-    auto *windowGroup = new QFrame(scrollContent);
+    auto* windowGroup = new QFrame(scrollContent);
     windowGroup->setObjectName(QStringLiteral("settingsSection"));
-    auto *windowLayout = new QVBoxLayout(windowGroup);
-    m_notificationsEnabled = new QCheckBox(QStringLiteral("Enable desktop tray notifications (failed services, high sensors, SMART, VPN)"), windowGroup);
+    auto* windowLayout = new QVBoxLayout(windowGroup);
+    m_notificationsEnabled =
+        new QCheckBox(QStringLiteral("Enable desktop tray notifications (failed services, high sensors, SMART, VPN)"), windowGroup);
     m_closeToTray = new QCheckBox(QStringLiteral("Close window to system tray instead of quitting"), windowGroup);
     m_startMinimizedToTray = new QCheckBox(QStringLiteral("Start minimized to system tray"), windowGroup);
-    for (QCheckBox *box : {m_notificationsEnabled, m_closeToTray, m_startMinimizedToTray}) {
+    for (QCheckBox* box : {m_notificationsEnabled, m_closeToTray, m_startMinimizedToTray}) {
         windowLayout->addWidget(box);
     }
     layout->addWidget(windowGroup);
 
-    auto *themeTitle = new QLabel(QStringLiteral("Theme"), scrollContent);
+    auto* themeTitle = new QLabel(QStringLiteral("Theme"), scrollContent);
     themeTitle->setObjectName(QStringLiteral("sectionTitle"));
     layout->addWidget(themeTitle);
-    auto *themeGroup = new QFrame(scrollContent);
+    auto* themeGroup = new QFrame(scrollContent);
     themeGroup->setObjectName(QStringLiteral("settingsSection"));
-    auto *themeLayout = new QFormLayout(themeGroup);
+    auto* themeLayout = new QFormLayout(themeGroup);
     m_theme = new QComboBox(themeGroup);
     m_theme->addItems({QStringLiteral("System"), QStringLiteral("Light"), QStringLiteral("Dark"), QStringLiteral("OLED")});
     themeLayout->addRow(QStringLiteral("Preference"), m_theme);
@@ -134,13 +133,11 @@ SettingsPage::SettingsPage(QWidget *parent)
     scrollArea->setWidget(scrollContent);
     outerLayout->addWidget(scrollArea, 1);
 
-    auto *footer = new QHBoxLayout;
+    auto* footer = new QHBoxLayout;
     m_dirtyLabel = new QLabel(this);
     m_dirtyLabel->setObjectName(QStringLiteral("dirtyHint"));
-    auto *saveButton = new QPushButton(
-        ThemeManager::themedIcon(QStringLiteral("document-save"), QStyle::SP_DialogSaveButton),
-        QStringLiteral("Save"),
-        this);
+    auto* saveButton = new QPushButton(ThemeManager::themedIcon(QStringLiteral("document-save"), QStyle::SP_DialogSaveButton),
+                                       QStringLiteral("Save"), this);
     saveButton->setObjectName(QStringLiteral("primaryButton"));
     footer->addWidget(m_dirtyLabel);
     footer->addStretch();
@@ -157,27 +154,26 @@ SettingsPage::SettingsPage(QWidget *parent)
     connect(m_services, &QPlainTextEdit::textChanged, this, &SettingsPage::markDirty);
     connect(m_smartIntervalMinutes, &QSpinBox::valueChanged, this, &SettingsPage::markDirty);
     connect(m_theme, &QComboBox::currentTextChanged, this, &SettingsPage::markDirty);
-    for (QCheckBox *box : {m_systemd, m_docker, m_vpn, m_mounts, m_sensors, m_smart, m_smartScheduled, m_notificationsEnabled, m_closeToTray, m_startMinimizedToTray}) {
+    for (QCheckBox* box : {m_systemd, m_docker, m_vpn, m_mounts, m_sensors, m_smart, m_smartScheduled, m_notificationsEnabled,
+                           m_closeToTray, m_startMinimizedToTray}) {
         connect(box, &QCheckBox::toggled, this, &SettingsPage::markDirty);
     }
 
     load();
 }
 
-void SettingsPage::markDirty()
-{
+void SettingsPage::markDirty() {
     if (!m_loading && m_dirtyLabel) {
         m_dirtyLabel->setText(QStringLiteral("Unsaved changes"));
     }
 }
 
-void SettingsPage::reloadGroups()
-{
+void SettingsPage::reloadGroups() {
     const QString current = m_serviceGroup->currentText();
     m_serviceGroup->blockSignals(true);
     m_serviceGroup->clear();
     const QStringList groups = ServiceGroupSettings::groupNames();
-    for (const QString &group : groups) {
+    for (const QString& group : groups) {
         m_serviceGroup->addItem(group);
     }
     const int index = m_serviceGroup->findText(current);
@@ -188,25 +184,22 @@ void SettingsPage::reloadGroups()
     }
 }
 
-QStringList SettingsPage::editorServices() const
-{
+QStringList SettingsPage::editorServices() const {
     QStringList services = m_services->toPlainText().split(QLatin1Char('\n'), Qt::SkipEmptyParts);
-    for (QString &service : services) {
+    for (QString& service : services) {
         service = service.trimmed();
     }
     services.removeAll(QString());
     return services;
 }
 
-void SettingsPage::stageCurrentEditor()
-{
+void SettingsPage::stageCurrentEditor() {
     if (!m_loadedGroup.isEmpty()) {
         m_stagedGroupEdits.insert(m_loadedGroup, editorServices());
     }
 }
 
-void SettingsPage::loadGroupServices()
-{
+void SettingsPage::loadGroupServices() {
     const QString group = m_serviceGroup->currentText();
     if (group.isEmpty()) {
         return;
@@ -214,9 +207,8 @@ void SettingsPage::loadGroupServices()
     if (m_loadedGroup != group) {
         stageCurrentEditor();
     }
-    const QStringList services = m_stagedGroupEdits.contains(group)
-        ? m_stagedGroupEdits.value(group)
-        : ServiceGroupSettings::servicesForGroup(group);
+    const QStringList services =
+        m_stagedGroupEdits.contains(group) ? m_stagedGroupEdits.value(group) : ServiceGroupSettings::servicesForGroup(group);
     const bool wasLoading = m_loading;
     m_loading = true;
     m_services->setPlainText(services.join(QLatin1Char('\n')));
@@ -224,16 +216,16 @@ void SettingsPage::loadGroupServices()
     m_loadedGroup = group;
 }
 
-void SettingsPage::addGroup()
-{
+void SettingsPage::addGroup() {
     bool ok = false;
-    const QString name = QInputDialog::getText(this, QStringLiteral("Add service group"), QStringLiteral("Group name"), QLineEdit::Normal, QString(), &ok).trimmed();
+    const QString name =
+        QInputDialog::getText(this, QStringLiteral("Add service group"), QStringLiteral("Group name"), QLineEdit::Normal, QString(), &ok)
+            .trimmed();
     if (!ok || name.isEmpty()) {
         return;
     }
     if (ServiceGroupSettings::groupNames().contains(name)) {
-        QMessageBox::warning(this, QStringLiteral("Add service group"),
-                             QStringLiteral("A group named \"%1\" already exists.").arg(name));
+        QMessageBox::warning(this, QStringLiteral("Add service group"), QStringLiteral("A group named \"%1\" already exists.").arg(name));
         reloadGroups();
         m_serviceGroup->setCurrentText(name);
         loadGroupServices();
@@ -245,14 +237,15 @@ void SettingsPage::addGroup()
     loadGroupServices();
 }
 
-void SettingsPage::renameGroup()
-{
+void SettingsPage::renameGroup() {
     const QString current = m_serviceGroup->currentText();
     if (current.isEmpty()) {
         return;
     }
     bool ok = false;
-    const QString name = QInputDialog::getText(this, QStringLiteral("Rename service group"), QStringLiteral("New name"), QLineEdit::Normal, current, &ok).trimmed();
+    const QString name =
+        QInputDialog::getText(this, QStringLiteral("Rename service group"), QStringLiteral("New name"), QLineEdit::Normal, current, &ok)
+            .trimmed();
     if (!ok || name.isEmpty() || name == current) {
         return;
     }
@@ -270,14 +263,12 @@ void SettingsPage::renameGroup()
     m_serviceGroup->setCurrentText(name);
 }
 
-void SettingsPage::deleteGroup()
-{
+void SettingsPage::deleteGroup() {
     const QString current = m_serviceGroup->currentText();
     if (current.isEmpty() || ServiceGroupSettings::groupNames().size() <= 1) {
         return;
     }
-    if (!ConfirmActionDialog::confirm(this,
-                                      QStringLiteral("Delete service group"),
+    if (!ConfirmActionDialog::confirm(this, QStringLiteral("Delete service group"),
                                       QStringLiteral("Delete systemd service group \"%1\"?").arg(current))) {
         return;
     }
@@ -290,8 +281,7 @@ void SettingsPage::deleteGroup()
     }
 }
 
-void SettingsPage::load()
-{
+void SettingsPage::load() {
     m_loading = true;
     QSettings settings;
     m_refreshInterval->setValue(settings.value(QStringLiteral("refresh/intervalSeconds"), 30).toInt());
@@ -313,8 +303,7 @@ void SettingsPage::load()
     m_dirtyLabel->clear();
 }
 
-void SettingsPage::save()
-{
+void SettingsPage::save() {
     QSettings settings;
     settings.setValue(QStringLiteral("refresh/intervalSeconds"), m_refreshInterval->value());
     stageCurrentEditor();

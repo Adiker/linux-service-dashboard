@@ -1,7 +1,6 @@
 #include "StatusUtils.h"
 
-QString temperatureStatus(double value, double high, double critical)
-{
+QString temperatureStatus(double value, double high, double critical) {
     if (critical > 0.0 && value >= critical) {
         return QStringLiteral("Critical");
     }

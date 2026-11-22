@@ -6,16 +6,14 @@ namespace ThemeManager {
 
 namespace {
 
-ThemePalette &activePaletteStorage()
-{
+ThemePalette& activePaletteStorage() {
     static ThemePalette palette = paletteForPreference(QStringLiteral("Dark"), QPalette());
     return palette;
 }
 
 } // namespace
 
-ThemePalette paletteForPreference(const QString &preference, const QPalette &systemPalette)
-{
+ThemePalette paletteForPreference(const QString& preference, const QPalette& systemPalette) {
     const bool systemDark = systemPalette.color(QPalette::Window).lightness() < 128;
     const bool oled = (preference == QStringLiteral("OLED"));
     const bool dark = oled || (preference == QStringLiteral("Dark")) || (preference == QStringLiteral("System") && systemDark);
@@ -86,8 +84,7 @@ ThemePalette paletteForPreference(const QString &preference, const QPalette &sys
     return p;
 }
 
-QString buildStyleSheet(const ThemePalette &p)
-{
+QString buildStyleSheet(const ThemePalette& p) {
     QString qss = QStringLiteral(R"(
         QWidget {
             font-size: 10.5pt;
@@ -393,21 +390,18 @@ QString buildStyleSheet(const ThemePalette &p)
     return qss;
 }
 
-void applyToApplication(const QString &preference, const QPalette &systemPalette)
-{
+void applyToApplication(const QString& preference, const QPalette& systemPalette) {
     activePaletteStorage() = paletteForPreference(preference, systemPalette);
     if (qApp) {
         qApp->setStyleSheet(buildStyleSheet(activePaletteStorage()));
     }
 }
 
-const ThemePalette &currentPalette()
-{
+const ThemePalette& currentPalette() {
     return activePaletteStorage();
 }
 
-QIcon themedIcon(const QString &themeName, QStyle::StandardPixmap fallback)
-{
+QIcon themedIcon(const QString& themeName, QStyle::StandardPixmap fallback) {
     QIcon icon = QIcon::fromTheme(themeName);
     if (!icon.isNull()) {
         return icon;

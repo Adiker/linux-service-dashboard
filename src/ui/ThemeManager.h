@@ -32,11 +32,11 @@ struct ThemePalette {
 
 namespace ThemeManager {
 
-ThemePalette paletteForPreference(const QString &preference, const QPalette &systemPalette);
-QString buildStyleSheet(const ThemePalette &palette);
-void applyToApplication(const QString &preference, const QPalette &systemPalette);
-const ThemePalette &currentPalette();
+ThemePalette paletteForPreference(const QString& preference, const QPalette& systemPalette);
+QString buildStyleSheet(const ThemePalette& palette);
+void applyToApplication(const QString& preference, const QPalette& systemPalette);
+const ThemePalette& currentPalette();
 
-QIcon themedIcon(const QString &themeName, QStyle::StandardPixmap fallback);
+QIcon themedIcon(const QString& themeName, QStyle::StandardPixmap fallback);
 
 } // namespace ThemeManager

@@ -9,14 +9,14 @@ enum class StatusTone {
     Muted,
 };
 
-StatusTone classifyStatusTone(const QString &status);
+StatusTone classifyStatusTone(const QString& status);
 
 class StatusBadgeDelegate : public QStyledItemDelegate {
     Q_OBJECT
 
-public:
-    explicit StatusBadgeDelegate(QObject *parent = nullptr);
+  public:
+    explicit StatusBadgeDelegate(QObject* parent = nullptr);
 
-    void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
-    QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override;
+    void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override;
+    QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override;
 };

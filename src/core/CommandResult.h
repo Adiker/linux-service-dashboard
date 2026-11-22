@@ -11,8 +11,7 @@ enum class CommandErrorKind {
     ExecutionFailed,
 };
 
-inline QString commandErrorKindLabel(CommandErrorKind kind)
-{
+inline QString commandErrorKindLabel(CommandErrorKind kind) {
     switch (kind) {
     case CommandErrorKind::None:
         return QStringLiteral("OK");
@@ -28,15 +27,14 @@ inline QString commandErrorKindLabel(CommandErrorKind kind)
     return QStringLiteral("Unknown");
 }
 
-inline bool isPermissionErrorText(const QString &text)
-{
-    return text.contains(QStringLiteral("permission denied"), Qt::CaseInsensitive)
-        || text.contains(QStringLiteral("not authorized"), Qt::CaseInsensitive)
-        || text.contains(QStringLiteral("operation not permitted"), Qt::CaseInsensitive)
-        || text.contains(QStringLiteral("access denied"), Qt::CaseInsensitive)
-        || text.contains(QStringLiteral("must be root"), Qt::CaseInsensitive)
-        || text.contains(QStringLiteral("only root can"), Qt::CaseInsensitive)
-        || text.contains(QStringLiteral("interactive authentication required"), Qt::CaseInsensitive);
+inline bool isPermissionErrorText(const QString& text) {
+    return text.contains(QStringLiteral("permission denied"), Qt::CaseInsensitive) ||
+           text.contains(QStringLiteral("not authorized"), Qt::CaseInsensitive) ||
+           text.contains(QStringLiteral("operation not permitted"), Qt::CaseInsensitive) ||
+           text.contains(QStringLiteral("access denied"), Qt::CaseInsensitive) ||
+           text.contains(QStringLiteral("must be root"), Qt::CaseInsensitive) ||
+           text.contains(QStringLiteral("only root can"), Qt::CaseInsensitive) ||
+           text.contains(QStringLiteral("interactive authentication required"), Qt::CaseInsensitive);
 }
 
 struct CommandResult {
@@ -49,13 +47,9 @@ struct CommandResult {
     bool timedOut = false;
     bool startFailed = false;
 
-    [[nodiscard]] bool ok() const
-    {
-        return !timedOut && !startFailed && exitCode == 0;
-    }
+    [[nodiscard]] bool ok() const { return !timedOut && !startFailed && exitCode == 0; }
 
-    [[nodiscard]] CommandErrorKind errorKind() const
-    {
+    [[nodiscard]] CommandErrorKind errorKind() const {
         if (ok()) {
             return CommandErrorKind::None;
         }
@@ -72,8 +66,7 @@ struct CommandResult {
         return CommandErrorKind::ExecutionFailed;
     }
 
-    [[nodiscard]] QString commandLine() const
-    {
+    [[nodiscard]] QString commandLine() const {
         QStringList parts{program};
         parts.append(arguments);
         return parts.join(QLatin1Char(' '));

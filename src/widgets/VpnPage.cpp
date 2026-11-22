@@ -14,23 +14,21 @@
 #include <QTableWidget>
 #include <QVBoxLayout>
 
-VpnPage::VpnPage(NetworkProvider *provider, QWidget *parent)
-    : QWidget(parent)
-    , m_provider(provider)
-{
-    auto *layout = new QVBoxLayout(this);
-    auto *header = new QHBoxLayout;
-    auto *title = new QLabel(QStringLiteral("VPN"), this);
+VpnPage::VpnPage(NetworkProvider* provider, QWidget* parent) : QWidget(parent), m_provider(provider) {
+    auto* layout = new QVBoxLayout(this);
+    auto* header = new QHBoxLayout;
+    auto* title = new QLabel(QStringLiteral("VPN"), this);
     title->setObjectName(QStringLiteral("pageTitle"));
-    auto *refreshButton = new QPushButton(ThemeManager::themedIcon(QStringLiteral("view-refresh"), QStyle::SP_BrowserReload), QStringLiteral("Refresh"), this);
+    auto* refreshButton = new QPushButton(ThemeManager::themedIcon(QStringLiteral("view-refresh"), QStyle::SP_BrowserReload),
+                                          QStringLiteral("Refresh"), this);
     header->addWidget(title);
     header->addStretch();
     header->addWidget(refreshButton);
     layout->addLayout(header);
 
-    auto *panel = new QWidget(this);
+    auto* panel = new QWidget(this);
     panel->setObjectName(QStringLiteral("card"));
-    auto *form = new QFormLayout(panel);
+    auto* form = new QFormLayout(panel);
     m_connected = new QLabel(panel);
     m_name = new QLabel(panel);
     m_device = new QLabel(panel);
@@ -46,7 +44,7 @@ VpnPage::VpnPage(NetworkProvider *provider, QWidget *parent)
     form->addRow(QStringLiteral("Details"), m_error);
     layout->addWidget(panel);
 
-    auto *profilesLabel = new QLabel(QStringLiteral("Configured VPN connections"), this);
+    auto* profilesLabel = new QLabel(QStringLiteral("Configured VPN connections"), this);
     profilesLabel->setObjectName(QStringLiteral("sectionTitle"));
     layout->addWidget(profilesLabel);
 
@@ -67,7 +65,7 @@ VpnPage::VpnPage(NetworkProvider *provider, QWidget *parent)
     m_profilesTable->setItemDelegateForColumn(3, new StatusBadgeDelegate(m_profilesTable));
     layout->addWidget(m_profilesTable, 1);
 
-    auto *actions = new QHBoxLayout;
+    auto* actions = new QHBoxLayout;
     m_connectButton = new QPushButton(QStringLiteral("Connect"), this);
     m_disconnectButton = new QPushButton(QStringLiteral("Disconnect"), this);
     actions->addWidget(m_connectButton);
@@ -95,7 +93,7 @@ VpnPage::VpnPage(NetworkProvider *provider, QWidget *parent)
         }
     });
 
-    connect(m_provider, &NetworkProvider::activeVpnsReady, this, [this](const QVector<VpnStatus> &activeVpns, const QString &error) {
+    connect(m_provider, &NetworkProvider::activeVpnsReady, this, [this](const QVector<VpnStatus>& activeVpns, const QString& error) {
         if (activeVpns.isEmpty()) {
             m_connected->setText(QStringLiteral("No (0)"));
             m_name->setText(QStringLiteral("None"));
@@ -105,7 +103,7 @@ VpnPage::VpnPage(NetworkProvider *provider, QWidget *parent)
             QStringList names;
             QStringList devices;
             QStringList states;
-            for (const VpnStatus &vpn : activeVpns) {
+            for (const VpnStatus& vpn : activeVpns) {
                 names.append(vpn.connectionName);
                 devices.append(vpn.device);
                 states.append(vpn.state);
@@ -118,16 +116,16 @@ VpnPage::VpnPage(NetworkProvider *provider, QWidget *parent)
         }
         m_error->setText(error.isEmpty() ? QStringLiteral("OK") : error);
     });
-    connect(m_provider, &NetworkProvider::vpnStatusReady, this, [this](const VpnStatus &status, const QString &) {
+    connect(m_provider, &NetworkProvider::vpnStatusReady, this, [this](const VpnStatus& status, const QString&) {
         if (!status.lastRefresh.isEmpty()) {
             m_lastRefresh->setText(status.lastRefresh);
         }
     });
-    connect(m_provider, &NetworkProvider::vpnProfilesReady, this, [this](const QVector<VpnProfile> &profiles, const QString &error) {
+    connect(m_provider, &NetworkProvider::vpnProfilesReady, this, [this](const QVector<VpnProfile>& profiles, const QString& error) {
         m_profiles = profiles;
         m_profilesTable->setRowCount(profiles.size());
         for (int i = 0; i < profiles.size(); ++i) {
-            const VpnProfile &profile = profiles.at(i);
+            const VpnProfile& profile = profiles.at(i);
             m_profilesTable->setItem(i, 0, new QTableWidgetItem(profile.name));
             m_profilesTable->setItem(i, 1, new QTableWidgetItem(profile.type));
             m_profilesTable->setItem(i, 2, new QTableWidgetItem(profile.device));
@@ -138,7 +136,7 @@ VpnPage::VpnPage(NetworkProvider *provider, QWidget *parent)
         }
         updateActionStates();
     });
-    connect(m_provider, &NetworkProvider::actionFinished, this, [this](const QString &message, const QString &details) {
+    connect(m_provider, &NetworkProvider::actionFinished, this, [this](const QString& message, const QString& details) {
         QMessageBox::information(this, QStringLiteral("VPN"), details.isEmpty() ? message : message + QStringLiteral("\n\n") + details);
         refresh();
     });
@@ -146,8 +144,7 @@ VpnPage::VpnPage(NetworkProvider *provider, QWidget *parent)
     updateActionStates();
 }
 
-VpnProfile VpnPage::selectedProfile() const
-{
+VpnProfile VpnPage::selectedProfile() const {
     const int row = m_profilesTable->currentRow();
     if (row < 0 || row >= m_profiles.size()) {
         return {};
@@ -155,16 +152,14 @@ VpnProfile VpnPage::selectedProfile() const
     return m_profiles.at(row);
 }
 
-void VpnPage::updateActionStates()
-{
+void VpnPage::updateActionStates() {
     const VpnProfile profile = selectedProfile();
     const bool hasSelection = !profile.name.isEmpty();
     m_connectButton->setEnabled(hasSelection && !profile.active);
     m_disconnectButton->setEnabled(hasSelection && profile.active);
 }
 
-void VpnPage::refresh()
-{
+void VpnPage::refresh() {
     m_error->setText(QStringLiteral("Refreshing..."));
     m_provider->refreshVpnStatus();
     m_provider->refreshVpnProfiles();

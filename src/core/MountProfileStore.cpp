@@ -7,20 +7,17 @@ namespace MountProfileStore {
 
 namespace {
 
-QString encodedProfileGroup(const QString &name)
-{
+QString encodedProfileGroup(const QString& name) {
     // Percent-encode profile names so names containing '/' (such as the default
     // target path "/mnt/nas") do not create nested QSettings subgroups or break removal.
     return QStringLiteral("mounts/profiles/%1").arg(QString::fromUtf8(QUrl::toPercentEncoding(name)));
 }
 
-QString legacyProfileGroup(const QString &name)
-{
+QString legacyProfileGroup(const QString& name) {
     return QStringLiteral("mounts/profiles/%1").arg(name);
 }
 
-MountRow readProfileWithPrefix(const QSettings &settings, const QString &groupPrefix, const QString &name)
-{
+MountRow readProfileWithPrefix(const QSettings& settings, const QString& groupPrefix, const QString& name) {
     const QString prefix = groupPrefix + QLatin1Char('/');
     MountRow row;
     row.source = settings.value(prefix + QStringLiteral("source")).toString();
@@ -31,8 +28,7 @@ MountRow readProfileWithPrefix(const QSettings &settings, const QString &groupPr
     return row;
 }
 
-MountRow profileToRow(const QSettings &settings, const QString &name)
-{
+MountRow profileToRow(const QSettings& settings, const QString& name) {
     const QString encoded = encodedProfileGroup(name);
     if (settings.contains(encoded + QStringLiteral("/target")) || settings.contains(encoded + QStringLiteral("/source"))) {
         return readProfileWithPrefix(settings, encoded, name);
@@ -42,24 +38,21 @@ MountRow profileToRow(const QSettings &settings, const QString &name)
 
 } // namespace
 
-QStringList profileNames()
-{
+QStringList profileNames() {
     QSettings settings;
     return settings.value(QStringLiteral("mounts/profileNames")).toStringList();
 }
 
-QVector<MountRow> loadProfiles()
-{
+QVector<MountRow> loadProfiles() {
     QSettings settings;
     QVector<MountRow> rows;
-    for (const QString &name : profileNames()) {
+    for (const QString& name : profileNames()) {
         rows.append(profileToRow(settings, name));
     }
     return rows;
 }
 
-void saveProfile(const MountRow &row, const QString &name)
-{
+void saveProfile(const MountRow& row, const QString& name) {
     QSettings settings;
     QStringList names = settings.value(QStringLiteral("mounts/profileNames")).toStringList();
     if (!names.contains(name)) {
@@ -78,8 +71,7 @@ void saveProfile(const MountRow &row, const QString &name)
     settings.setValue(prefix + QStringLiteral("options"), row.options);
 }
 
-void removeProfile(const QString &name)
-{
+void removeProfile(const QString& name) {
     QSettings settings;
     QStringList names = settings.value(QStringLiteral("mounts/profileNames")).toStringList();
     names.removeAll(name);

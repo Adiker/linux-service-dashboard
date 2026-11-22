@@ -12,25 +12,25 @@ class QTableWidget;
 class VpnPage : public QWidget {
     Q_OBJECT
 
-public:
-    explicit VpnPage(NetworkProvider *provider, QWidget *parent = nullptr);
+  public:
+    explicit VpnPage(NetworkProvider* provider, QWidget* parent = nullptr);
 
-public slots:
+  public slots:
     void refresh();
 
-private:
+  private:
     void updateActionStates();
     VpnProfile selectedProfile() const;
 
-    QLabel *m_connected = nullptr;
-    QLabel *m_name = nullptr;
-    QLabel *m_device = nullptr;
-    QLabel *m_state = nullptr;
-    QLabel *m_lastRefresh = nullptr;
-    QLabel *m_error = nullptr;
-    QTableWidget *m_profilesTable = nullptr;
-    QPushButton *m_connectButton = nullptr;
-    QPushButton *m_disconnectButton = nullptr;
+    QLabel* m_connected = nullptr;
+    QLabel* m_name = nullptr;
+    QLabel* m_device = nullptr;
+    QLabel* m_state = nullptr;
+    QLabel* m_lastRefresh = nullptr;
+    QLabel* m_error = nullptr;
+    QTableWidget* m_profilesTable = nullptr;
+    QPushButton* m_connectButton = nullptr;
+    QPushButton* m_disconnectButton = nullptr;
     QVector<VpnProfile> m_profiles;
-    NetworkProvider *m_provider = nullptr;
+    NetworkProvider* m_provider = nullptr;
 };

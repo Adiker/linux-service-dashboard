@@ -8,16 +8,16 @@
 class SensorProvider : public QObject {
     Q_OBJECT
 
-public:
-    explicit SensorProvider(QObject *parent = nullptr);
+  public:
+    explicit SensorProvider(QObject* parent = nullptr);
     void refreshSensors();
 
-    [[nodiscard]] CommandRunner *commandRunner() { return &m_runner; }
+    [[nodiscard]] CommandRunner* commandRunner() { return &m_runner; }
 
-signals:
-    void sensorsReady(const QVector<SensorRow> &rows, const QString &error);
+  signals:
+    void sensorsReady(const QVector<SensorRow>& rows, const QString& error);
 
-private:
+  private:
     void runTextFallback();
 
     CommandRunner m_runner;

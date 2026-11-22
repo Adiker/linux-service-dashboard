@@ -2,15 +2,12 @@
 
 #include <QAbstractItemModel>
 
-TableFilterProxyModel::TableFilterProxyModel(QObject *parent)
-    : QSortFilterProxyModel(parent)
-{
+TableFilterProxyModel::TableFilterProxyModel(QObject* parent) : QSortFilterProxyModel(parent) {
     setDynamicSortFilter(true);
     setSortCaseSensitivity(Qt::CaseInsensitive);
 }
 
-void TableFilterProxyModel::setSearchText(const QString &text)
-{
+void TableFilterProxyModel::setSearchText(const QString& text) {
     const QString trimmed = text.trimmed();
     if (m_searchText == trimmed) {
         return;
@@ -25,8 +22,7 @@ void TableFilterProxyModel::setSearchText(const QString &text)
 #endif
 }
 
-void TableFilterProxyModel::setRowPredicate(RowPredicate predicate)
-{
+void TableFilterProxyModel::setRowPredicate(RowPredicate predicate) {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
     beginFilterChange();
     m_predicate = std::move(predicate);
@@ -37,9 +33,8 @@ void TableFilterProxyModel::setRowPredicate(RowPredicate predicate)
 #endif
 }
 
-bool TableFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const
-{
-    const QAbstractItemModel *model = sourceModel();
+bool TableFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const {
+    const QAbstractItemModel* model = sourceModel();
     if (!model) {
         return true;
     }
@@ -62,8 +57,7 @@ bool TableFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex &s
     return false;
 }
 
-bool TableFilterProxyModel::lessThan(const QModelIndex &sourceLeft, const QModelIndex &sourceRight) const
-{
+bool TableFilterProxyModel::lessThan(const QModelIndex& sourceLeft, const QModelIndex& sourceRight) const {
     const QVariant leftUser = sourceModel()->data(sourceLeft, Qt::UserRole);
     const QVariant rightUser = sourceModel()->data(sourceRight, Qt::UserRole);
     if (leftUser.isValid() && rightUser.isValid()) {
@@ -77,8 +71,6 @@ bool TableFilterProxyModel::lessThan(const QModelIndex &sourceLeft, const QModel
             return leftUser.toInt() < rightUser.toInt();
         }
     }
-    return QString::localeAwareCompare(
-               sourceModel()->data(sourceLeft, Qt::DisplayRole).toString().toLower(),
-               sourceModel()->data(sourceRight, Qt::DisplayRole).toString().toLower())
-        < 0;
+    return QString::localeAwareCompare(sourceModel()->data(sourceLeft, Qt::DisplayRole).toString().toLower(),
+                                       sourceModel()->data(sourceRight, Qt::DisplayRole).toString().toLower()) < 0;
 }

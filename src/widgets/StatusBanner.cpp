@@ -7,11 +7,9 @@
 #include <QLabel>
 #include <QStyle>
 
-StatusBanner::StatusBanner(QWidget *parent)
-    : QFrame(parent)
-{
+StatusBanner::StatusBanner(QWidget* parent) : QFrame(parent) {
     setObjectName(QStringLiteral("statusBanner"));
-    auto *layout = new QHBoxLayout(this);
+    auto* layout = new QHBoxLayout(this);
     layout->setContentsMargins(8, 4, 8, 4);
     layout->setSpacing(8);
 
@@ -26,8 +24,7 @@ StatusBanner::StatusBanner(QWidget *parent)
     setMessage(QStringLiteral("Ready"), Severity::Info);
 }
 
-void StatusBanner::setMessage(const QString &text, Severity severity)
-{
+void StatusBanner::setMessage(const QString& text, Severity severity) {
     QString severityName = QStringLiteral("info");
     QIcon icon;
     switch (severity) {
@@ -56,8 +53,7 @@ void StatusBanner::setMessage(const QString &text, Severity severity)
     m_textLabel->setText(text);
 }
 
-void StatusBanner::setResultMessage(const QString &summaryText, const QString &errorText)
-{
+void StatusBanner::setResultMessage(const QString& summaryText, const QString& errorText) {
     if (errorText.isEmpty()) {
         setMessage(summaryText, Severity::Info);
         return;
@@ -66,8 +62,8 @@ void StatusBanner::setResultMessage(const QString &summaryText, const QString &e
         setMessage(QStringLiteral("Permission required: %1").arg(errorText), Severity::Warning);
         return;
     }
-    if (errorText.contains(QStringLiteral("not found"), Qt::CaseInsensitive)
-        || errorText.contains(QStringLiteral("install "), Qt::CaseInsensitive)) {
+    if (errorText.contains(QStringLiteral("not found"), Qt::CaseInsensitive) ||
+        errorText.contains(QStringLiteral("install "), Qt::CaseInsensitive)) {
         setMessage(QStringLiteral("Missing tool: %1").arg(errorText), Severity::Warning);
         return;
     }

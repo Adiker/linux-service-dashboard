@@ -22,27 +22,27 @@ enum class AlertSeverity {
 class AlertMonitor : public QObject {
     Q_OBJECT
 
-public:
-    explicit AlertMonitor(QObject *parent = nullptr);
+  public:
+    explicit AlertMonitor(QObject* parent = nullptr);
 
     void setEnabled(bool enabled);
     [[nodiscard]] bool isEnabled() const { return m_enabled; }
     [[nodiscard]] QString summaryTooltip() const;
 
     // Public entry points so state transitions can be unit-tested directly.
-    void processSystemdServices(const QVector<ServiceRow> &rows);
+    void processSystemdServices(const QVector<ServiceRow>& rows);
     void processSystemdFailedCount(int count);
-    void processDockerContainers(const QVector<DockerContainerRow> &rows);
-    void processSensors(const QVector<SensorRow> &rows);
-    void processSmartResult(const QString &devicePath, const DiskRow &smartRow);
-    void processVpnStatus(const VpnStatus &status);
+    void processDockerContainers(const QVector<DockerContainerRow>& rows);
+    void processSensors(const QVector<SensorRow>& rows);
+    void processSmartResult(const QString& devicePath, const DiskRow& smartRow);
+    void processVpnStatus(const VpnStatus& status);
 
-signals:
-    void alertRaised(const QString &title, const QString &message, AlertSeverity severity);
-    void summaryChanged(const QString &tooltip);
+  signals:
+    void alertRaised(const QString& title, const QString& message, AlertSeverity severity);
+    void summaryChanged(const QString& tooltip);
 
-private:
-    void emitAlert(const QString &title, const QString &message, AlertSeverity severity);
+  private:
+    void emitAlert(const QString& title, const QString& message, AlertSeverity severity);
     void updateSummary();
 
     bool m_enabled = true;

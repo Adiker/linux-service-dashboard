@@ -19,27 +19,24 @@ struct FailedCommandEntry {
 class CommandRunner : public QObject {
     Q_OBJECT
 
-public:
+  public:
     static constexpr int kMaxFailedLogEntries = 200;
 
-    explicit CommandRunner(QObject *parent = nullptr);
+    explicit CommandRunner(QObject* parent = nullptr);
 
-    QString run(const QString &program,
-                const QStringList &arguments = {},
-                int timeoutMs = 15000,
-                const QString &context = {},
+    QString run(const QString& program, const QStringList& arguments = {}, int timeoutMs = 15000, const QString& context = {},
                 bool deduplicateContext = false);
 
-    [[nodiscard]] bool isContextActive(const QString &context) const;
+    [[nodiscard]] bool isContextActive(const QString& context) const;
     [[nodiscard]] QStringList failedCommandLog() const;
     [[nodiscard]] QVector<FailedCommandEntry> failedCommands() const;
     void clearFailedCommands();
 
-signals:
-    void commandFinished(const QString &id, const CommandResult &result, const QString &context);
-    void failedCommandRecorded(const FailedCommandEntry &entry);
+  signals:
+    void commandFinished(const QString& id, const CommandResult& result, const QString& context);
+    void failedCommandRecorded(const FailedCommandEntry& entry);
 
-private:
+  private:
     QVector<FailedCommandEntry> m_failedCommands;
     QSet<QString> m_activeContexts;
 };

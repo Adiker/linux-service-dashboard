@@ -15,13 +15,13 @@ class QSpinBox;
 class SettingsPage : public QWidget {
     Q_OBJECT
 
-public:
-    explicit SettingsPage(QWidget *parent = nullptr);
+  public:
+    explicit SettingsPage(QWidget* parent = nullptr);
 
-signals:
+  signals:
     void settingsChanged();
 
-private:
+  private:
     void load();
     void save();
     void reloadGroups();
@@ -33,24 +33,24 @@ private:
     QStringList editorServices() const;
     void stageCurrentEditor();
 
-    QSpinBox *m_refreshInterval = nullptr;
-    QComboBox *m_serviceGroup = nullptr;
-    QPushButton *m_deleteGroupButton = nullptr;
+    QSpinBox* m_refreshInterval = nullptr;
+    QComboBox* m_serviceGroup = nullptr;
+    QPushButton* m_deleteGroupButton = nullptr;
     QString m_loadedGroup;
     QHash<QString, QStringList> m_stagedGroupEdits;
-    QPlainTextEdit *m_services = nullptr;
-    QCheckBox *m_systemd = nullptr;
-    QCheckBox *m_docker = nullptr;
-    QCheckBox *m_vpn = nullptr;
-    QCheckBox *m_mounts = nullptr;
-    QCheckBox *m_sensors = nullptr;
-    QCheckBox *m_smart = nullptr;
-    QCheckBox *m_smartScheduled = nullptr;
-    QSpinBox *m_smartIntervalMinutes = nullptr;
-    QCheckBox *m_notificationsEnabled = nullptr;
-    QCheckBox *m_closeToTray = nullptr;
-    QCheckBox *m_startMinimizedToTray = nullptr;
-    QComboBox *m_theme = nullptr;
-    QLabel *m_dirtyLabel = nullptr;
+    QPlainTextEdit* m_services = nullptr;
+    QCheckBox* m_systemd = nullptr;
+    QCheckBox* m_docker = nullptr;
+    QCheckBox* m_vpn = nullptr;
+    QCheckBox* m_mounts = nullptr;
+    QCheckBox* m_sensors = nullptr;
+    QCheckBox* m_smart = nullptr;
+    QCheckBox* m_smartScheduled = nullptr;
+    QSpinBox* m_smartIntervalMinutes = nullptr;
+    QCheckBox* m_notificationsEnabled = nullptr;
+    QCheckBox* m_closeToTray = nullptr;
+    QCheckBox* m_startMinimizedToTray = nullptr;
+    QComboBox* m_theme = nullptr;
+    QLabel* m_dirtyLabel = nullptr;
     bool m_loading = false;
 };

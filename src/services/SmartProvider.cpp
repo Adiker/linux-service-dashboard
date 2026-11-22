@@ -10,16 +10,14 @@
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonObject>
-
 #include <utility>
 
 namespace {
 
-QString smartctlMessage(const QJsonObject &root)
-{
+QString smartctlMessage(const QJsonObject& root) {
     const QJsonArray messages = root.value(QStringLiteral("smartctl")).toObject().value(QStringLiteral("messages")).toArray();
     QStringList parts;
-    for (const QJsonValue &messageValue : messages) {
+    for (const QJsonValue& messageValue : messages) {
         const QString text = messageValue.toObject().value(QStringLiteral("string")).toString().trimmed();
         if (!text.isEmpty()) {
             parts.append(text);
@@ -28,32 +26,28 @@ QString smartctlMessage(const QJsonObject &root)
     return parts.join(QStringLiteral("; "));
 }
 
-QString permissionMessage()
-{
+QString permissionMessage() {
     return QStringLiteral("smartctl needs permission for this device. Authenticate with polkit or check manually with sudo.");
 }
 
-QString permissionAwareError(const QString &message)
-{
+QString permissionAwareError(const QString& message) {
     if (message.contains(QStringLiteral("permission"), Qt::CaseInsensitive)) {
         return permissionMessage();
     }
     return message;
 }
 
-bool isPermissionError(const QString &message)
-{
+bool isPermissionError(const QString& message) {
     return message.contains(QStringLiteral("permission"), Qt::CaseInsensitive);
 }
 
-QString smartHealthFromError(const QString &message)
-{
+QString smartHealthFromError(const QString& message) {
     if (isPermissionError(message)) {
         return QStringLiteral("Permission denied");
     }
-    if (message.contains(QStringLiteral("not authorized"), Qt::CaseInsensitive)
-        || message.contains(QStringLiteral("dismissed"), Qt::CaseInsensitive)
-        || message.contains(QStringLiteral("canceled"), Qt::CaseInsensitive)) {
+    if (message.contains(QStringLiteral("not authorized"), Qt::CaseInsensitive) ||
+        message.contains(QStringLiteral("dismissed"), Qt::CaseInsensitive) ||
+        message.contains(QStringLiteral("canceled"), Qt::CaseInsensitive)) {
         return QStringLiteral("Authorization failed");
     }
     if (message.contains(QStringLiteral("not found"), Qt::CaseInsensitive)) {
@@ -62,13 +56,11 @@ QString smartHealthFromError(const QString &message)
     return QStringLiteral("Check failed");
 }
 
-QString smartCheckContext(const QString &mode, const QString &devicePath)
-{
+QString smartCheckContext(const QString& mode, const QString& devicePath) {
     return QStringLiteral("smart-check:%1:%2").arg(mode, devicePath);
 }
 
-bool parseSmartCheckContext(const QString &context, QString *mode, QString *devicePath)
-{
+bool parseSmartCheckContext(const QString& context, QString* mode, QString* devicePath) {
     constexpr auto prefix = "smart-check:";
     if (!context.startsWith(QLatin1String(prefix))) {
         return false;
@@ -83,22 +75,18 @@ bool parseSmartCheckContext(const QString &context, QString *mode, QString *devi
     return !devicePath->isEmpty();
 }
 
-QString smartHelperBatchContext()
-{
+QString smartHelperBatchContext() {
     return QStringLiteral("smart-helper-batch");
 }
 
-bool isHelperSupportedRow(const DiskRow &row)
-{
-    return SmartDeviceRules::isSupportedDevicePath(row.path)
-        && SmartDeviceRules::isSupportedTransport(row.transport);
+bool isHelperSupportedRow(const DiskRow& row) {
+    return SmartDeviceRules::isSupportedDevicePath(row.path) && SmartDeviceRules::isSupportedTransport(row.transport);
 }
 
 constexpr int smartCheckPerDiskTimeoutMs = 30000;
 constexpr int smartHelperAuthOverheadMs = 180000;
 
-QString smartHelperPath()
-{
+QString smartHelperPath() {
     const QString helperName = QStringLiteral("linux-service-dashboard-smart-helper");
     const QDir appDir(QCoreApplication::applicationDirPath());
 
@@ -123,7 +111,7 @@ QString smartHelperPath()
         QStringLiteral("/usr/libexec/") + helperName,
         QStringLiteral("/usr/local/libexec/") + helperName,
     };
-    for (const QString &path : fallbackPaths) {
+    for (const QString& path : fallbackPaths) {
         if (QFileInfo::exists(path)) {
             return path;
         }
@@ -138,8 +126,7 @@ struct SmartParseResult {
     bool permissionDenied = false;
 };
 
-SmartParseResult parseSmartResult(const CommandResult &result)
-{
+SmartParseResult parseSmartResult(const CommandResult& result) {
     SmartParseResult parsed;
     parsed.row.lastCheck = currentTimestamp();
 
@@ -164,8 +151,8 @@ SmartParseResult parseSmartResult(const CommandResult &result)
     } else {
         if (result.startFailed) {
             parsed.error = result.program == QStringLiteral("pkexec")
-                ? QStringLiteral("pkexec not found. Install polkit to run SMART checks with authorization.")
-                : QStringLiteral("smartctl not found. Install smartmontools.");
+                               ? QStringLiteral("pkexec not found. Install polkit to run SMART checks with authorization.")
+                               : QStringLiteral("smartctl not found. Install smartmontools.");
         } else {
             parsed.error = fallbackMessage;
         }
@@ -176,8 +163,7 @@ SmartParseResult parseSmartResult(const CommandResult &result)
     return parsed;
 }
 
-CommandResult commandResultFromHelperItem(const QJsonObject &item)
-{
+CommandResult commandResultFromHelperItem(const QJsonObject& item) {
     CommandResult result;
     result.program = QStringLiteral("smartctl");
     result.exitCode = item.value(QStringLiteral("exit_code")).toInt(-1);
@@ -195,8 +181,7 @@ CommandResult commandResultFromHelperItem(const QJsonObject &item)
     return result;
 }
 
-SmartParseResult helperFailureResult(const CommandResult &result)
-{
+SmartParseResult helperFailureResult(const CommandResult& result) {
     SmartParseResult parsed;
     parsed.row.lastCheck = currentTimestamp();
     if (result.startFailed) {
@@ -214,10 +199,8 @@ SmartParseResult helperFailureResult(const CommandResult &result)
 
 } // namespace
 
-SmartProvider::SmartProvider(QObject *parent)
-    : QObject(parent)
-{
-    connect(&m_runner, &CommandRunner::commandFinished, this, [this](const QString &, const CommandResult &result, const QString &context) {
+SmartProvider::SmartProvider(QObject* parent) : QObject(parent) {
+    connect(&m_runner, &CommandRunner::commandFinished, this, [this](const QString&, const CommandResult& result, const QString& context) {
         if (context == QStringLiteral("disk-list")) {
             QVector<DiskRow> rows;
             QString error;
@@ -225,7 +208,7 @@ SmartProvider::SmartProvider(QObject *parent)
                 QString parseError;
                 const QJsonDocument document = parseJsonDocument(result.standardOutput, &parseError);
                 const QJsonArray devices = document.object().value(QStringLiteral("blockdevices")).toArray();
-                for (const QJsonValue &value : devices) {
+                for (const QJsonValue& value : devices) {
                     const QJsonObject device = value.toObject();
                     if (device.value(QStringLiteral("type")).toString() != QStringLiteral("disk")) {
                         continue;
@@ -256,7 +239,8 @@ SmartProvider::SmartProvider(QObject *parent)
 
             const SmartParseResult parsed = parseSmartResult(result);
             const DiskRow activeRow = m_activeSmartChecks.value(path);
-            if (mode == QStringLiteral("direct") && parsed.permissionDenied && !activeRow.path.isEmpty() && runPrivilegedSmartChecks(activeRow)) {
+            if (mode == QStringLiteral("direct") && parsed.permissionDenied && !activeRow.path.isEmpty() &&
+                runPrivilegedSmartChecks(activeRow)) {
                 return;
             }
 
@@ -268,24 +252,20 @@ SmartProvider::SmartProvider(QObject *parent)
     });
 }
 
-void SmartProvider::refreshDisks()
-{
+void SmartProvider::refreshDisks() {
     m_runner.run(QStringLiteral("lsblk"),
-                 {QStringLiteral("-J"), QStringLiteral("-o"), QStringLiteral("NAME,PATH,SIZE,TYPE,MODEL,SERIAL,TRAN,MOUNTPOINTS")},
-                 15000,
+                 {QStringLiteral("-J"), QStringLiteral("-o"), QStringLiteral("NAME,PATH,SIZE,TYPE,MODEL,SERIAL,TRAN,MOUNTPOINTS")}, 15000,
                  QStringLiteral("disk-list"),
                  /*deduplicateContext=*/true);
 }
 
-void SmartProvider::checkSmart(const QString &devicePath)
-{
+void SmartProvider::checkSmart(const QString& devicePath) {
     DiskRow row;
     row.path = devicePath;
     checkSmart(row);
 }
 
-void SmartProvider::checkSmart(const DiskRow &row)
-{
+void SmartProvider::checkSmart(const DiskRow& row) {
     if (row.path.isEmpty()) {
         return;
     }
@@ -293,9 +273,8 @@ void SmartProvider::checkSmart(const DiskRow &row)
     startNextSmartCheck();
 }
 
-void SmartProvider::checkSmart(const QVector<DiskRow> &rows)
-{
-    for (const DiskRow &row : rows) {
+void SmartProvider::checkSmart(const QVector<DiskRow>& rows) {
+    for (const DiskRow& row : rows) {
         if (!row.path.isEmpty()) {
             m_pendingSmartChecks.enqueue(row);
         }
@@ -303,8 +282,7 @@ void SmartProvider::checkSmart(const QVector<DiskRow> &rows)
     startNextSmartCheck();
 }
 
-void SmartProvider::startNextSmartCheck()
-{
+void SmartProvider::startNextSmartCheck() {
     if (m_smartCheckRunning || m_pendingSmartChecks.isEmpty()) {
         return;
     }
@@ -315,16 +293,12 @@ void SmartProvider::startNextSmartCheck()
     runDirectSmartCheck(row);
 }
 
-void SmartProvider::runDirectSmartCheck(const DiskRow &row)
-{
-    m_runner.run(QStringLiteral("smartctl"),
-                 SmartDeviceRules::smartctlArguments(row.path, row.transport),
-                 30000,
+void SmartProvider::runDirectSmartCheck(const DiskRow& row) {
+    m_runner.run(QStringLiteral("smartctl"), SmartDeviceRules::smartctlArguments(row.path, row.transport), 30000,
                  smartCheckContext(QStringLiteral("direct"), row.path));
 }
 
-bool SmartProvider::runPrivilegedSmartChecks(const DiskRow &firstRow)
-{
+bool SmartProvider::runPrivilegedSmartChecks(const DiskRow& firstRow) {
     const QString helperPath = smartHelperPath();
     if (!QFileInfo::exists(helperPath)) {
         return false;
@@ -351,7 +325,7 @@ bool SmartProvider::runPrivilegedSmartChecks(const DiskRow &firstRow)
     }
 
     QStringList arguments{helperPath};
-    for (const DiskRow &row : std::as_const(m_privilegedSmartChecks)) {
+    for (const DiskRow& row : std::as_const(m_privilegedSmartChecks)) {
         arguments.append({QStringLiteral("--device"), row.path, QStringLiteral("--transport"), row.transport});
     }
 
@@ -360,8 +334,7 @@ bool SmartProvider::runPrivilegedSmartChecks(const DiskRow &firstRow)
     return true;
 }
 
-void SmartProvider::finishPrivilegedSmartChecks(const CommandResult &result)
-{
+void SmartProvider::finishPrivilegedSmartChecks(const CommandResult& result) {
     QString parseError;
     const QJsonDocument document = parseJsonDocument(result.standardOutput, &parseError);
     const QJsonObject root = document.object();
@@ -369,7 +342,7 @@ void SmartProvider::finishPrivilegedSmartChecks(const CommandResult &result)
 
     if (!parseError.isEmpty() || results.isEmpty()) {
         const SmartParseResult parsed = helperFailureResult(result);
-        for (const DiskRow &row : std::as_const(m_privilegedSmartChecks)) {
+        for (const DiskRow& row : std::as_const(m_privilegedSmartChecks)) {
             emit smartReady(row.path, parsed.row, parsed.error);
             m_activeSmartChecks.remove(row.path);
         }
@@ -380,7 +353,7 @@ void SmartProvider::finishPrivilegedSmartChecks(const CommandResult &result)
     }
 
     QHash<QString, SmartParseResult> parsedResults;
-    for (const QJsonValue &value : results) {
+    for (const QJsonValue& value : results) {
         const QJsonObject item = value.toObject();
         const QString path = item.value(QStringLiteral("device")).toString();
         if (!path.isEmpty()) {
@@ -388,7 +361,7 @@ void SmartProvider::finishPrivilegedSmartChecks(const CommandResult &result)
         }
     }
 
-    for (const DiskRow &row : std::as_const(m_privilegedSmartChecks)) {
+    for (const DiskRow& row : std::as_const(m_privilegedSmartChecks)) {
         const SmartParseResult parsed = parsedResults.value(row.path, helperFailureResult(result));
         emit smartReady(row.path, parsed.row, parsed.error);
         m_activeSmartChecks.remove(row.path);
@@ -399,7 +372,6 @@ void SmartProvider::finishPrivilegedSmartChecks(const CommandResult &result)
     startNextSmartCheck();
 }
 
-bool SmartProvider::isSmartCheckBusy() const
-{
+bool SmartProvider::isSmartCheckBusy() const {
     return m_smartCheckRunning || !m_pendingSmartChecks.isEmpty();
 }

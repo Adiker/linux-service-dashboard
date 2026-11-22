@@ -22,17 +22,17 @@ class QSystemTrayIcon;
 class MainWindow : public QMainWindow {
     Q_OBJECT
 
-public:
-    explicit MainWindow(QWidget *parent = nullptr);
+  public:
+    explicit MainWindow(QWidget* parent = nullptr);
     [[nodiscard]] bool shouldStartMinimized() const;
 
-public slots:
+  public slots:
     void refreshAll();
 
-protected:
-    void closeEvent(QCloseEvent *event) override;
+  protected:
+    void closeEvent(QCloseEvent* event) override;
 
-private:
+  private:
     void buildUi();
     void buildTray();
     void applyTheme();
@@ -54,22 +54,22 @@ private:
         PageSettings,
     };
 
-    QListWidget *m_sidebar = nullptr;
-    QStackedWidget *m_stack = nullptr;
-    QSystemTrayIcon *m_tray = nullptr;
-    QPushButton *m_diagnosticsButton = nullptr;
+    QListWidget* m_sidebar = nullptr;
+    QStackedWidget* m_stack = nullptr;
+    QSystemTrayIcon* m_tray = nullptr;
+    QPushButton* m_diagnosticsButton = nullptr;
     RefreshScheduler m_scheduler;
-    ServiceRegistry *m_registry = nullptr;
-    AlertMonitor *m_alertMonitor = nullptr;
+    ServiceRegistry* m_registry = nullptr;
+    AlertMonitor* m_alertMonitor = nullptr;
     bool m_closeToTray = true;
 
-    OverviewPage *m_overview = nullptr;
-    SystemdPage *m_systemd = nullptr;
-    DockerPage *m_docker = nullptr;
-    VpnPage *m_vpn = nullptr;
-    MountsPage *m_mounts = nullptr;
-    SensorsPage *m_sensors = nullptr;
-    DisksPage *m_disks = nullptr;
-    SettingsPage *m_settings = nullptr;
+    OverviewPage* m_overview = nullptr;
+    SystemdPage* m_systemd = nullptr;
+    DockerPage* m_docker = nullptr;
+    VpnPage* m_vpn = nullptr;
+    MountsPage* m_mounts = nullptr;
+    SensorsPage* m_sensors = nullptr;
+    DisksPage* m_disks = nullptr;
+    SettingsPage* m_settings = nullptr;
     ModuleSettings m_modules;
 };

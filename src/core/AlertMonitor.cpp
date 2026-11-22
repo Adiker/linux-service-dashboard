@@ -4,8 +4,7 @@
 
 namespace {
 
-int sensorSeverityRank(const QString &status)
-{
+int sensorSeverityRank(const QString& status) {
     if (status == QStringLiteral("Critical")) {
         return 2;
     }
@@ -15,29 +14,23 @@ int sensorSeverityRank(const QString &status)
     return 0;
 }
 
-bool isSmartFailureHealth(const QString &health)
-{
+bool isSmartFailureHealth(const QString& health) {
     const QString lower = health.toLower();
     return lower.contains(QStringLiteral("fail")) || lower.contains(QStringLiteral("warning"));
 }
 
 } // namespace
 
-AlertMonitor::AlertMonitor(QObject *parent)
-    : QObject(parent)
-{
-}
+AlertMonitor::AlertMonitor(QObject* parent) : QObject(parent) {}
 
-void AlertMonitor::setEnabled(bool enabled)
-{
+void AlertMonitor::setEnabled(bool enabled) {
     m_enabled = enabled;
 }
 
-void AlertMonitor::processSystemdServices(const QVector<ServiceRow> &rows)
-{
+void AlertMonitor::processSystemdServices(const QVector<ServiceRow>& rows) {
     QSet<QString> currentFailed;
     QStringList newlyFailed;
-    for (const ServiceRow &row : rows) {
+    for (const ServiceRow& row : rows) {
         if (row.activeState == QStringLiteral("failed")) {
             currentFailed.insert(row.unit);
             if (m_systemdServicesInitialized && !m_failedServices.contains(row.unit)) {
@@ -55,11 +48,9 @@ void AlertMonitor::processSystemdServices(const QVector<ServiceRow> &rows)
     }
 }
 
-void AlertMonitor::processSystemdFailedCount(int count)
-{
+void AlertMonitor::processSystemdFailedCount(int count) {
     if (m_failedCountInitialized && count > m_lastFailedCount && !m_systemdServicesInitialized) {
-        emitAlert(QStringLiteral("Systemd failed services"),
-                  QStringLiteral("Failed systemd services increased to %1.").arg(count),
+        emitAlert(QStringLiteral("Systemd failed services"), QStringLiteral("Failed systemd services increased to %1.").arg(count),
                   AlertSeverity::Critical);
     }
     m_lastFailedCount = count;
@@ -67,10 +58,9 @@ void AlertMonitor::processSystemdFailedCount(int count)
     updateSummary();
 }
 
-void AlertMonitor::processDockerContainers(const QVector<DockerContainerRow> &rows)
-{
+void AlertMonitor::processDockerContainers(const QVector<DockerContainerRow>& rows) {
     int running = 0;
-    for (const DockerContainerRow &row : rows) {
+    for (const DockerContainerRow& row : rows) {
         if (row.state == QStringLiteral("running")) {
             ++running;
         }
@@ -80,10 +70,9 @@ void AlertMonitor::processDockerContainers(const QVector<DockerContainerRow> &ro
     updateSummary();
 }
 
-void AlertMonitor::processSensors(const QVector<SensorRow> &rows)
-{
+void AlertMonitor::processSensors(const QVector<SensorRow>& rows) {
     QHash<QString, QString> nextStates;
-    for (const SensorRow &row : rows) {
+    for (const SensorRow& row : rows) {
         const QString key = row.chip + QLatin1Char('/') + row.label;
         nextStates.insert(key, row.status);
         if (!m_sensorsInitialized) {
@@ -94,33 +83,28 @@ void AlertMonitor::processSensors(const QVector<SensorRow> &rows)
         if (currentRank > previousRank && currentRank > 0) {
             const AlertSeverity severity = (currentRank >= 2) ? AlertSeverity::Critical : AlertSeverity::Warning;
             emitAlert(QStringLiteral("Sensor %1").arg(row.status),
-                      QStringLiteral("%1 (%2) reached %3 C.").arg(row.label, row.chip).arg(row.current, 0, 'f', 1),
-                      severity);
+                      QStringLiteral("%1 (%2) reached %3 C.").arg(row.label, row.chip).arg(row.current, 0, 'f', 1), severity);
         }
     }
     m_sensorStates = nextStates;
     m_sensorsInitialized = true;
 }
 
-void AlertMonitor::processSmartResult(const QString &devicePath, const DiskRow &smartRow)
-{
+void AlertMonitor::processSmartResult(const QString& devicePath, const DiskRow& smartRow) {
     const QString previous = m_diskSmartStates.value(devicePath);
     const QString current = smartRow.smartHealth;
     m_diskSmartStates.insert(devicePath, current);
 
     if (isSmartFailureHealth(current) && !isSmartFailureHealth(previous)) {
-        emitAlert(QStringLiteral("SMART health warning"),
-                  QStringLiteral("Disk %1 reported SMART status: %2.").arg(devicePath, current),
+        emitAlert(QStringLiteral("SMART health warning"), QStringLiteral("Disk %1 reported SMART status: %2.").arg(devicePath, current),
                   AlertSeverity::Critical);
     }
 }
 
-void AlertMonitor::processVpnStatus(const VpnStatus &status)
-{
+void AlertMonitor::processVpnStatus(const VpnStatus& status) {
     if (m_vpnInitialized && m_lastVpnConnected && !status.connected) {
         const QString name = m_lastVpnName.isEmpty() ? QStringLiteral("VPN") : m_lastVpnName;
-        emitAlert(QStringLiteral("VPN disconnected"),
-                  QStringLiteral("VPN connection \"%1\" is no longer active.").arg(name),
+        emitAlert(QStringLiteral("VPN disconnected"), QStringLiteral("VPN connection \"%1\" is no longer active.").arg(name),
                   AlertSeverity::Warning);
     }
     m_vpnInitialized = true;
@@ -129,8 +113,7 @@ void AlertMonitor::processVpnStatus(const VpnStatus &status)
     updateSummary();
 }
 
-QString AlertMonitor::summaryTooltip() const
-{
+QString AlertMonitor::summaryTooltip() const {
     QStringList parts;
     if (m_lastFailedCount >= 0) {
         parts.append(QStringLiteral("Failed services: %1").arg(m_lastFailedCount));
@@ -139,9 +122,7 @@ QString AlertMonitor::summaryTooltip() const
         parts.append(QStringLiteral("Docker: %1/%2").arg(m_dockerRunning).arg(m_dockerTotal));
     }
     if (m_vpnInitialized) {
-        parts.append(m_lastVpnConnected
-                         ? QStringLiteral("VPN: %1").arg(m_lastVpnName)
-                         : QStringLiteral("VPN: Disconnected"));
+        parts.append(m_lastVpnConnected ? QStringLiteral("VPN: %1").arg(m_lastVpnName) : QStringLiteral("VPN: Disconnected"));
     }
     if (parts.isEmpty()) {
         return QStringLiteral("Linux Service Dashboard");
@@ -149,15 +130,13 @@ QString AlertMonitor::summaryTooltip() const
     return QStringLiteral("Linux Service Dashboard\n%1").arg(parts.join(QStringLiteral(" | ")));
 }
 
-void AlertMonitor::emitAlert(const QString &title, const QString &message, AlertSeverity severity)
-{
+void AlertMonitor::emitAlert(const QString& title, const QString& message, AlertSeverity severity) {
     if (!m_enabled) {
         return;
     }
     emit alertRaised(title, message, severity);
 }
 
-void AlertMonitor::updateSummary()
-{
+void AlertMonitor::updateSummary() {
     emit summaryChanged(summaryTooltip());
 }

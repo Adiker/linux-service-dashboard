@@ -8,16 +8,15 @@
 
 namespace {
 
-QVector<MountRow> mergeConfiguredMounts(const QVector<MountRow> &liveRows, const QSet<QString> &mountedTargets)
-{
+QVector<MountRow> mergeConfiguredMounts(const QVector<MountRow>& liveRows, const QSet<QString>& mountedTargets) {
     QVector<MountRow> merged = liveRows;
     QString fstabError;
-    for (const MountRow &row : FstabParser::parseFile(QStringLiteral("/etc/fstab"), &fstabError)) {
+    for (const MountRow& row : FstabParser::parseFile(QStringLiteral("/etc/fstab"), &fstabError)) {
         if (!mountedTargets.contains(row.target)) {
             merged.append(row);
         }
     }
-    for (const MountRow &row : MountProfileStore::loadProfiles()) {
+    for (const MountRow& row : MountProfileStore::loadProfiles()) {
         if (!mountedTargets.contains(row.target)) {
             merged.append(row);
         }
@@ -27,20 +26,15 @@ QVector<MountRow> mergeConfiguredMounts(const QVector<MountRow> &liveRows, const
 
 } // namespace
 
-MountProvider::MountProvider(QObject *parent)
-    : QObject(parent)
-{
-    connect(&m_runner, &CommandRunner::commandFinished, this, [this](const QString &, const CommandResult &result, const QString &context) {
+MountProvider::MountProvider(QObject* parent) : QObject(parent) {
+    connect(&m_runner, &CommandRunner::commandFinished, this, [this](const QString&, const CommandResult& result, const QString& context) {
         if (context == QStringLiteral("mount-list")) {
             QVector<MountRow> rows;
             QString error;
             if (result.ok()) {
                 QSet<QString> mountedTargets;
-                ProviderParsers::parseFindmntSnapshot(
-                    result.standardOutput,
-                    &rows,
-                    m_includeConfigured ? &mountedTargets : nullptr,
-                    &error);
+                ProviderParsers::parseFindmntSnapshot(result.standardOutput, &rows, m_includeConfigured ? &mountedTargets : nullptr,
+                                                      &error);
                 if (m_includeConfigured && error.isEmpty()) {
                     rows = mergeConfiguredMounts(rows, mountedTargets);
                 }
@@ -58,28 +52,23 @@ MountProvider::MountProvider(QObject *parent)
                                 details.trimmed());
         } else if (context.startsWith(QStringLiteral("mount-unmount:"))) {
             const QString target = context.mid(QStringLiteral("mount-unmount:").size());
-            emit actionFinished(result.ok() ? QStringLiteral("Unmounted %1.").arg(target) : QStringLiteral("Could not unmount %1.").arg(target),
+            emit actionFinished(result.ok() ? QStringLiteral("Unmounted %1.").arg(target)
+                                            : QStringLiteral("Could not unmount %1.").arg(target),
                                 result.ok() ? result.standardOutput : result.standardError);
         }
     });
 }
 
-void MountProvider::refreshMounts(bool includeConfigured)
-{
+void MountProvider::refreshMounts(bool includeConfigured) {
     m_includeConfigured = includeConfigured;
-    m_runner.run(QStringLiteral("findmnt"),
-                 {QStringLiteral("--json")},
-                 15000,
-                 QStringLiteral("mount-list"),
+    m_runner.run(QStringLiteral("findmnt"), {QStringLiteral("--json")}, 15000, QStringLiteral("mount-list"),
                  /*deduplicateContext=*/true);
 }
 
-void MountProvider::mount(const QString &target)
-{
+void MountProvider::mount(const QString& target) {
     m_runner.run(QStringLiteral("mount"), {target}, 30000, QStringLiteral("mount-mount:%1").arg(target));
 }
 
-void MountProvider::unmount(const QString &target)
-{
+void MountProvider::unmount(const QString& target) {
     m_runner.run(QStringLiteral("umount"), {target}, 30000, QStringLiteral("mount-unmount:%1").arg(target));
 }

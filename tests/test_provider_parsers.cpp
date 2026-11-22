@@ -14,7 +14,7 @@
 class ProviderParserTests : public QObject {
     Q_OBJECT
 
-private slots:
+  private slots:
     void systemdListUnits_parsesServicesAndMissingWatched();
     void systemdFailedCount_ignoresHeader();
     void dockerList_parsesJsonLines();
@@ -35,11 +35,9 @@ private slots:
     void alertMonitor_isEdgeTriggeredWithoutBaselineSpam();
 };
 
-void ProviderParserTests::systemdListUnits_parsesServicesAndMissingWatched()
-{
-    const QString output = QStringLiteral(
-        "docker.service loaded active running Docker Application Container Engine\n"
-        "sshd.service loaded active running OpenSSH Daemon\n");
+void ProviderParserTests::systemdListUnits_parsesServicesAndMissingWatched() {
+    const QString output = QStringLiteral("docker.service loaded active running Docker Application Container Engine\n"
+                                          "sshd.service loaded active running OpenSSH Daemon\n");
     const QStringList watched{QStringLiteral("docker.service"), QStringLiteral("missing.service")};
     const QVector<ServiceRow> rows = ProviderParsers::parseSystemdListUnits(output, watched, QStringLiteral("now"), nullptr);
     QCOMPARE(rows.size(), 2);
@@ -48,24 +46,21 @@ void ProviderParserTests::systemdListUnits_parsesServicesAndMissingWatched()
     QCOMPARE(rows.at(1).loadState, QStringLiteral("unavailable"));
 }
 
-void ProviderParserTests::systemdFailedCount_ignoresHeader()
-{
+void ProviderParserTests::systemdFailedCount_ignoresHeader() {
     const QString output = QStringLiteral("UNIT LOAD ACTIVE SUB DESCRIPTION\nbroken.service loaded failed failed Broken\n");
     QCOMPARE(ProviderParsers::parseSystemdFailedCount(output, nullptr), 1);
 }
 
-void ProviderParserTests::dockerList_parsesJsonLines()
-{
-    const QString output = QStringLiteral(
-        "{\"Names\":\"web\",\"Image\":\"nginx\",\"Status\":\"Up\",\"State\":\"running\",\"Ports\":\"\",\"ID\":\"abc\"}");
+void ProviderParserTests::dockerList_parsesJsonLines() {
+    const QString output =
+        QStringLiteral("{\"Names\":\"web\",\"Image\":\"nginx\",\"Status\":\"Up\",\"State\":\"running\",\"Ports\":\"\",\"ID\":\"abc\"}");
     const QVector<DockerContainerRow> rows = ProviderParsers::parseDockerContainerLines(output, nullptr);
     QCOMPARE(rows.size(), 1);
     QCOMPARE(rows.first().name, QStringLiteral("web"));
     QCOMPARE(rows.first().state, QStringLiteral("running"));
 }
 
-void ProviderParserTests::nmcliVpn_detectsWireguardConnection()
-{
+void ProviderParserTests::nmcliVpn_detectsWireguardConnection() {
     const QString output = QStringLiteral("home-wifi:802-11-wireless:wlp0s20f3:activated\nvpn-office:wireguard:tun0:activated\n");
     const VpnStatus status = ProviderParsers::parseNmcliActiveVpnConnections(output, QStringLiteral("now"), nullptr);
     QVERIFY(status.connected);
@@ -73,8 +68,7 @@ void ProviderParserTests::nmcliVpn_detectsWireguardConnection()
     QCOMPARE(status.device, QStringLiteral("tun0"));
 }
 
-void ProviderParserTests::findmntJson_collectsNetworkMountsAndFuseSshfs()
-{
+void ProviderParserTests::findmntJson_collectsNetworkMountsAndFuseSshfs() {
     const QString output = QStringLiteral(
         "{\"filesystems\":[{\"target\":\"/mnt/share\",\"source\":\"//server/share\",\"fstype\":\"cifs\",\"options\":\"rw\","
         "\"children\":[{\"target\":\"/mnt/remote\",\"source\":\"user@host:/data\",\"fstype\":\"fuse.sshfs\",\"options\":\"rw\"}]}]}");
@@ -86,11 +80,10 @@ void ProviderParserTests::findmntJson_collectsNetworkMountsAndFuseSshfs()
     QCOMPARE(rows.at(1).filesystemType, QStringLiteral("fuse.sshfs"));
 }
 
-void ProviderParserTests::findmntSnapshot_ignoresAutofsTargets()
-{
-    const QString output = QStringLiteral(
-        "{\"filesystems\":[{\"target\":\"/mnt/auto\",\"source\":\"systemd-1\",\"fstype\":\"autofs\",\"options\":\"rw\"},"
-        "{\"target\":\"/mnt/real\",\"source\":\"/dev/sda1\",\"fstype\":\"ext4\",\"options\":\"rw\"}]}");
+void ProviderParserTests::findmntSnapshot_ignoresAutofsTargets() {
+    const QString output =
+        QStringLiteral("{\"filesystems\":[{\"target\":\"/mnt/auto\",\"source\":\"systemd-1\",\"fstype\":\"autofs\",\"options\":\"rw\"},"
+                       "{\"target\":\"/mnt/real\",\"source\":\"/dev/sda1\",\"fstype\":\"ext4\",\"options\":\"rw\"}]}");
     QVector<MountRow> rows;
     QSet<QString> targets;
     ProviderParsers::parseFindmntSnapshot(output, &rows, &targets, nullptr);
@@ -99,23 +92,20 @@ void ProviderParserTests::findmntSnapshot_ignoresAutofsTargets()
     QVERIFY(targets.contains(QStringLiteral("/mnt/real")));
 }
 
-void ProviderParserTests::sensorsJson_extractsTemperatureInput()
-{
-    const QString output = QStringLiteral(
-        "{\"coretemp-isa-0000\":{\"Package id 0\":{\"temp1_input\":42.0,\"temp1_max\":90.0,\"temp1_crit\":100.0}}}");
+void ProviderParserTests::sensorsJson_extractsTemperatureInput() {
+    const QString output =
+        QStringLiteral("{\"coretemp-isa-0000\":{\"Package id 0\":{\"temp1_input\":42.0,\"temp1_max\":90.0,\"temp1_crit\":100.0}}}");
     const QVector<SensorRow> rows = ProviderParsers::parseSensorsJson(output, nullptr);
     QCOMPARE(rows.size(), 1);
     QCOMPARE(rows.first().chip, QStringLiteral("coretemp-isa-0000"));
     QCOMPARE(rows.first().current, 42.0);
 }
 
-void ProviderParserTests::sensorsText_parsesPlainFallbackOutput()
-{
-    const QString output = QStringLiteral(
-        "coretemp-isa-0000\n"
-        "Adapter: ISA adapter\n"
-        "Package id 0:  +85.5°C  (high = +80.0°C, crit = +100.0°C)\n"
-        "Core 0:        +41.0°C  (high = +80.0°C, crit = +100.0°C)\n");
+void ProviderParserTests::sensorsText_parsesPlainFallbackOutput() {
+    const QString output = QStringLiteral("coretemp-isa-0000\n"
+                                          "Adapter: ISA adapter\n"
+                                          "Package id 0:  +85.5°C  (high = +80.0°C, crit = +100.0°C)\n"
+                                          "Core 0:        +41.0°C  (high = +80.0°C, crit = +100.0°C)\n");
     const QVector<SensorRow> rows = ProviderParsers::parseSensorsText(output, nullptr);
     QCOMPARE(rows.size(), 2);
     QCOMPARE(rows.at(0).chip, QStringLiteral("coretemp-isa-0000"));
@@ -127,37 +117,31 @@ void ProviderParserTests::sensorsText_parsesPlainFallbackOutput()
     QCOMPARE(rows.at(1).status, QStringLiteral("OK"));
 }
 
-void ProviderParserTests::fstab_skipsCommentsAndBlankLines()
-{
-    const QString content = QStringLiteral(
-        "# comment\n"
-        "\n"
-        "//server/share /mnt/share cifs credentials=/etc/smb creds,uid=1000 0 0\n");
+void ProviderParserTests::fstab_skipsCommentsAndBlankLines() {
+    const QString content = QStringLiteral("# comment\n"
+                                           "\n"
+                                           "//server/share /mnt/share cifs credentials=/etc/smb creds,uid=1000 0 0\n");
     const QVector<ProviderParsers::FstabEntry> entries = ProviderParsers::parseFstab(content, nullptr);
     QCOMPARE(entries.size(), 1);
     QCOMPARE(entries.first().mountPoint, QStringLiteral("/mnt/share"));
     QCOMPARE(entries.first().filesystemType, QStringLiteral("cifs"));
 }
 
-void ProviderParserTests::fstabNetworkMounts_decodesOctalAndLegacySshfs()
-{
-    const QString content = QStringLiteral(
-        "/dev/sda1 / ext4 defaults 0 1\n"
-        "sshfs#user@host:/srv /mnt/my\\040share fuse noauto,user 0 0\n");
+void ProviderParserTests::fstabNetworkMounts_decodesOctalAndLegacySshfs() {
+    const QString content = QStringLiteral("/dev/sda1 / ext4 defaults 0 1\n"
+                                           "sshfs#user@host:/srv /mnt/my\\040share fuse noauto,user 0 0\n");
     const QVector<MountRow> rows = ProviderParsers::parseFstabNetworkMounts(content, nullptr);
     QCOMPARE(rows.size(), 1);
     QCOMPARE(rows.first().target, QStringLiteral("/mnt/my share"));
     QCOMPARE(rows.first().filesystemType, QStringLiteral("sshfs"));
 }
 
-void ProviderParserTests::providerErrors_emptyDockerOutput()
-{
+void ProviderParserTests::providerErrors_emptyDockerOutput() {
     const QVector<DockerContainerRow> rows = ProviderParsers::parseDockerContainerLines(QString(), nullptr);
     QVERIFY(rows.isEmpty());
 }
 
-void ProviderParserTests::smartDeviceRules_validatesPathsAndArguments()
-{
+void ProviderParserTests::smartDeviceRules_validatesPathsAndArguments() {
     QVERIFY(SmartDeviceRules::isSupportedDevicePath(QStringLiteral("/dev/sda")));
     QVERIFY(SmartDeviceRules::isSupportedDevicePath(QStringLiteral("/dev/nvme0n1")));
     QVERIFY(!SmartDeviceRules::isSupportedDevicePath(QStringLiteral("/dev/sda1")));
@@ -168,8 +152,7 @@ void ProviderParserTests::smartDeviceRules_validatesPathsAndArguments()
     QCOMPARE(nvmeArgs.last(), QStringLiteral("/dev/nvme0"));
 }
 
-void ProviderParserTests::commandResult_classifiesErrors()
-{
+void ProviderParserTests::commandResult_classifiesErrors() {
     CommandResult okRes;
     okRes.exitCode = 0;
     QCOMPARE(okRes.errorKind(), CommandErrorKind::None);
@@ -188,8 +171,7 @@ void ProviderParserTests::commandResult_classifiesErrors()
     QCOMPARE(denied.errorKind(), CommandErrorKind::PermissionDenied);
 }
 
-void ProviderParserTests::mountProfileStore_handlesSlashInProfileName()
-{
+void ProviderParserTests::mountProfileStore_handlesSlashInProfileName() {
     QTemporaryDir tempDir;
     QVERIFY(tempDir.isValid());
     QSettings::setDefaultFormat(QSettings::IniFormat);
@@ -214,8 +196,7 @@ void ProviderParserTests::mountProfileStore_handlesSlashInProfileName()
     QVERIFY(MountProfileStore::loadProfiles().isEmpty());
 }
 
-void ProviderParserTests::smartctlJson_parsesNvmeAndAta()
-{
+void ProviderParserTests::smartctlJson_parsesNvmeAndAta() {
     const QByteArray nvmeJson = R"({
         "smart_status": { "passed": true },
         "nvme_smart_health_information_log": {
@@ -254,21 +235,18 @@ void ProviderParserTests::smartctlJson_parsesNvmeAndAta()
     QCOMPARE(ataRow.powerOnHours, QStringLiteral("5000 h"));
 }
 
-void ProviderParserTests::nmcliVpn_parsesMultipleActiveAndProfiles()
-{
-    const QString activeOut = QStringLiteral(
-        "wifi:802-11-wireless:wlan0:activated\n"
-        "wg-home:wireguard:wg0:activated\n"
-        "corp-vpn:vpn:tun0:activated\n");
+void ProviderParserTests::nmcliVpn_parsesMultipleActiveAndProfiles() {
+    const QString activeOut = QStringLiteral("wifi:802-11-wireless:wlan0:activated\n"
+                                             "wg-home:wireguard:wg0:activated\n"
+                                             "corp-vpn:vpn:tun0:activated\n");
     const QVector<VpnStatus> active = ProviderParsers::parseNmcliActiveVpnList(activeOut, QStringLiteral("now"), nullptr);
     QCOMPARE(active.size(), 2);
     QCOMPARE(active.at(0).connectionName, QStringLiteral("wg-home"));
     QCOMPARE(active.at(1).connectionName, QStringLiteral("corp-vpn"));
 
-    const QString profilesOut = QStringLiteral(
-        "wifi:802-11-wireless:wlan0:activated\n"
-        "wg-home:wireguard:wg0:activated\n"
-        "corp-vpn:vpn::\n");
+    const QString profilesOut = QStringLiteral("wifi:802-11-wireless:wlan0:activated\n"
+                                               "wg-home:wireguard:wg0:activated\n"
+                                               "corp-vpn:vpn::\n");
     const QVector<VpnProfile> profiles = ProviderParsers::parseNmcliVpnProfiles(profilesOut, nullptr);
     QCOMPARE(profiles.size(), 2);
     QVERIFY(profiles.at(0).active);
@@ -276,8 +254,7 @@ void ProviderParserTests::nmcliVpn_parsesMultipleActiveAndProfiles()
     QCOMPARE(profiles.at(1).state, QStringLiteral("disconnected"));
 }
 
-void ProviderParserTests::serviceGroupSettings_deletesAndGuardsLastGroup()
-{
+void ProviderParserTests::serviceGroupSettings_deletesAndGuardsLastGroup() {
     QTemporaryDir tempDir;
     QVERIFY(tempDir.isValid());
     QSettings::setDefaultFormat(QSettings::IniFormat);
@@ -295,17 +272,17 @@ void ProviderParserTests::serviceGroupSettings_deletesAndGuardsLastGroup()
     QCOMPARE(ServiceGroupSettings::activeGroup(), QStringLiteral("Default"));
 }
 
-void ProviderParserTests::alertMonitor_isEdgeTriggeredWithoutBaselineSpam()
-{
+void ProviderParserTests::alertMonitor_isEdgeTriggeredWithoutBaselineSpam() {
     AlertMonitor monitor;
     QStringList raisedTitles;
-    QObject::connect(&monitor, &AlertMonitor::alertRaised, [&raisedTitles](const QString &title, const QString &, AlertSeverity) {
-        raisedTitles.append(title);
-    });
+    QObject::connect(&monitor, &AlertMonitor::alertRaised,
+                     [&raisedTitles](const QString& title, const QString&, AlertSeverity) { raisedTitles.append(title); });
 
     // Baseline observations must not spam alerts
-    monitor.processSystemdServices({ServiceRow{QStringLiteral("broken.service"), QStringLiteral("loaded"), QStringLiteral("failed"), QStringLiteral("failed"), QStringLiteral("desc"), QStringLiteral("t")}});
-    monitor.processSensors({SensorRow{QStringLiteral("coretemp"), QStringLiteral("Package"), 85.0, 80.0, 100.0, QStringLiteral("Warning")}});
+    monitor.processSystemdServices({ServiceRow{QStringLiteral("broken.service"), QStringLiteral("loaded"), QStringLiteral("failed"),
+                                               QStringLiteral("failed"), QStringLiteral("desc"), QStringLiteral("t")}});
+    monitor.processSensors(
+        {SensorRow{QStringLiteral("coretemp"), QStringLiteral("Package"), 85.0, 80.0, 100.0, QStringLiteral("Warning")}});
     VpnStatus connectedVpn;
     connectedVpn.connected = true;
     connectedVpn.connectionName = QStringLiteral("office-vpn");
@@ -314,10 +291,13 @@ void ProviderParserTests::alertMonitor_isEdgeTriggeredWithoutBaselineSpam()
 
     // Transition to worse state raises edge-triggered alerts
     monitor.processSystemdServices({
-        ServiceRow{QStringLiteral("broken.service"), QStringLiteral("loaded"), QStringLiteral("failed"), QStringLiteral("failed"), QStringLiteral("desc"), QStringLiteral("t")},
-        ServiceRow{QStringLiteral("nginx.service"), QStringLiteral("loaded"), QStringLiteral("failed"), QStringLiteral("failed"), QStringLiteral("desc"), QStringLiteral("t")},
+        ServiceRow{QStringLiteral("broken.service"), QStringLiteral("loaded"), QStringLiteral("failed"), QStringLiteral("failed"),
+                   QStringLiteral("desc"), QStringLiteral("t")},
+        ServiceRow{QStringLiteral("nginx.service"), QStringLiteral("loaded"), QStringLiteral("failed"), QStringLiteral("failed"),
+                   QStringLiteral("desc"), QStringLiteral("t")},
     });
-    monitor.processSensors({SensorRow{QStringLiteral("coretemp"), QStringLiteral("Package"), 102.0, 80.0, 100.0, QStringLiteral("Critical")}});
+    monitor.processSensors(
+        {SensorRow{QStringLiteral("coretemp"), QStringLiteral("Package"), 102.0, 80.0, 100.0, QStringLiteral("Critical")}});
     VpnStatus disconnectedVpn;
     disconnectedVpn.connected = false;
     monitor.processVpnStatus(disconnectedVpn);
@@ -327,7 +307,8 @@ void ProviderParserTests::alertMonitor_isEdgeTriggeredWithoutBaselineSpam()
     QCOMPARE(raisedTitles.size(), 4);
 
     // Repeating identical degraded states must not re-fire alerts
-    monitor.processSensors({SensorRow{QStringLiteral("coretemp"), QStringLiteral("Package"), 103.0, 80.0, 100.0, QStringLiteral("Critical")}});
+    monitor.processSensors(
+        {SensorRow{QStringLiteral("coretemp"), QStringLiteral("Package"), 103.0, 80.0, 100.0, QStringLiteral("Critical")}});
     monitor.processSmartResult(QStringLiteral("/dev/sda"), failingDisk);
     QCOMPARE(raisedTitles.size(), 4);
 }

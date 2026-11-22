@@ -16,8 +16,7 @@
 
 namespace {
 
-QString csvEscape(const QString &field)
-{
+QString csvEscape(const QString& field) {
     QString escaped = field;
     escaped.replace(QLatin1Char('"'), QStringLiteral("\"\""));
     return QStringLiteral("\"%1\"").arg(escaped);
@@ -25,17 +24,12 @@ QString csvEscape(const QString &field)
 
 } // namespace
 
-SmartHistoryDialog::SmartHistoryDialog(const QString &serialKey,
-                                       const QString &devicePath,
-                                       QWidget *parent)
-    : QDialog(parent)
-    , m_serialKey(serialKey)
-    , m_devicePath(devicePath)
-{
+SmartHistoryDialog::SmartHistoryDialog(const QString& serialKey, const QString& devicePath, QWidget* parent)
+    : QDialog(parent), m_serialKey(serialKey), m_devicePath(devicePath) {
     setWindowTitle(QStringLiteral("SMART history — %1").arg(devicePath));
     resize(780, 460);
 
-    auto *layout = new QVBoxLayout(this);
+    auto* layout = new QVBoxLayout(this);
     m_table = new QTableWidget(this);
     m_table->setColumnCount(5);
     m_table->setHorizontalHeaderLabels({
@@ -53,10 +47,10 @@ SmartHistoryDialog::SmartHistoryDialog(const QString &serialKey,
     m_table->verticalHeader()->hide();
     layout->addWidget(m_table, 1);
 
-    auto *bottomRow = new QHBoxLayout;
-    auto *exportButton = new QPushButton(QIcon::fromTheme(QStringLiteral("document-save")), QStringLiteral("Export CSV..."), this);
-    auto *clearButton = new QPushButton(QIcon::fromTheme(QStringLiteral("edit-clear")), QStringLiteral("Clear history"), this);
-    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Close, this);
+    auto* bottomRow = new QHBoxLayout;
+    auto* exportButton = new QPushButton(QIcon::fromTheme(QStringLiteral("document-save")), QStringLiteral("Export CSV..."), this);
+    auto* clearButton = new QPushButton(QIcon::fromTheme(QStringLiteral("edit-clear")), QStringLiteral("Clear history"), this);
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Close, this);
     bottomRow->addWidget(exportButton);
     bottomRow->addWidget(clearButton);
     bottomRow->addStretch();
@@ -70,12 +64,11 @@ SmartHistoryDialog::SmartHistoryDialog(const QString &serialKey,
     reload();
 }
 
-void SmartHistoryDialog::reload()
-{
+void SmartHistoryDialog::reload() {
     const QVector<SmartHistoryEntry> entries = SmartHistoryStore::entriesForDisk(m_serialKey, m_devicePath, 100);
     m_table->setRowCount(entries.size());
     for (int i = 0; i < entries.size(); ++i) {
-        const SmartHistoryEntry &entry = entries.at(i);
+        const SmartHistoryEntry& entry = entries.at(i);
         m_table->setItem(i, 0, new QTableWidgetItem(entry.timestamp));
         m_table->setItem(i, 1, new QTableWidgetItem(entry.health));
         m_table->setItem(i, 2, new QTableWidgetItem(entry.temperature));
@@ -84,11 +77,8 @@ void SmartHistoryDialog::reload()
     }
 }
 
-void SmartHistoryDialog::exportCsv()
-{
-    const QString path = QFileDialog::getSaveFileName(this,
-                                                      QStringLiteral("Export SMART history"),
-                                                      QStringLiteral("smart-history.csv"),
+void SmartHistoryDialog::exportCsv() {
+    const QString path = QFileDialog::getSaveFileName(this, QStringLiteral("Export SMART history"), QStringLiteral("smart-history.csv"),
                                                       QStringLiteral("CSV files (*.csv);;All files (*)"));
     if (path.isEmpty()) {
         return;
@@ -100,23 +90,22 @@ void SmartHistoryDialog::exportCsv()
     }
     QStringList lines{QStringLiteral("Time,Health,Temp,ReallocatedOrWear,PendingOrMediaErrors")};
     const QVector<SmartHistoryEntry> entries = SmartHistoryStore::entriesForDisk(m_serialKey, m_devicePath, 100);
-    for (const SmartHistoryEntry &entry : entries) {
+    for (const SmartHistoryEntry& entry : entries) {
         lines.append(QStringList{
             csvEscape(entry.timestamp),
             csvEscape(entry.health),
             csvEscape(entry.temperature),
             csvEscape(entry.reallocated),
             csvEscape(entry.pending),
-        }.join(QLatin1Char(',')));
+        }
+                         .join(QLatin1Char(',')));
     }
     file.write(lines.join(QLatin1Char('\n')).toUtf8());
     file.write("\n");
 }
 
-void SmartHistoryDialog::clearHistory()
-{
-    if (!ConfirmActionDialog::confirm(this,
-                                      QStringLiteral("Clear SMART history"),
+void SmartHistoryDialog::clearHistory() {
+    if (!ConfirmActionDialog::confirm(this, QStringLiteral("Clear SMART history"),
                                       QStringLiteral("Remove all saved SMART history entries for %1?").arg(m_devicePath))) {
         return;
     }

@@ -6,15 +6,12 @@
 
 namespace SmartDeviceRules {
 
-inline bool isSupportedDevicePath(const QString &devicePath)
-{
-    static const QRegularExpression pattern(
-        QStringLiteral(R"(^/dev/(sd[a-z]+|hd[a-z]+|vd[a-z]+|xvd[a-z]+|nvme\d+(n\d+)?|mmcblk\d+)$)"));
+inline bool isSupportedDevicePath(const QString& devicePath) {
+    static const QRegularExpression pattern(QStringLiteral(R"(^/dev/(sd[a-z]+|hd[a-z]+|vd[a-z]+|xvd[a-z]+|nvme\d+(n\d+)?|mmcblk\d+)$)"));
     return pattern.match(devicePath).hasMatch();
 }
 
-inline bool isSupportedTransport(const QString &transport)
-{
+inline bool isSupportedTransport(const QString& transport) {
     static const QStringList transports{
         QString(),
         QStringLiteral("ata"),
@@ -27,15 +24,13 @@ inline bool isSupportedTransport(const QString &transport)
     return transports.contains(transport);
 }
 
-inline QString nvmeControllerPath(const QString &devicePath)
-{
+inline QString nvmeControllerPath(const QString& devicePath) {
     static const QRegularExpression namespacePath(QStringLiteral(R"(^(/dev/nvme\d+)n\d+$)"));
     const QRegularExpressionMatch match = namespacePath.match(devicePath);
     return match.hasMatch() ? match.captured(1) : devicePath;
 }
 
-inline QStringList smartctlArguments(QString devicePath, const QString &transport)
-{
+inline QStringList smartctlArguments(QString devicePath, const QString& transport) {
     QStringList arguments{QStringLiteral("-j"), QStringLiteral("-H"), QStringLiteral("-A")};
 
     if (transport == QStringLiteral("nvme")) {

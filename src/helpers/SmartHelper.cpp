@@ -8,7 +8,6 @@
 #include <QProcess>
 #include <QStringList>
 #include <QVector>
-
 #include <cstdio>
 
 namespace {
@@ -21,15 +20,13 @@ struct SmartRequest {
     QString transport;
 };
 
-void writeStderr(const QString &message)
-{
+void writeStderr(const QString& message) {
     const QByteArray bytes = message.toLocal8Bit();
     std::fwrite(bytes.constData(), 1, bytes.size(), stderr);
     std::fwrite("\n", 1, 1, stderr);
 }
 
-QJsonObject validationErrorResult(const QString &devicePath, const QString &message)
-{
+QJsonObject validationErrorResult(const QString& devicePath, const QString& message) {
     QJsonObject result;
     result.insert(QStringLiteral("device"), devicePath);
     result.insert(QStringLiteral("exit_code"), UsageError);
@@ -37,8 +34,7 @@ QJsonObject validationErrorResult(const QString &devicePath, const QString &mess
     return result;
 }
 
-QJsonObject runSmartctl(const SmartRequest &request)
-{
+QJsonObject runSmartctl(const SmartRequest& request) {
     QJsonObject result;
     result.insert(QStringLiteral("device"), request.devicePath);
 
@@ -76,8 +72,7 @@ QJsonObject runSmartctl(const SmartRequest &request)
 
 } // namespace
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char* argv[]) {
     QCoreApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("linux-service-dashboard-smart-helper"));
 
@@ -107,20 +102,19 @@ int main(int argc, char *argv[])
     }
 
     QJsonArray results;
-    for (const SmartRequest &request : requests) {
+    for (const SmartRequest& request : requests) {
         if (!SmartDeviceRules::isSupportedDevicePath(request.devicePath)) {
-            results.append(validationErrorResult(request.devicePath,
-                                                 QStringLiteral("Unsupported SMART device path: %1").arg(request.devicePath)));
+            results.append(
+                validationErrorResult(request.devicePath, QStringLiteral("Unsupported SMART device path: %1").arg(request.devicePath)));
             continue;
         }
         if (!SmartDeviceRules::isSupportedTransport(request.transport)) {
-            results.append(validationErrorResult(request.devicePath,
-                                                 QStringLiteral("Unsupported SMART transport: %1").arg(request.transport)));
+            results.append(
+                validationErrorResult(request.devicePath, QStringLiteral("Unsupported SMART transport: %1").arg(request.transport)));
             continue;
         }
         if (!QFileInfo::exists(request.devicePath)) {
-            results.append(validationErrorResult(request.devicePath,
-                                                 QStringLiteral("Device does not exist: %1").arg(request.devicePath)));
+            results.append(validationErrorResult(request.devicePath, QStringLiteral("Device does not exist: %1").arg(request.devicePath)));
             continue;
         }
         results.append(runSmartctl(request));

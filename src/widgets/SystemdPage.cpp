@@ -5,7 +5,6 @@
 #include "../ui/StatusBadgeDelegate.h"
 #include "../ui/ThemeManager.h"
 #include "../utils/TableLayoutPersistence.h"
-
 #include "ConfirmActionDialog.h"
 #include "LogViewerDialog.h"
 #include "StatusBanner.h"
@@ -25,13 +24,10 @@
 #include <QTableView>
 #include <QVBoxLayout>
 
-SystemdPage::SystemdPage(SystemdServiceProvider *provider, QWidget *parent)
-    : QWidget(parent)
-    , m_provider(provider)
-{
-    auto *layout = new QVBoxLayout(this);
-    auto *header = new QHBoxLayout;
-    auto *title = new QLabel(QStringLiteral("Systemd Services"), this);
+SystemdPage::SystemdPage(SystemdServiceProvider* provider, QWidget* parent) : QWidget(parent), m_provider(provider) {
+    auto* layout = new QVBoxLayout(this);
+    auto* header = new QHBoxLayout;
+    auto* title = new QLabel(QStringLiteral("Systemd Services"), this);
     title->setObjectName(QStringLiteral("pageTitle"));
     m_filter = new QLineEdit(this);
     m_filter->setPlaceholderText(QStringLiteral("Filter services..."));
@@ -40,12 +36,13 @@ SystemdPage::SystemdPage(SystemdServiceProvider *provider, QWidget *parent)
     m_stateFilter->addItems({QStringLiteral("All states"), QStringLiteral("Active"), QStringLiteral("Failed"), QStringLiteral("Inactive")});
     m_groupSelector = new QComboBox(this);
     m_groupSelector->setMinimumWidth(160);
-    for (const QString &group : ServiceGroupSettings::groupNames()) {
+    for (const QString& group : ServiceGroupSettings::groupNames()) {
         m_groupSelector->addItem(group);
     }
     m_groupSelector->setCurrentText(ServiceGroupSettings::activeGroup());
     m_allServicesCheck = new QCheckBox(QStringLiteral("All services"), this);
-    auto *refreshButton = new QPushButton(ThemeManager::themedIcon(QStringLiteral("view-refresh"), QStyle::SP_BrowserReload), QStringLiteral("Refresh"), this);
+    auto* refreshButton = new QPushButton(ThemeManager::themedIcon(QStringLiteral("view-refresh"), QStyle::SP_BrowserReload),
+                                          QStringLiteral("Refresh"), this);
     header->addWidget(title);
     header->addStretch();
     header->addWidget(m_filter, 1);
@@ -72,11 +69,12 @@ SystemdPage::SystemdPage(SystemdServiceProvider *provider, QWidget *parent)
     TableLayoutPersistence::bind(m_table, QStringLiteral("tables/systemd/headerState"), /*persistSortOrder=*/true);
     layout->addWidget(m_table, 1);
 
-    auto *actions = new QHBoxLayout;
+    auto* actions = new QHBoxLayout;
     m_startButton = new QPushButton(QStringLiteral("Start"), this);
     m_stopButton = new QPushButton(QStringLiteral("Stop"), this);
     m_restartButton = new QPushButton(QStringLiteral("Restart"), this);
-    m_logsButton = new QPushButton(ThemeManager::themedIcon(QStringLiteral("text-x-generic"), QStyle::SP_FileIcon), QStringLiteral("View logs"), this);
+    m_logsButton =
+        new QPushButton(ThemeManager::themedIcon(QStringLiteral("text-x-generic"), QStyle::SP_FileIcon), QStringLiteral("View logs"), this);
     actions->addWidget(m_startButton);
     actions->addWidget(m_stopButton);
     actions->addWidget(m_restartButton);
@@ -90,17 +88,17 @@ SystemdPage::SystemdPage(SystemdServiceProvider *provider, QWidget *parent)
     connect(m_stopButton, &QPushButton::clicked, this, [this]() { runAction(QStringLiteral("stop")); });
     connect(m_restartButton, &QPushButton::clicked, this, [this]() { runAction(QStringLiteral("restart")); });
     connect(m_filter, &QLineEdit::textChanged, m_proxy, &TableFilterProxyModel::setSearchText);
-    connect(m_stateFilter, &QComboBox::currentTextChanged, this, [this](const QString &state) {
+    connect(m_stateFilter, &QComboBox::currentTextChanged, this, [this](const QString& state) {
         if (state == QStringLiteral("All states")) {
             m_proxy->setRowPredicate({});
             return;
         }
         const QString expected = state.toLower();
-        m_proxy->setRowPredicate([expected](int sourceRow, const QAbstractItemModel *model) {
+        m_proxy->setRowPredicate([expected](int sourceRow, const QAbstractItemModel* model) {
             return model->index(sourceRow, 2).data(Qt::DisplayRole).toString().toLower() == expected;
         });
     });
-    connect(m_groupSelector, &QComboBox::currentTextChanged, this, [this](const QString &group) {
+    connect(m_groupSelector, &QComboBox::currentTextChanged, this, [this](const QString& group) {
         ServiceGroupSettings::setActiveGroup(group);
         refresh();
     });
@@ -117,7 +115,7 @@ SystemdPage::SystemdPage(SystemdServiceProvider *provider, QWidget *parent)
     });
     connect(m_table->selectionModel(), &QItemSelectionModel::selectionChanged, this, &SystemdPage::updateActionStates);
     connect(m_model, &QAbstractItemModel::modelReset, this, &SystemdPage::updateActionStates);
-    connect(m_table, &QTableView::doubleClicked, this, [this](const QModelIndex &) {
+    connect(m_table, &QTableView::doubleClicked, this, [this](const QModelIndex&) {
         const ServiceRow row = selectedRow();
         if (!row.unit.isEmpty()) {
             m_provider->serviceLogs(row.unit);
@@ -125,12 +123,12 @@ SystemdPage::SystemdPage(SystemdServiceProvider *provider, QWidget *parent)
     });
     connect(m_table, &QWidget::customContextMenuRequested, this, &SystemdPage::showContextMenu);
 
-    connect(m_provider, &SystemdServiceProvider::servicesReady, this, [this](const QVector<ServiceRow> &rows, const QString &error) {
+    connect(m_provider, &SystemdServiceProvider::servicesReady, this, [this](const QVector<ServiceRow>& rows, const QString& error) {
         m_model->setRows(rows);
         m_status->setResultMessage(QStringLiteral("%1 services").arg(rows.size()), error);
         updateActionStates();
     });
-    connect(m_provider, &SystemdServiceProvider::logsReady, this, [this](const QString &title, const QString &text) {
+    connect(m_provider, &SystemdServiceProvider::logsReady, this, [this](const QString& title, const QString& text) {
         if (auto existing = m_logDialogs.value(title); existing) {
             existing->setContent(text);
             existing->raise();
@@ -141,16 +139,14 @@ SystemdPage::SystemdPage(SystemdServiceProvider *provider, QWidget *parent)
         LogViewerDialog::RefreshCallback refreshCb;
         if (title.startsWith(prefix)) {
             const QString unit = title.mid(prefix.size());
-            refreshCb = [this, unit](int tailLines) {
-                m_provider->serviceLogs(unit, tailLines);
-            };
+            refreshCb = [this, unit](int tailLines) { m_provider->serviceLogs(unit, tailLines); };
         }
-        auto *dialog = new LogViewerDialog(title, text, this, refreshCb);
+        auto* dialog = new LogViewerDialog(title, text, this, refreshCb);
         dialog->setAttribute(Qt::WA_DeleteOnClose);
         m_logDialogs.insert(title, dialog);
         dialog->show();
     });
-    connect(m_provider, &SystemdServiceProvider::actionFinished, this, [this](const QString &message, const QString &details) {
+    connect(m_provider, &SystemdServiceProvider::actionFinished, this, [this](const QString& message, const QString& details) {
         QMessageBox::information(this, QStringLiteral("systemd"), details.isEmpty() ? message : message + QStringLiteral("\n\n") + details);
         refresh();
         m_provider->refreshFailedCount();
@@ -159,16 +155,14 @@ SystemdPage::SystemdPage(SystemdServiceProvider *provider, QWidget *parent)
     updateActionStates();
 }
 
-QStringList SystemdPage::watchedServices() const
-{
+QStringList SystemdPage::watchedServices() const {
     if (m_allServicesCheck && m_allServicesCheck->isChecked()) {
         return {};
     }
     return ServiceGroupSettings::servicesForGroup(ServiceGroupSettings::activeGroup());
 }
 
-ServiceRow SystemdPage::selectedRow() const
-{
+ServiceRow SystemdPage::selectedRow() const {
     const QModelIndex index = m_table->currentIndex();
     if (!index.isValid()) {
         return {};
@@ -176,8 +170,7 @@ ServiceRow SystemdPage::selectedRow() const
     return m_model->rowAt(m_proxy->mapToSource(index).row());
 }
 
-void SystemdPage::updateActionStates()
-{
+void SystemdPage::updateActionStates() {
     const bool hasSelection = !selectedRow().unit.isEmpty();
     m_startButton->setEnabled(hasSelection);
     m_stopButton->setEnabled(hasSelection);
@@ -185,8 +178,7 @@ void SystemdPage::updateActionStates()
     m_logsButton->setEnabled(hasSelection);
 }
 
-void SystemdPage::showContextMenu(const QPoint &pos)
-{
+void SystemdPage::showContextMenu(const QPoint& pos) {
     const QModelIndex index = m_table->indexAt(pos);
     if (!index.isValid()) {
         return;
@@ -202,40 +194,37 @@ void SystemdPage::showContextMenu(const QPoint &pos)
     menu.addAction(QStringLiteral("Stop"), this, [this]() { runAction(QStringLiteral("stop")); });
     menu.addAction(QStringLiteral("Restart"), this, [this]() { runAction(QStringLiteral("restart")); });
     menu.addSeparator();
-    menu.addAction(QIcon::fromTheme(QStringLiteral("text-x-generic")), QStringLiteral("View logs"), this, [this, unit = row.unit]() {
-        m_provider->serviceLogs(unit);
-    });
+    menu.addAction(QIcon::fromTheme(QStringLiteral("text-x-generic")), QStringLiteral("View logs"), this,
+                   [this, unit = row.unit]() { m_provider->serviceLogs(unit); });
     menu.addAction(QStringLiteral("Copy unit name"), this, [unit = row.unit]() {
-        if (QClipboard *cb = QApplication::clipboard()) {
+        if (QClipboard* cb = QApplication::clipboard()) {
             cb->setText(unit);
         }
     });
     menu.exec(m_table->viewport()->mapToGlobal(pos));
 }
 
-void SystemdPage::runAction(const QString &action)
-{
+void SystemdPage::runAction(const QString& action) {
     const ServiceRow row = selectedRow();
     if (row.unit.isEmpty()) {
         return;
     }
-    if (ConfirmActionDialog::confirm(this, QStringLiteral("Confirm systemd action"), QStringLiteral("Run systemctl %1 %2?").arg(action, row.unit))) {
+    if (ConfirmActionDialog::confirm(this, QStringLiteral("Confirm systemd action"),
+                                     QStringLiteral("Run systemctl %1 %2?").arg(action, row.unit))) {
         m_provider->controlService(row.unit, action);
     }
 }
 
-void SystemdPage::refresh()
-{
+void SystemdPage::refresh() {
     m_status->setMessage(QStringLiteral("Refreshing..."), StatusBanner::Severity::Info);
     m_provider->refreshServices(watchedServices());
 }
 
-void SystemdPage::reloadGroupSelector()
-{
+void SystemdPage::reloadGroupSelector() {
     const QString current = m_groupSelector->currentText();
     m_groupSelector->blockSignals(true);
     m_groupSelector->clear();
-    for (const QString &group : ServiceGroupSettings::groupNames()) {
+    for (const QString& group : ServiceGroupSettings::groupNames()) {
         m_groupSelector->addItem(group);
     }
     const int index = m_groupSelector->findText(ServiceGroupSettings::activeGroup());

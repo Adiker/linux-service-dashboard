@@ -2,8 +2,7 @@
 
 #include <QSettings>
 
-ModuleSettings loadModuleSettings()
-{
+ModuleSettings loadModuleSettings() {
     QSettings settings;
     ModuleSettings modules;
     modules.systemd = settings.value(QStringLiteral("modules/systemd"), true).toBool();
